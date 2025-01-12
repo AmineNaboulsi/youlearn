@@ -1,0 +1,11 @@
+.env
+
+compose.lock
+
+vendor/
+
+Dockerfile
+
+MakeFile
+
+nginx.conf

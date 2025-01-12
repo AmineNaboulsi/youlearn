@@ -1,0 +1,17 @@
+{
+    "name": "amine/you-learn",
+    "autoload": {
+        "psr-4": {
+            "YouLearn": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "AmineNaboulsi",
+            "email": "naboulsiiamine@gmail.com"
+        }
+    ],
+    "require": {
+        "vlucas/phpdotenv": "^5.6"
+    }
+}
