@@ -9,3 +9,5 @@ Dockerfile
 MakeFile
 
 nginx.conf
+
+swagger-ui
