@@ -23,6 +23,7 @@ services:
             - mysql
     nginx:
         image: nginx:alpine
+        restart: always
         ports:
             - "8087:80"
         volumes:

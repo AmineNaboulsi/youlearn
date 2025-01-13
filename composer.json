@@ -1,8 +1,7 @@
 {
-    "name": "amine/you-learn",
     "autoload": {
         "psr-4": {
-            "YouLearn": "src/"
+            "App\\": "src/"
         }
     },
     "authors": [
