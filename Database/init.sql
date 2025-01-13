@@ -149,4 +149,3 @@ INSERT INTO CoursTags (tag_id, cours_id) VALUES
                                              (13, 6);
 
 
-

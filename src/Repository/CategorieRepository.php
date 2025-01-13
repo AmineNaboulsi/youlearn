@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Repositorys;
+namespace App\Repository;
 
 class CategorieRepository
 {

@@ -2,7 +2,7 @@
 
 namespace App\MiddleWare;
 
-class Auth
+class AuthMiddleware
 {
     private string $role;
 

@@ -1,6 +1,9 @@
 <?php
 
 namespace App\Controller;
+use App\Models\Tag;
+use App\RouterServices\Request;
+use App\Rou;
 
 class TagController
 {
@@ -14,7 +17,10 @@ class TagController
      *      @OA\Response(response="404", description="No Data Found"),
      * )
      */
-    public function getTags(){
+
+    public function getTags(Request $request){
+        $params = ['id'];
+        $request->getQueryParams()['id'];
         return [
             "status" => true ,
             "message" => 'getTags'
@@ -29,7 +35,16 @@ class TagController
      *      @OA\Response(response="422", description="Missing parametres"),
      * )
      */
-    public function AddTag(){
+    public function AddTag(Request $request){
+        if(!isset($request->getQueryParams()['name'])){
+            return [
+                "status" => false ,
+                "message" => 'Missing parametres'
+            ];
+        }
+        $Tag = new Tag();
+        $Tag->setName($request->getQueryParams()['name']);
+
         return [
             "status" => true ,
             "message" => 'AddTag'
@@ -45,7 +60,7 @@ class TagController
      *      @OA\Response(response="422", description="Missing parametres"),
      * )
      */
-    public function EditTag(){
+    public function EditTag(Request $request){
         return [
             "status" => true ,
             "message" => 'EditTag'
@@ -61,7 +76,7 @@ class TagController
      *      @OA\Response(response="422", description="Missing parametres"),
      * )
      */
-    public function DelTag(){
+    public function DelTag(Request $request){
         return [
             "status" => true ,
             "message" => 'DelTag'

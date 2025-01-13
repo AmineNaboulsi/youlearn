@@ -4,15 +4,16 @@ namespace App\RouterServices;
 
 use App\RouterServices\Route;
 use App\MiddleWare\Auth;
+use ReflectionMethod;
 
 class RouterServiceProvider
 {
     private $endpoint;
     private $method;
     private $routes;
-    public function __construct($method , $route){
-        $this->method = $method;
-        $this->endpoint = $route;
+    public function __construct(){
+        $this->method = $_SERVER["REQUEST_METHOD"];
+        $this->endpoint = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
         $this->routes = [
             'GET' => [] ,
             'POST' => [] ,
@@ -36,10 +37,10 @@ class RouterServiceProvider
     public function patch($endpoint , $controller , $action ,$auth=null , $role=null){
         $this->routes['PATCH'][]  = new Route($endpoint ,$controller, $action,$auth ,$role);
     }
-    public function Dispatch(){
-        $route = strtok($this->endpoint , '?');
+    public function dispatch(){
+        $route = parse_url($this->endpoint , PHP_URL_PATH);
         header('Content-Type: application/json');
-        foreach($this->routes[$this->method] as $methodHTTP => $routeAction){
+        foreach($this->routes[$this->method] as $routeAction){
             if($routeAction->getEndpoint() == $route){
                 $controller = $routeAction->getController();
                 $action = $routeAction->getMethod();
@@ -60,4 +61,29 @@ class RouterServiceProvider
             "message" => 'Invalide Route'
         ]);
     }
+
+    private function resolveMethodParameters(ReflectionMethod $method, $params=null)
+    {
+        $arguments = [];
+        foreach ($method->getParameters() as $param) {
+            $name = $param->getName();
+            $type = $param->getType();
+
+            if (isset($params[$name])) {
+                // If a type is hinted, try to resolve it as a model
+                if ($type && !$type->isBuiltin()) {
+                    $modelClass = $type->getName();
+                    $arguments[] = $modelClass::find($params[$name]); // Example: Model::find(id)
+                } else {
+                    $arguments[] = $params[$name];
+                }
+            } elseif ($param->isDefaultValueAvailable()) {
+                $arguments[] = $param->getDefaultValue();
+            } else {
+                throw new \Exception("Unable to resolve parameter '{$name}'");
+            }
+        }
+        return $arguments;
+    }
+
 }
