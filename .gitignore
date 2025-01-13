@@ -6,8 +6,12 @@ vendor/
 
 Dockerfile
 
+compose.yaml
+
 MakeFile
 
 nginx.conf
 
 swagger-ui
+
+documentation

@@ -3,7 +3,7 @@
 namespace App\RouterServices;
 
 use App\RouterServices\Route;
-use App\MiddleWare\Auth;
+use App\RouterServices\Request;
 use ReflectionMethod;
 
 class RouterServiceProvider
@@ -51,7 +51,7 @@ class RouterServiceProvider
                 //     $auth->check($role);
                 // }
                 $controller = new $controller();
-                echo json_encode($controller->$action());
+                echo json_encode($controller->$action(new Request()));
                 return ;
             }
         }
