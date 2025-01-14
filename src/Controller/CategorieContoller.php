@@ -2,31 +2,34 @@
 
 namespace App\Controller;
 
+use App\RouterServices\Request;
+
 class CategorieContoller
 {
 
-    public  function getCategories()
+    public  function getCategories(Request $request)
     {
+
         return [
             "status" => true ,
             "message" => 'getCategories'
         ];
     }
-    public  function AddCategorie()
+    public  function AddCategorie(Request $request)
     {
         return [
             "status" => true ,
             "message" => 'AddCategorie'
         ];
     }
-    public  function DelCategorie()
+    public  function DelCategorie(Request $request)
     {
         return [
             "status" => true ,
             "message" => 'DelCategorie'
         ];
     }
-    public  function EditCategorie()
+    public  function EditCategorie(Request $request)
     {
         return [
             "status" => true ,
