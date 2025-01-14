@@ -85,7 +85,7 @@ class TagController
     public function DelTag(Request $request){
         $RepositoryTag = new TagRepository();
         if(isset($request->query()['id'])){
-            return $RepositoryTag->findByIdAndDelete(new Tag(null, $request->query()['id']));
+            return $RepositoryTag->findByIdAndDelete(new Tag(id: $request->query()['id']));
         }else{
             http_response_code(422);
             return [

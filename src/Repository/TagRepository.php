@@ -10,10 +10,10 @@ class TagRepository
         // Find Tag by ID
         public function findById(int $id) {
             $con = Database::getConnection();
-            $sql = "SELECT * FROM Tags WHERE id = ?";
+            $sql = "SELECT * FROM Tags WHERE id = :id";
             $sqlDatareader = $con->prepare($sql) ;
             $sqlDatareader->execute([ ":id" => $id]);
-            $result = $sqlDatareader->fetch();
+            $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
             return $result;
         }
         public function Find() {
