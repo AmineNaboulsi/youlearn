@@ -21,7 +21,19 @@ class Request {
     public function getUri() {
         return $this->serverData['REQUEST_URI'];
     }
-    public function getQueryParams() {
+    public function query() {
         return $this->queryParams;
+    }
+    public function bodyRaw() {
+        $input = file_get_contents("php://input");
+        $data = json_decode($input);
+        return $data;
+    }
+    public function bodyFormData() {
+        $data = [];
+        foreach ($this->postData as $key => $value) {
+            $data[$key] = $value;
+        }
+        return $data;
     }
 }

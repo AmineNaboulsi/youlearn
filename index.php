@@ -13,7 +13,7 @@ $Routes = new RouterServiceProvider;
 
 $Routes->post('/signin' ,UserContoller::class , 'SignIn');
 $Routes->post('/signup',UserContoller::class , 'SignUp');
-$Routes->post('/activate',UserContoller::class , 'BannedOrUnBanned' , AuthMiddleware::class , 'admin');
+$Routes->patch('/activate',UserContoller::class , 'BannedOrUnBanned' , AuthMiddleware::class , 'admin');
 
 //Courses
 $Routes->get('/getcourses' , CourseController::class , 'getCourses');

@@ -29,15 +29,17 @@ class TagRepository
             $con = Database::getConnection();
             $sql = "INSERT INTO Tags (title) VALUES (:title)";
             $sqlDatareader = $con->prepare($sql) ;
-            if($sqlDatareader->execute([':title' => $Tag->getName()]))
+            if($sqlDatareader->execute([':title' => $Tag->getName()]) && $sqlDatareader->rowCount() > 0)
+                
                 return [
                     "status" => true ,
                     "message" => 'Tag Added'
                 ];
             else 
+                http_response_code(409);
                 return [
                     "status" => false ,
-                    "message" => 'Failed to add Tag'
+                    "message" => 'Failed to add Tag for unknown reason, please try later'
                 ];
         }
     
@@ -49,15 +51,16 @@ class TagRepository
             if($sqlDatareader->execute(
                 [   ':title' => $Tag->getName(),
                     ':id' => $Tag->getId()
-                ]))
+                ]) && $sqlDatareader->rowCount() > 0)
                 return [
                     "status" => true ,
                     "message" => 'Tag Updated'
                 ];
             else 
+                http_response_code(409);
                 return [
                     "status" => false ,
-                    "message" => 'Failed to Update Tag'
+                    "message" => 'Failed to Update Tag for unknown reason, please try later'
                 ];
         }
 
@@ -69,7 +72,7 @@ class TagRepository
             if($sqlDatareader->execute(
                 [
                     ':id' => $Tag->getId()
-                ]))
+                ]) && $sqlDatareader->rowCount() > 0 )
                 return [
                     "status" => true ,
                     "message" => 'Tag Delete'
@@ -77,7 +80,7 @@ class TagRepository
             else 
                 return [
                     "status" => false ,
-                    "message" => 'Failed to Update Tag'
+                    "message" => 'Failed to Delete Tag for unknown reason, please try later'
                 ];
         }
 

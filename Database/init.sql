@@ -70,9 +70,9 @@ CREATE TABLE Inscription
     PRIMARY KEY (user_id , cour_id)
 );
 INSERT INTO Roles (name) VALUES
-                             ('Admin'),
-                             ('Instructor'),
-                             ('Etudiant');
+                             ('admin'),
+                             ('enseignant'),
+                             ('etudiant');
 
 INSERT INTO Categories (name) VALUES
                                   ('Développement Web'),
