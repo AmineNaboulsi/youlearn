@@ -18,6 +18,8 @@ $Routes->patch('/activate',UserContoller::class , 'BannedOrUnBanned' , AuthMiddl
 //Courses
 $Routes->get('/getcourses' , CourseController::class , 'getCourses');
 $Routes->post('/addcourse' , CourseController::class , 'AddCourse', AuthMiddleware::class , ['enseignant', 'admin']);
+$Routes->post('/addcoursetag' , CourseController::class , 'AddCourseTag', AuthMiddleware::class , ['enseignant', 'admin']);
+$Routes->delete('/delcoursetag' , CourseController::class , 'DelCourseTag', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->put('/editcourse' , CourseController::class , 'EditCourse' , AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->delete('/delcourse' , CourseController::class , 'DelCourse' , AuthMiddleware::class , ['enseignant', 'admin']);
 

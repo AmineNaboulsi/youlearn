@@ -13,8 +13,9 @@ class CategorieRepository
         $sql = "SELECT * FROM Categories WHERE id = :id";
         $sqlDatareader = $con->prepare($sql) ;
         $sqlDatareader->execute([ ":id" => $id]);
-        $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
-        return $result;
+        $Categorie = $sqlDatareader->fetchObject(Categorie::class);
+        //$Categorie = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
+        return $Categorie;
     }
     public function Find() {
         $con = Database::getConnection();

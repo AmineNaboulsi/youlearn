@@ -9,7 +9,7 @@ class CategorieContoller
 {
     /**
      * @OA\GET(
-     *      path="/getcategories{id}",
+     *      path="/getcategories",
      *      summary="Get all categories",
      *      tags={"Categories"},
      *      @OA\Parameter(
@@ -39,15 +39,22 @@ class CategorieContoller
      *      path="/addcategorie",
      *      summary="Add Categorie",
      *      tags={"Categories"},
-     * @OA\Parameter(
-     *          name="name",
-     *          in="path",
-     *          required=true,
-     *          description="category name  ",
-     *          @OA\Schema(
-     *              type="string"
-     *          )
-     *      ),
+    * @OA\RequestBody(
+    *          required=true,
+    *          description="Category data in form-data format",
+    *          @OA\MediaType(
+    *              mediaType="multipart/form-data",
+    *              @OA\Schema(
+    *                  type="object",
+    *                  @OA\Property(
+    *                      property="name",
+    *                      type="string",
+    *                      description="Category name",
+    *                      example="My Category"
+    *                  )
+    *              )
+    *          )
+    *      ),
      *      @OA\Response(response="200", description="Add Categorie"),
      *      @OA\Response(response="409", description="Failed to make operation"),    
      * )
@@ -75,12 +82,14 @@ class CategorieContoller
             ];
         }
     }
-      /**
+
+
+  /**
      * @OA\PUT(
      *      path="/editcategorie",
      *      summary="Edit Categorie",
      *      tags={"Categories"},
-     * @OA\Parameter(
+     *@OA\Parameter(
      *          name="id",
      *          in="path",
      *          required=true,
@@ -103,11 +112,11 @@ class CategorieContoller
      *      @OA\Response(response="409", description="Failed to make operation"),    
      * )
      */
-    public  function DelCategorie(Request $request)
+    public  function EditCategorie(Request $request)
     {
         $CategorieRepository = new CategorieRepository();
-        if(isset($request->query()['id'])){
-            return $CategorieRepository->findByIdAndDelete(new Categorie(id: $request->query()['id']));
+        if(isset($request->query()['name']) && isset($request->query()['id'])){
+            return $CategorieRepository->findByIdAndUpdate(new Categorie(name: $request->query()['name'] ,id: $request->query()['id']));
         }else{
             http_response_code(422);
             return [
@@ -115,8 +124,10 @@ class CategorieContoller
                 "message" => 'Missing parametres'
             ];
         }
+        
     }
-       /**
+
+ /**
      * @OA\DELETE(
      *      path="/delcategorie",
      *      summary="Delete Categorie",
@@ -135,18 +146,18 @@ class CategorieContoller
      *      @OA\Response(response="409", description="Failed to make operation"),    
      * )
      */
-    public  function EditCategorie(Request $request)
-    {
-        $CategorieRepository = new CategorieRepository();
-        if(isset($request->query()['name']) && isset($request->query()['id'])){
-            return $CategorieRepository->findByIdAndUpdate(new Categorie(name: $request->query()['name'] ,id: $request->query()['id']));
-        }else{
-            http_response_code(422);
-            return [
-                "status" => false ,
-                "message" => 'Missing parametres'
-            ];
-        }
-        
-    }
+    
+     public  function DelCategorie(Request $request)
+     {
+         $CategorieRepository = new CategorieRepository();
+         if(isset($request->query()['id'])){
+             return $CategorieRepository->findByIdAndDelete(new Categorie(id: $request->query()['id']));
+         }else{
+             http_response_code(422);
+             return [
+                 "status" => false ,
+                 "message" => 'Missing parametres'
+             ];
+         }
+     }
 }

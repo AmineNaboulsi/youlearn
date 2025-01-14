@@ -51,7 +51,6 @@ CREATE TABLE Cours
     description TEXT,
     content TEXT,
     cat_id INT ,
-    tags INT  ,
     foreign key (cat_id) REFERENCES Categories(id) ON UPDATE cascade
         ON DELETE SET NULL ,
     foreign key (tags) REFERENCES Tags(id) ON UPDATE cascade

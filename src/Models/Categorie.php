@@ -5,10 +5,10 @@ namespace App\Models;
 class Categorie
 {
 
-    private $id;
-    private $name;
+    public $id;
+    public $name;
 
-    public function __construct($id=-1, $name="")
+    public function __construct($id=0, $name="")
     {
         $this->id = $id;
         $this->name = $name;
