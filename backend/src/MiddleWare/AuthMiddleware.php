@@ -9,12 +9,11 @@ class AuthMiddleware
 {
 
     private string | array $role;
-    public function __construct(string| array $newrole)
+    public function __construct(string| array $newrole=[])
     {
         $this->role= $newrole;
     }
-    public function ValideAuth()
-    {
+    public function ValideAuth(){
         if(isset($_SERVER["HTTP_AUTHORIZATION"])){
            [$type , $token] = explode(" ", $_SERVER["HTTP_AUTHORIZATION"]);
            if(strcmp($type  ,'Bearer')==0){

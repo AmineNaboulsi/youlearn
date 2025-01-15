@@ -28,6 +28,7 @@ function SignIn() {
       event.preventDefault();
       setcredentials((prev)=>({
         ...prev ,
+        status : null ,
         isLoading : true
       }))
       const url = import.meta.env.VITE_APP_URL;
@@ -35,36 +36,44 @@ function SignIn() {
       params.append("name" , credentials?.password);
       params.append("email" , credentials?.email);
       params.append("password" , credentials?.password);
-      const res = await fetch(`${url}/signin`,{
-        method : 'POST',
-        body : params
-      });
-      const data = await res.json();
-      console.log(data);
-      if(data){
-        setcredentials((prev)=>({
-          ...prev ,
-          status : data.status ,
-          message : data.message ,
-          isLoading : false
-        }))
-        if(data?.status) {
-          Cookies.set('auth-token', data?.token)
-          setTimeout(()=>{
-            nagivate('/')
-          },200)
+      try{
+          const res = await fetch(`${url}/signin`,{
+            method : 'POST',
+            body : params
+          });
+          const data = await res.json();
+          console.log(data);
+          if(data){
+            setcredentials((prev)=>({
+              ...prev ,
+              status : data.status ,
+              message : data.message ,
+              isLoading : false
+            }))
+            if(data?.status) {
+              Cookies.set('auth-token', data?.token)
+              setTimeout(()=>{
+                nagivate('/')
+              },200)
 
-        }
-      }
-      else{
-        setcredentials((prev)=>({
-          ...prev ,
-          status :  false,
-          message : 'ERROR' ,
-          isLoading : false
-        }))
-      }
-      
+            }
+          }
+          else{
+            setcredentials((prev)=>({
+              ...prev ,
+              status :  false,
+              message : 'ERROR' ,
+              isLoading : false
+            }))
+          }
+    }catch(error){
+      setcredentials((prev)=>({
+        ...prev ,
+        status :  false,
+        message : 'ERROR' ,
+        isLoading : false
+      }))
+    }
   }
   return (
     <div>

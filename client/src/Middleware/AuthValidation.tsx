@@ -1,7 +1,6 @@
 import {useState , useEffect} from 'react'
 import Cookies from 'js-cookie'
 import { useNavigate } from 'react-router'
-import Loading from '../assets/loading.svg'
 function AuthValidation(Component:any) {
   return function CkeckPerm() {
     const [isLoading, setIsLoading] = useState(true);
@@ -10,16 +9,29 @@ function AuthValidation(Component:any) {
         const ValidateToken = async () =>{
             const url = import .meta.env.VITE_APP_URL;
             const AuthToken = Cookies.get('auth-token')
-            const res =  await fetch(`${url}/validtk`,{
-                method : 'POST',
-                headers :
-                {Authorization : `Bearer ${AuthToken}`}
-            });
-            setIsLoading(false);
-            if(res.status != 200){
+            try{
+                const res =  await fetch(`${url}/validtk`,{
+                    method : 'POST',
+                    headers :
+                    {
+                        Authorization : `Bearer ${AuthToken}`
+                    }
+                });
+                const data =  await res.json();
+                if(!data.status && data.code == -3 ){
+                    navigate('/unauthorized');
+                    console.log("Catch Error");
+                }else if(!data.status && data.code != -3){
+                    navigate('/signin');
+                }
                 setIsLoading(false);
-                navigate('/signin');
-            }   
+
+            }catch(error){
+                console.log("Catch Error");
+                setIsLoading(false);
+                navigate('/unauthorized');
+            }
+           
         }
         ValidateToken();
       }, []);

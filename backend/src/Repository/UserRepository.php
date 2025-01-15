@@ -16,6 +16,21 @@ class UserRepository
         $sqldataReader->execute();
         return $sqldataReader->fetchAll(\PDO::FETCH_ASSOC);
     }
+    // Find User by ID
+    public function findById($id) {
+        $con = Database::getConnection();
+        $sqldataReader = $con->prepare("
+            SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
+            JOIN  Roles ur ON ur.id = u.role_id
+            WHERE u.id =:id ");
+        $sqldataReader->execute([
+            ":id" => $id
+        ]);
+        // $User = $sqldataReader->fetchObject(User::class);
+        // return $User;
+        $User = $sqldataReader->fetch(\PDO::FETCH_ASSOC);
+        return $User;
+    }
     // Find role by ID
     public function findRoleById($id) {
         $con = Database::getConnection();

@@ -32,6 +32,7 @@ function SignUp() {
       event.preventDefault();
       setcredentials((prev)=>({
         ...prev ,
+        status : null ,
         isLoading : true
       }))
       const url = import.meta.env.VITE_APP_URL;
@@ -40,24 +41,33 @@ function SignUp() {
       params.append("role" , credentials?.role);
       params.append("email" , credentials?.email);
       params.append("password" , credentials?.password);
-      const res = await fetch(`${url}/signup`,{
-        method : 'POST',
-        body : params
-      });
-      const data = await res.json();
-      if(data){
-        setcredentials((prev)=>({
-          ...prev ,
-          status : data.status ,
-          message : data.message.includes("Invalide Route") ? 'We face a technical problem to create your account, please try later' : data.message  ,
-          isLoading : false
-        }))
-        if(data?.status) {
-          setTimeout(()=>{
-            nagivate('/signin')
-          },200)
-        }
-      }else{
+      try{
+        const res = await fetch(`${url}/signup`,{
+          method : 'POST',
+          body : params
+        });
+        const data = await res.json();
+          if(data){
+            setcredentials((prev)=>({
+              ...prev ,
+              status : data.status ,
+              message : data.message.includes("Invalide Route") ? 'We face a technical problem to create your account, please try later' : data.message  ,
+              isLoading : false
+            }))
+            if(data?.status) {
+              setTimeout(()=>{
+                nagivate('/signin')
+              },200)
+            }
+            }else{
+              setcredentials((prev)=>({
+                ...prev ,
+                status :  false,
+                message : 'ERROR' ,
+                isLoading : false
+              }))
+            }
+      }catch(error){
         setcredentials((prev)=>({
           ...prev ,
           status :  false,
@@ -65,7 +75,7 @@ function SignUp() {
           isLoading : false
         }))
       }
-  }
+    }
   return (
     <div>
         <div className="font-[sans-serif] ">

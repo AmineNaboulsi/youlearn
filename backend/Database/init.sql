@@ -43,12 +43,16 @@ CREATE TABLE CoursTags
         ON DELETE cascade,
     PRIMARY KEY (id)
 );
-
+Alter table Cours ADD COLUMN contenttype VARCHAR(500);
 CREATE TABLE Cours
 (
     id INT AUTO_INCREMENT ,
     title VARCHAR(500) UNIQUE ,
+    subtitle VARCHAR(500),
+    img TEXT,
+    price FLOAT,
     description TEXT,
+    contenttype VARCHAR(500),
     content TEXT,
     cat_id INT ,
     foreign key (cat_id) REFERENCES Categories(id) ON UPDATE cascade
@@ -146,5 +150,4 @@ INSERT INTO CoursTags (tag_id, cours_id) VALUES
                                              (9, 4),
                                              (14, 5),
                                              (13, 6);
-
 
