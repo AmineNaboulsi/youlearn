@@ -139,7 +139,7 @@ class CourseController
         }
     }
        /**
-     * @OA\POST(
+     * @OA\PUT(
      *      path="/editcourse",
      *      summary="Edit course",
      *      tags={"courses"},
@@ -180,7 +180,7 @@ class CourseController
         }
     }
        /**
-     * @OA\POST(
+     * @OA\DELETE(
      *      path="/delcourse",
      *      summary="Delete specific course",
      *      tags={"courses"},
