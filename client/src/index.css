@@ -8,3 +8,25 @@ body{
 #root{
     height: 100%;
 }
+.container{
+    margin-inline : auto;
+  }
+  /* Mobile */
+  @media (min-width: 768px) {
+    .container {
+      width: 738px;
+    }
+  }
+  /* tablet */
+  @media (min-width: 992px) {
+    .container {
+      width: 970px;
+    }
+  
+  }
+  /* desktop */
+  @media (min-width: 1200px) {
+    .container {
+      width: 1270px;
+    }
+  }

@@ -1,6 +1,7 @@
 import {Link , useNavigate} from 'react-router-dom'
 import Logobg from '../assets/bg4189.jpg'
 import { useState } from 'react';
+import Cookies from 'js-cookie'
 
 type CredentialType = {
   name : string ,
@@ -48,9 +49,11 @@ function SignIn() {
           isLoading : false
         }))
         if(data?.status) {
+          Cookies.set('auth-token', data?.token)
           setTimeout(()=>{
             nagivate('/')
           },200)
+
         }
       }
       else{
