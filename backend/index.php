@@ -9,6 +9,7 @@ use App\Controller\TagController;
 use App\Controller\CategorieContoller;
 use App\MiddleWare\AuthMiddleware;
 
+header('Access-Control-Allow-Origin : *');
 $Routes = new RouterServiceProvider;
 
 $Routes->post('/signin' ,UserContoller::class , 'SignIn');
@@ -31,7 +32,7 @@ $Routes->delete('/deltag' , TagController::class , 'DelTag', AuthMiddleware::cla
 
 
 //Categorie
-$Routes->get('/getcategories' , CategorieContoller::class , 'getCategories' , AuthMiddleware::class , 'admin');
+$Routes->get('/getcategories' , CategorieContoller::class , 'getCategories' );
 $Routes->post('/addcategorie' , CategorieContoller::class , 'AddCategorie' , AuthMiddleware::class , 'admin');
 $Routes->put('/editcategorie' , CategorieContoller::class , 'EditCategorie' , AuthMiddleware::class , 'admin');
 $Routes->delete('/delcategorie' , CategorieContoller::class , 'DelCategorie' , AuthMiddleware::class , 'admin');
