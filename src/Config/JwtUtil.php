@@ -4,6 +4,7 @@
 
 namespace App\Config;
 
+define('One_HOUR', 3600);
 define('One_DAY', 86400);
 define('One_WEEK', 7 * 86400);
 define('One_MONTH', 30 * 86400);
@@ -30,7 +31,7 @@ class JwtUtil {
 
         $payload = [
             'iat' => time(),
-            'exp' => time() + One_DAY,
+            'exp' => time() + One_HOUR,
             'id' => $User->id ,
             'role' => $UserRole
         ];

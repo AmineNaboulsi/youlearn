@@ -17,7 +17,7 @@ class UserRepository
         return $sqldataReader->fetchAll(\PDO::FETCH_ASSOC);
     }
     // Find role by ID
-    public function findRoleById(int $id) {
+    public function findRoleById($id) {
         $con = Database::getConnection();
         $sqldataReader = $con->prepare("
             SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u

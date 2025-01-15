@@ -30,9 +30,14 @@ class UserContoller
 
         if ($email && $password) {
             $UserRepository = new UserRepository();
-            return $UserRepository->SignIn(new User(email: $email, password: $password));
-            echo 'done';
-            
+            $User = new User(email: $email, password: $password);
+            if (!$User->isEmailValidation()) {
+                return [
+                    "status" => false,
+                    "message" => "Invalid email format : example@gmail.com"
+                ];
+            }
+            return $UserRepository->SignIn($User);
         } else{
             http_response_code(422);
             return [
@@ -58,7 +63,6 @@ class UserContoller
         $parametres = ["name" , "email" , "password", "role"];
         $missingparam = array_filter($parametres , function($parametre){
             if(!isset($_POST[$parametre])) {
-                var_dump($parametre);
                 return $parametre;
             }
         });

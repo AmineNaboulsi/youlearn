@@ -46,11 +46,15 @@ class RouterServiceProvider
                 $action = $routeAction->getMethod();
                 $authClass = $routeAction->getAuth();
                 $role = $routeAction->getRole();
-                // if($authClass != null){
-                //     $auth = new $authClass($role);
-                //     $auth->check($role);
-                // }
                 $controller = new $controller();
+                if($authClass != null){
+                    $auth = new $authClass($role);
+                    $response = $auth->check(function() use ($controller, $action){
+                        return $controller->$action(new Request());
+                    });
+                    echo json_encode($response);
+                    return ;
+                }
                 echo json_encode($controller->$action(new Request()));
                 return ;
             }
