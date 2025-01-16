@@ -6,13 +6,13 @@ type categoryType = {
     name : string
 }
 function CoursesList() {
-    const [courses , setCourses ] = useState<categoryType[]>([]);
+    const [Categorys , setCategorys ] = useState<categoryType[]>([]);
     useEffect(()=>{
         const FetchCategories = async() =>{
             const url = import.meta.env.VITE_APP_URL;
             const res = await fetch(`${url}/getcategories`);
             const data = await res.json();
-            if(data){setCourses(data);}
+            if(data){setCategorys(data);}
         }
         FetchCategories();
     },[])
@@ -22,7 +22,7 @@ function CoursesList() {
             <div className="text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700">
                 <ul className="flex flex-wrap -mb-px">
                 <>
-                        {courses.slice(0, 4).map((course, i) => (
+                        {Categorys.slice(0, 4).map((course, i) => (
                             <li key={i} className="me-2">
                             <span
                                 aria-current="page"
@@ -32,7 +32,7 @@ function CoursesList() {
                             </span>
                             </li>
                         ))}
-                        {courses.length > 4 && (
+                        {Categorys.length > 4 && (
                             <Link to='courses'>
                                 <li className="me-2">
                                     <span
