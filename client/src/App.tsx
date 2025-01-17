@@ -7,10 +7,14 @@ import Courses from './Pages/Courses'
 import Course from './Pages/Course'
 import Profile from './Pages/Profile'
 import Unauthorized from './Pages/Unauthorized'
+import Dashborad from './Pages/admin/Page'
+import ManageCourse from './Pages/Courses/page'
 import AuthValidation from './Middleware/AuthValidation'
 
 const ProfileWithValidation = AuthValidation(Profile);
 const CourseWithValidation = AuthValidation(Course);
+const DashboradWithValidation = AuthValidation(Dashborad);
+const ManageCourseWithValidation = AuthValidation(ManageCourse);
 function App() {
 
   return (
@@ -24,7 +28,10 @@ function App() {
       <Route path="/signin" index element={<SignIn />} />
       <Route path="/unauthorized" index element={<Unauthorized />} />
       <Route path="*" element={<NotFound />} />
+      <Route path="/dashborad" index element={<DashboradWithValidation />} />
+      <Route path="/dashborad/course" index element={<ManageCourseWithValidation />} />
     </Routes>
+   
   </BrowserRouter>
   )
 }

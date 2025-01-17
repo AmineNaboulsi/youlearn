@@ -1,4 +1,9 @@
-import React from 'react'
+import React ,{useEffect , useState} from 'react'
+
+type CategorieType = {
+    id : number,
+    name : string
+}
 
 function CategoriePanel() {
     const [categories , setcategories] = useState<CategorieType[]>();
@@ -21,7 +26,7 @@ function CategoriePanel() {
                 </div>
             {categories && categories.map((item : CategorieType)=>(
                 <div className="py-2 cursor-pointer">
-                    <span className="text-gray-500 mb-1 hover:text-gray-900">{item?.Name}</span>
+                    <span className="text-gray-500 mb-1 hover:text-gray-900">{item?.name}</span>
                     <hr />
                 </div>
             ))}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import Bannerimg1 from '../assets/bannerimg1.jpg';
-import Bannerimg2 from '../assets/bannerimg2.jpg';
+import Bannerimg1 from '../../assets/bannerimg1.jpg';
+import Bannerimg2 from '../../assets/bannerimg2.jpg';
 
 const useCarousel = (
   totalSlides: number,

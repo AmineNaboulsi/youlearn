@@ -1,7 +1,9 @@
-
+import Header from '../Components/Nav/Header'
 function Course() {
   return (
-    <div>Course</div>
+    <div>
+      <Header />
+    </div>
   )
 }
 
