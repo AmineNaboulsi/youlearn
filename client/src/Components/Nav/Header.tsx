@@ -37,11 +37,15 @@ function Header() {
   },[])
   return (
        <>
+       {User=="null" && (<>
         <nav className="bg-white text-center text-white border-gray-200 dark:bg-gray-900 py-2">
               <span>
                   YouLearn is coming to Las Vegas, April 9-11. Register now to get over 50% off new Courses. 😎
               </span>
             </nav>
+       
+       </>) }
+            
         <section className='border-b-[1px] border-gray-300 h-[72.5px] shadow-md'>
             <div className="container flex justify-between items-center h-full ">
                <span className='font-bold text-xl'>YouLearn</span>

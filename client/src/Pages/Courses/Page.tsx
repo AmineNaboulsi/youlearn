@@ -5,6 +5,8 @@ import 'react-quill/dist/quill.snow.css';
 import Select from 'react-select'
 import { useNavigate } from 'react-router';
 import Cookies from 'js-cookie'
+import { FaRegTrashAlt } from "react-icons/fa";
+
 type TagType = {
   id: number,
   title: string
@@ -13,7 +15,10 @@ type CategorieType = {
   id : number,
   name : string
 }
-
+type ApiResponseType = {
+  status : boolean,
+  message : string
+}
 function Page() {
   const [value, setValue] = useState('');
   
@@ -24,9 +29,9 @@ function Page() {
   const [selectedCategorie, setSelectedCategorie] = useState();
   const [ModeAdding , isModeAdding] = useState(true);
   const [isVideo, setisVideo] = useState(false);
-    const [optionsCategorie , setoptionsCategorie] = useState<{ value: number; label: string }[]>([]);
-    const [optionsTag , setoptionsTag] = useState<{ value: number; label: string }[]>([]);
-
+  const [optionsCategorie , setoptionsCategorie] = useState<{ value: number; label: string }[]>([]);
+  const [optionsTag , setoptionsTag] = useState<{ value: number; label: string }[]>([]);
+  const [ApiResponse , setApiResponse] = useState<ApiResponseType | null>(null);
     const FetchCategories = async() =>{
       const url = import.meta.env.VITE_APP_URL;
       const res = await fetch(`${url}/getcategories`);
@@ -97,7 +102,31 @@ function Page() {
           //
         }
       };
+
+    const UploadImageToAmineBB = async(image) =>{
+      const apiKey = import.meta.env.VITE_APP_IMGBBKEY;
+      const apiUrl = `https://api.imgbb.com/1/upload?key=${apiKey}`;
+      const formData = new FormData();
+      formData.append("image", image);
+      try {
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+        console.log(data)
+        if (data.success) {
+          return data.data.url;
+        
+        } else {
+          return null;
+        }
+      } catch (error) {
+        console.error("Error uploading image:", error);
+      }
+    }
     const AddCourse = async() =>{
+      setApiResponse(null)
       if (formRef.current) {
         const formData = new FormData(formRef.current);
         const data: Record<string, string> = {};
@@ -109,13 +138,22 @@ function Page() {
           alert("Please select a file to upload.");
           return;
         }
+
+        // $parametres = ['' ,'','img','', '' ,'','',''];
+
         const newCourse = {
           title : ""+data.title ,
+          subtitle : ""+data.subtitle ,
           description : value  ,
+          img : null  ,
+          contenttype : "video"  ,
           category : selectedCategorie  ,
           content : ""+data.content  ,
           tags : selectedTags.map((tag)=>({ id :tag.value })) ,
         }
+        const imgurl = await UploadImageToAmineBB(file);
+        newCourse.img = imgurl;
+        console.log(newCourse)
         const url = import.meta.env.VITE_APP_URL;
         const token = Cookies.get('auth-token')
         const res = await fetch(`${url}/addcourse`,{
@@ -127,7 +165,7 @@ function Page() {
             }
         });
         const response = await res.json();
-        console.log(response);
+        setApiResponse(response)
       }
     } 
   return (
@@ -206,23 +244,32 @@ function Page() {
                                   </div>
                           </div>
                               <div className="mt-2">
-                                <input type="text" name="content" required placeholder='URL' className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
+                                <input type="text" name="content" value={CourseSelected?.content} required placeholder='URL' className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
                               </div>
                         </div>
                      </div>
                      <div className="mt-0 flex items-center justify-between gap-x-6">
-                      <div className="">
-                      <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 px-4 py-2" role="alert">
-                            <p className="font-bold text-md">Warning</p>
-                            <p className='text-xs'>Missing parametres. Fill all required text fields</p>
-                          </div>           
-                      </div>
+                      {ApiResponse?.status!=null ? <>
+                          <div className="">
+                            <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 px-4 py-2" role="alert">
+                              <p className="font-bold text-md">Warning</p>
+                              <p className='text-xs'>{ApiResponse?.message}</p>
+                            </div>           
+                        </div>
+                      </>: <>
+                      </>}
+                      
                       <div className="flex items-center justify-between gap-x-6">
                         <button type="button" className="text-sm/6 font-semibold text-gray-900">Cancel</button>
                         <button className="flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                              <div className="">
-                                <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-                              </div>
+                              {ApiResponse!=null && (
+                                <>
+                                <div className="">
+                                  <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                                </div>
+                                </>
+                              )}
+                              
                               <span>Save</span>
                       </button>
                       </div>
@@ -241,7 +288,18 @@ function Page() {
                         </div>
                         <div className="bg-white p-3 rounded-md">
                         <div className="">
-                              <label  className="block text-sm/6 font-medium text-gray-900">Cover Course</label>
+                              <div className="flex justify-between items-center pr-3">
+                                <label className="block text-sm/6 font-medium text-gray-900">Cover Course</label>
+                                <FaRegTrashAlt className='text-red-500 cursor-pointer'  />
+
+                              </div>
+                              {CourseSelected?.img ? 
+                              <>
+                              <div className="h-52 mt-2 flex justify-center rounded-lg px-2 py-0">
+                                <img src={CourseSelected?.img} alt="" />
+                              </div>
+                              </>:
+                              <>
                               <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
                                 <div className="text-center">
                                   <svg className="mx-auto size-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon">
@@ -257,6 +315,8 @@ function Page() {
                                   <p className="text-xs/5 text-gray-600">PNG, JPG, GIF up to 10MB</p>
                                 </div>
                               </div>
+                              </> }
+                              
                         </div>
                         </div>
                   </div>
