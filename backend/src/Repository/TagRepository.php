@@ -13,7 +13,16 @@ class TagRepository
             $sql = "SELECT * FROM Tags WHERE id = :id";
             $sqlDatareader = $con->prepare($sql) ;
             $sqlDatareader->execute([ ":id" => $id]);
+            // $result = $sqlDatareader->fetch(\PDO::FETCH_CLASS,Tag::class);
             $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
+            return $result;
+        }
+        public function FindByName($name) {
+            $con = Database::getConnection();
+            $sql = "SELECT * FROM Tags WHERE title=:title";
+            $sqlDatareader = $con->prepare($sql) ;
+            $sqlDatareader->execute([':title'=>$name]);
+            $result = $sqlDatareader->fetchAll(PDO::FETCH_ASSOC);
             return $result;
         }
         public function Find() {
@@ -27,20 +36,27 @@ class TagRepository
         // Save Tag to database
         public function Save(Tag $Tag) {
             $con = Database::getConnection();
-            $sql = "INSERT INTO Tags (title) VALUES (:title)";
-            $sqlDatareader = $con->prepare($sql) ;
-            if($sqlDatareader->execute([':title' => $Tag->getName()]) && $sqlDatareader->rowCount() > 0)
-                
-                return [
-                    "status" => true ,
-                    "message" => 'Tag Added'
-                ];
-            else 
-                http_response_code(409);
+            if(!$this->FindByName($Tag->getName())){
+                $sql = "INSERT INTO Tags (title) VALUES (:title)";
+                $sqlDatareader = $con->prepare($sql) ;
+                if($sqlDatareader->execute([':title' => $Tag->getName()]) && $sqlDatareader->rowCount() > 0)
+                    return [
+                        "status" => true ,
+                        "message" => 'Tag Added'
+                    ];
+                else 
+                    http_response_code(409);
+                    return [
+                        "status" => false ,
+                        "message" => 'Failed to add Tag for unknown reason, please try later'
+                    ];
+            }else{
                 return [
                     "status" => false ,
-                    "message" => 'Failed to add Tag for unknown reason, please try later'
+                    "message" => 'Tag all ready used'
                 ];
+            }
+          
         }
     
         // Update Tag from database

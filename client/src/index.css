@@ -20,6 +20,7 @@ body{
   /* tablet */
   @media (min-width: 992px) {
     .container {
+      padding-inline: 20px;
       width: 970px;
     }
   
@@ -43,7 +44,8 @@ body{
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #eaeaea;
+  border : 1px solid #555;
   border-radius: 5px;
 }
 

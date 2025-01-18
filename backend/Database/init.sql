@@ -38,9 +38,9 @@ CREATE TABLE CoursTags
     tag_id INT NOT NULL ,
     cours_id INT NOT NULL,
     foreign key (tag_id) REFERENCES Tags(id) ON UPDATE cascade
-        ON DELETE cascade ,
+    ON DELETE cascade ,
     foreign key (cours_id) REFERENCES Cours(id) ON UPDATE cascade
-        ON DELETE cascade,
+    ON DELETE cascade,
     PRIMARY KEY (id)
 );
 Alter table Cours ADD COLUMN contenttype VARCHAR(500);
@@ -49,7 +49,9 @@ CREATE TABLE Cours
     id INT AUTO_INCREMENT ,
     title VARCHAR(500) UNIQUE ,
     subtitle VARCHAR(500),
+    instructor VARCHAR(500),
     img TEXT,
+    isprojected BOOLEAN,
     price FLOAT,
     description TEXT,
     contenttype VARCHAR(500),
@@ -151,3 +153,12 @@ INSERT INTO CoursTags (tag_id, cours_id) VALUES
                                              (14, 5),
                                              (13, 6);
 
+DELETE FROM CoursTags where ID = 43
+
+SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
+            JOIN  Roles ur ON ur.id = u.role_id;
+UPDATE `User` SET role_id = 3 WHERE id = 3;
+SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
+            JOIN  Roles ur ON ur.id = u.role_id
+            WHERE ur.name = 'etudiant';
+SELECT * FROM Cours 

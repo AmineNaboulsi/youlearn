@@ -38,9 +38,18 @@ class TagController
      */
     public function AddTag(Request $request){
         $RepositoryTag = new TagRepository();
-        if(isset($request->query()['name'])){
-            return $RepositoryTag->save(new Tag($request->query()['name']));
-        }else{
+        $formData = $request->bodyFormData();
+        
+        $parametres = ["name"];
+        $missingparam = array_filter($parametres , function($parametre){
+            if(!isset($_POST[$parametre])) {
+                return $parametre;
+            }
+        });
+        if(!$missingparam){
+            return $RepositoryTag->save(new Tag($_POST['name']));
+        }
+        else{
             http_response_code(422);
             return [
                 "status" => false ,

@@ -28,7 +28,6 @@ class JwtUtil {
 
         $UserRepository = new UserRepository();
         $UserRole = $UserRepository->findRoleById($User->id);
-
         $payload = [
             'iat' => time(),
             'exp' => time() + One_HOUR,
@@ -58,6 +57,7 @@ class JwtUtil {
         } catch (\Firebase\JWT\SignatureInvalidException $e) {
             return -2; // Token is invalid due to signature mismatch
         } catch (\Exception $e) {
+            echo '' . $e->getMessage();
             return -1; // Token is invalid due to general error
         }
     }

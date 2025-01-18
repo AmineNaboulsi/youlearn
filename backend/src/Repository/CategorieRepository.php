@@ -25,9 +25,23 @@ class CategorieRepository
         $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
         return $result;
     }
+    public function FindByName($name) {
+        $con = Database::getConnection();
+        $sql = "SELECT * FROM Categories WHERE name = :name";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute([":name" => $name]);
+        $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
+        return $result;
+    }
     // Save Tag to database
     public function Save(Categorie $Categorie) {
         $con = Database::getConnection();
+        if($this->FindByName($Categorie->getName())){
+            return [
+                "status" => false ,
+                "message" => 'Categorie Name all ready used'
+            ];
+        }
         $sql = "INSERT INTO Categories (name) VALUES (:name)";
         $sqlDatareader = $con->prepare($sql) ;
         if($sqlDatareader->execute([':name' => $Categorie->getName()]) && $sqlDatareader->rowCount() > 0)

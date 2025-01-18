@@ -62,8 +62,9 @@ class UserContoller
         $formData = $request->bodyFormData();
         
         $parametres = ["name" , "email" , "password", "role"];
+        
         $missingparam = array_filter($parametres , function($parametre){
-            if(!isset($_POST[$parametre])) {
+            if(!isset($_POST[$parametre]) || empty($_POST[$parametre])) {
                 return $parametre;
             }
         });
@@ -98,8 +99,27 @@ class UserContoller
      *     @OA\Response(response="422", description="Missing parametres"),
      * )
      */
-    public function BannedOrUnBanned()
+    public function BannedOrUnBanned(Request $request)
     {
+        $parametres = ["id" , "etat"];
+        $missingparam = array_filter($parametres , function($parametre){
+            if(!isset($_GET[$parametre])) return $parametre;
+        });
+        if(!$missingparam){
+
+            $id = $_GET["id"];
+            $etat = $_GET["etat"];
+            $User = new User();
+            $User->id = $id;
+            $User->isActive = $etat;
+            $ClientRepository = new UserRepository();
+            return $ClientRepository->BannedOrUnBanned($User);
+        }
+        else
+            return [
+                "status" => false,
+                "message" => "Missing parametres"
+            ];
         return [
             "status" => true ,
             "message" => 'BannedOrUnBanned'
@@ -115,7 +135,7 @@ class UserContoller
      *     @OA\Response(response="422", description="Missing parametres"),
      * )
      */
-    public function Validtk()
+    public function Validtk(Request $request)
     {
         $AuthMiddleware = new AuthMiddleware();
         if($AuthMiddleware->ValideAuth()>=0)
@@ -140,7 +160,7 @@ class UserContoller
      *     @OA\Response(response="404", description="Not Data Found"),
      * )
      */
-    public function getUser(){
+    public function getUser(Request $request){
         $UserRepository = new UserRepository();
         $AuthMiddleware = new AuthMiddleware();
         $id = $AuthMiddleware->ValideAuth();
@@ -154,34 +174,43 @@ class UserContoller
     }
      /**
      * @OA\GET(
-     *     path="/getusers",
+     *     path="/getstudents",
      *     summary="Get Users",
      *     tags={"User"},
      *     @OA\Response(response="200", description="Success"),
      *     @OA\Response(response="404", description="Not Data Found"),
      * )
      */
-    public function getUsers(){}
-      /**
-     * @OA\POST(
-     *     path="/adduser",
+    public function getStudents(Request $request){
+        $UserRepository = new UserRepository();
+        return $UserRepository->FindBy('etudiant');
+    }
+    /**
+     * @OA\GET(
+     *     path="/getteachers",
      *     summary="Get Users",
      *     tags={"User"},
      *     @OA\Response(response="200", description="Success"),
      *     @OA\Response(response="404", description="Not Data Found"),
      * )
      */
-    public function Save(){}
-      /**
-     * @OA\PUT(
-     *     path="/edituser",
-     *     summary="Get Users",
+    public function getTeachers(Request $request){
+        $UserRepository = new UserRepository();
+        return $UserRepository->FindBy('enseignant');
+    }
+    /**
+     * @OA\GET(
+     *     path="/getenrollcourses",
+     *     summary="Get enrolls courses",
      *     tags={"User"},
      *     @OA\Response(response="200", description="Success"),
      *     @OA\Response(response="404", description="Not Data Found"),
      * )
      */
-    public function EditUser(){}
+    public function EnrollCourses(Request $request){
+        $AuthMiddleware = new AuthMiddleware();
+    }
+
       /**
      * @OA\DELETE(
      *     path="/deluser",

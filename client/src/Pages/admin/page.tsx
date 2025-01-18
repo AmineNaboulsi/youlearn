@@ -37,8 +37,9 @@ type CourseType = {
 }
 
 function Page() {
-
   const [Courses , setCourses] = useState<CourseType[] | null>([]);
+  const [showCategoriePanel , setshowCategoriePanel] = useState(false);
+  const [showTagPanel , setshowTagPanel] = useState(false);
   const [Categories , setCategories] = useState<CategorieType[] | null>([]);
   const [Users , setUsers] = useState<UserType[] | null>([]);
   const [Tags , setTags] = useState<TagType[] | null    >([]);
@@ -52,12 +53,10 @@ function Page() {
     setCategories(null)
     setTags(null)
     setUsers(null)
-    const routes = ['/getcourses','/getcategories','/gettags','/getteachers','/getstudents'];
+    const routes = ['/getallcourses','/getcategories','/gettags','/getteachers','/getstudents'];
     const res = await fetch(`${url}${routes[index]}`,{
         method : 'GET',
-        headers : {
-            Authorization : `Bearer ${token}`
-        }
+        headers : {Authorization : `Bearer ${token}`}
     });
     const data = await res.json();
     if(index==0)
@@ -76,11 +75,58 @@ function Page() {
     const HandelAdding = () =>{
         if(mangePiker==0)
             navigate('/dashborad/course')
-        
+        else if(mangePiker==1)
+            {setshowCategoriePanel(true)
+            setshowTagPanel(false)}
+        else 
+        {   setshowTagPanel(true)
+                setshowCategoriePanel(false)
+        }
     }
     const HandledChangeList = async (index:number) =>{
         setmangePiker(index)
         FetchCourses(index);
+        setshowCategoriePanel(false)
+        setshowTagPanel(false)
+    }
+    const RemoveTag = async(id) =>{
+        const url = import.meta.env.VITE_APP_URL;
+        const token = Cookies.get('auth-token')
+        const res = await fetch(`${url}/deltag?id=${id}`,{
+            method : 'DELETE',
+            headers : {
+                Authorization : `Bearer ${token}`
+            }
+        });
+        const data = await res.json();
+        if(data.status)
+            HandledChangeList(2);
+    }
+    const RemoveCategorie = async(id) =>{
+        const url = import.meta.env.VITE_APP_URL;
+        const token = Cookies.get('auth-token')
+        const res = await fetch(`${url}/delcategorie?id=${id}`,{
+            method : 'DELETE',
+            headers : {
+                Authorization : `Bearer ${token}`
+            }
+        });
+        const data = await res.json();
+        if(data.status)
+            HandledChangeList(2);
+    }
+    const HandledActivateAccount = async (id:number , isA:number) => {
+        const url = import.meta.env.VITE_APP_URL;
+        const token = Cookies.get('auth-token')
+        const res = await fetch(`${url}/activate?id=${id}&etat=${isA==1?0:1}`,{
+            method : 'PATCH',
+            headers : {
+                Authorization : `Bearer ${token}`
+            }
+        });
+        const data = await res.json();
+        if(data.status)
+            HandledChangeList(3);
     }
   return (
     <div className="bg-gray-100 h-full">
@@ -90,7 +136,7 @@ function Page() {
             <div className="grid grid-cols-[70%,30%] gap-2 mt-5">
                 <div className="">
                   <div >
-                    <div className="relative overflow-x-auto shadow-md sm:rounded-lg h-[80vh]">
+                    <div className="relative shadow-md sm:rounded-lg h-[70vh]">
                         <div className="flex items-center justify-between flex-column md:flex-row flex-wrap space-y-4 md:space-y-0 py-4 bg-white ">
                             <div className="px-4">
                                 {mangePiker<=2 && 
@@ -110,142 +156,158 @@ function Page() {
                                 <input type="text" className="block pl-10 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg w-80 bg-gray-50 focus:ring-blue-500 focus:border-blue-500  dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder={`Search for ${mangePiker==0 ? ' course ': mangePiker==0 ? 'categorie':'tag' }`}/>
                             </div>
                         </div>
-                        <table className="relative h-52 w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-                            <thead className="static top-0 text-xs uppercase  "> 
-                                <tr>
-                                    <th scope="col" className="px-6 py-3">
-                                        Name
-                                    </th>
-                                    {mangePiker==0 && (<th scope="col" className="px-6 py-3">
-                                        Status
-                                    </th>)}
-                                    {mangePiker>2 && 
+                        <div className="h-full overflow-y-auto">
+                            <table className="relative w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                                <thead className="sticky backdrop-blur-sm z-[100] top-0 text-xs uppercase  "> 
+                                    <tr>
                                         <th scope="col" className="px-6 py-3">
-                                        Email
+                                            Name
                                         </th>
-                                    }
-                                     {mangePiker>2 && 
+                                        {mangePiker==0 && (<th scope="col" className="px-6 py-3">
+                                            Status
+                                        </th>)}
+                                        {mangePiker>2 && 
+                                            <th scope="col" className="px-6 py-3">
+                                            Email
+                                            </th>
+                                        }
+                                        {mangePiker>2 && 
+                                            <th scope="col" className="px-6 py-3">
+                                            Active
+                                            </th>
+                                        }
                                         <th scope="col" className="px-6 py-3">
-                                        Active
+                                            Action
                                         </th>
-                                    }
-                                    <th scope="col" className="px-6 py-3">
-                                        Action
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {mangePiker==0 ? 
-                                <>{Courses ? Courses.map((course:CourseType)=>(
-                                    <>
-                                      <tr className="relative bg-white border-b ">
-                                          <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                                              <img className="w-10 h-10 rounded-full" src="/docs/images/people/profile-picture-1.jpg" alt="Jese image" />
-                                              <div className="ps-3">
-                                                  <div 
-                                                  onClick={()=>{
-                                                    setDetails(course)
-                                                  }}
-                                                  className="text-base font-semibold text-gray-500 hover:underline cursor-pointer">{course.title}</div>
-                                                  <div className="text-xs font-normal text-gray-500">{course.subtitle}</div>
-                                              </div>  
-                                          </th>
-                                          <td className="px-6 py-4">
-                                              <div className="flex items-center">
-                                                  <div className={`h-2.5 w-2.5 rounded-full ${course.isprojected ? 'bg-green-500':'bg-red-500'} me-2`}></div>{course.isprojected ? 'Public': 'Private'}
-                                              </div>
-                                          </td>
-                                          <td className="px-6 py-4">
-                                            <Link to={`/dashborad/course?id=${course.id}`}>
-                                              <span data-modal-target="editUserModal" data-modal-show="editUserModal" className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</span>
-                                            </Link>
-                                          </td>
-                                      </tr>
-                                    </>
-                                  )):<>
-                                  <div className="absolute left-0 right-0 col-span-4 py-20">
-                                      <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-                                  </div>
-                                  </>}</>
-                                : mangePiker==1 ? <>
-                                {Categories ? Categories.map((categorie:CategorieType)=>
-                                    (
-                                    <>
-                                        <tr className="relative bg-white border-b ">
-                                          <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                                              <div className="ps-3">
-                                                  <div className="text-base font-semibold text-gray-500 hover:underline cursor-pointer">{categorie.name}</div>
-                                              </div>  
-                                          </th>
-                                          <td className="px-6 py-4">
-                                            <a href="#" type="button" data-modal-target="editUserModal" data-modal-show="editUserModal" className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
-                                          </td>
-                                      </tr>
-                                    </>
-                                )):<>
-                                <div className="absolute left-0 right-0 col-span-4 py-20">
-                                    <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-                                </div>
-                                </>}
-                                </>:
-                                mangePiker==2 ? <>
-                                    {Tags ? Tags.map((tag:TagType)=>(<>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {mangePiker==0 ? 
+                                    <>{Courses ? Courses.map((course:CourseType)=>(
                                         <>
-                                            <tr className="relative bg-white border-b ">
+                                        <tr className="relative bg-white border-b ">
                                             <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
+                                                <img className="w-10 h-10 rounded-full" src="/docs/images/people/profile-picture-1.jpg" alt="Jese image" />
                                                 <div className="ps-3">
-                                                    <div className="text-base font-semibold text-gray-500 hover:underline cursor-pointer">{tag.title}</div>
+                                                    <div 
+                                                    onClick={()=>{
+                                                        setDetails(course)
+                                                    }}
+                                                    className="text-base font-semibold text-gray-500 hover:underline cursor-pointer">{course.title}</div>
+                                                    <div className="text-xs font-normal text-gray-500">{course.subtitle}</div>
                                                 </div>  
                                             </th>
                                             <td className="px-6 py-4">
-                                                <a href="#" type="button" data-modal-target="editUserModal" data-modal-show="editUserModal" className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
+                                                <div className="flex items-center">
+                                                    <div className={`h-2.5 w-2.5 rounded-full ${course.isprojected ? 'bg-green-500':'bg-red-500'} me-2`}></div>{course.isprojected ? 'Public': 'Private'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <Link to={`/dashborad/course?id=${course.id}`}>
+                                                <span data-modal-target="editUserModal" data-modal-show="editUserModal" className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</span>
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                        </>
+                                    )):<>
+                                    <div className="absolute left-0 right-0 col-span-4 py-20">
+                                        <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                                    </div>
+                                    </>}</>
+                                    : mangePiker==1 ? <>
+                                    {Categories ? Categories.map((categorie:CategorieType)=>
+                                        (
+                                        <>
+                                            <tr className="relative bg-white border-b ">
+                                            <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
+                                                <div className="ps-3 ">
+                                                    <div className="text-base font-semibold text-gray-500  cursor-pointer">{categorie.name}</div>
+                                                </div>  
+                                            </th>
+                                            <td 
+                                                onClick={()=>RemoveCategorie(categorie.id)}
+                                                className="px-6 py-4 cursor-pointer">
+                                                <span 
+                                                className="font-medium text-red-600 dark:text-red-500 hover:underline">Remove</span>
+                                            </td>
+                                        </tr>
+                                        </>
+                                    )):<>
+                                        <div className="absolute left-0 right-0 col-span-4 py-20">
+                                            <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                                        </div>
+                                    </>}
+                                    </>:
+                                    mangePiker==2 ? <>
+                                        {Tags ? Tags.map((tag:TagType)=>(<>
+                                            <>
+                                                <tr className="relative bg-white border-b ">
+                                                <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
+                                                    <div className="ps-3">
+                                                        <div className="text-base font-semibold text-gray-500 hover:underline cursor-pointer">{tag.title}</div>
+                                                    </div>  
+                                                </th>
+                                                <td 
+                                                    onClick={()=>RemoveTag(tag.id)}
+                                                    className="px-6 py-4 cursor-pointer">
+                                                    <span className="font-medium text-red-600 dark:text-red-500 hover:underline">Remove</span>
+                                                </td>
+                                            </tr>
+                                            </>
+                                        </>)):<>
+                                    <div className="absolute left-0 right-0 col-span-4 py-20">
+                                        <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                                    </div>
+                                    </>}
+                                    </> : <>
+                                    {Users ? Users.map((user:UserType)=>(<>
+                                        <>
+                                            <tr className="relative bg-white border-b ">
+                                            <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
+                                                <div className="flex items-center">
+                                                    <div className="text-base font-semibold text-gray-500 hover:underline cursor-pointer">{user.name}</div>
+                                                </div>  
+                                            </th>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center">
+                                                    <div className={`h-2.5 w-2.5 rounded-full`}>{user.email}</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                            {user.isActive ? <>
+                                                <div onClick={()=>HandledActivateAccount(user.id , user.isActive)} className="flex items-center cursor-pointer">
+                                                        <div className={`h-2.5 w-2.5 rounded-full bg-green-500 me-2`}></div>Active
+                                                </div>
+                                            </>:
+                                            <>
+                                                <div onClick={()=>HandledActivateAccount(user.id , user.isActive)} className="flex items-center cursor-pointer">
+                                                        <div className={`h-2.5 w-2.5 rounded-full bg-red-500 me-2`}></div>No active
+                                                </div>
+                                            </>}
+                                                
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <FaRegTrashAlt className='cursor-pointer text-red-500' />
                                             </td>
                                         </tr>
                                         </>
                                     </>)):<>
-                                <div className="absolute left-0 right-0 col-span-4 py-20">
-                                    <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-                                </div>
-                                </>}
-                                 </> : <>
-                                 {Users ? Users.map((user:UserType)=>(<>
-                                    <>
-                                        <tr className="relative bg-white border-b ">
-                                          <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                                              <div className="flex items-center">
-                                                  <div className="text-base font-semibold text-gray-500 hover:underline cursor-pointer">{user.name}</div>
-                                              </div>  
-                                          </th>
-                                          <td className="px-6 py-4">
-                                              <div className="flex items-center">
-                                                  <div className={`h-2.5 w-2.5 rounded-full`}>{user.email}</div>
-                                              </div>
-                                          </td>
-                                          <td className="px-6 py-4">
-                                              <div className="flex items-center">
-                                                    <div className={`h-2.5 w-2.5 rounded-full ${user.isActive ? 'bg-green-500':'bg-red-500'} me-2`}></div>{user.isActive ? 'Active': 'no Active'}
-                                              </div>
-                                          </td>
-                                          <td className="px-6 py-4">
-                                            <FaRegTrashAlt className='cursor-pointer text-red-500' />
-                                          </td>
-                                      </tr>
-                                    </>
-                                </>)):<>
-                                <div className="absolute left-0 right-0 col-span-4 py-20">
-                                        <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-                                </div>
-                                </>}
-                                </>}
-                              
-                              
-                            </tbody>
-                        </table>
+                                    <div className="absolute left-0 right-0 col-span-4 py-20">
+                                            <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1.5em" width="1.4em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                                    </div>
+                                    </>}
+                                    </>}
+                                
+                                
+                                </tbody>
+                            </table>
+                        </div>
+                       
                     </div>
                   </div>
                 </div>
                 <div className="">
-                    <div className="bg-white rounded-md p-4 text-center">
+                    <div className="bg-white rounded-md p-4 text-center shadow-md">
                       <span >Manage</span>
                       <div className="grid gap-3 mt-2">
                           <div 
@@ -287,14 +349,14 @@ function Page() {
                     </div>
                     <>
                         {Details!=undefined && (
-                            <div className="bg-white rounded-md py-4 mt-3">
-                            {mangePiker==0 ? <CoursesPanel details={Details} />
-                            :
-                            mangePiker==1 ? <CategriePanel  />
-                            :
-                            <TagsPanel  />}
+                            <div className="bg-white rounded-md py-4 mt-3 ">
+                            {mangePiker==0 && <CoursesPanel details={Details} />}
                             </div>
                         )}
+                        {
+                            showCategoriePanel ? <CategriePanel  />
+                            :
+                            showTagPanel ? <TagsPanel  /> :<></>}
                         
                     </>
                 </div>
@@ -303,6 +365,7 @@ function Page() {
         </section>
     </div>
   )
+
 }
 
 export default Page

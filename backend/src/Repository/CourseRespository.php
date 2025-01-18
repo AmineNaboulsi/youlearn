@@ -35,8 +35,31 @@ class CourseRespository
         $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
         return $result;
     }
-    //Find All
+    //Find 
     public function Find() {
+        $con = Database::getConnection();
+        $sql = "SELECT * FROM Cours WHERE isprojected = 1";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute();
+        $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+
+        $courses = [];
+        foreach ($result as $cours) {
+            if($result){
+                $sql = "SELECT Tags.* FROM CoursTags 
+                JOIN `Tags` ON `Tags`.id = CoursTags.tag_id
+                WHERE CoursTags.cours_id = :cours_id ; ";
+                $sqlDatareader = $con->prepare($sql) ;
+                $sqlDatareader->execute([":cours_id" => $cours['id']]);
+                $tags = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+                $cours['tags'] = $tags;
+                $courses[] = $cours;
+            }
+        }
+        return $courses;
+    }
+     //Find All
+     public function FindAll() {
         $con = Database::getConnection();
         $sql = "SELECT * FROM Cours";
         $sqlDatareader = $con->prepare($sql) ;
@@ -70,13 +93,19 @@ class CourseRespository
 
             $con->beginTransaction();
 
-            $sql = "INSERT INTO Cours (title, description, content, cat_id) VALUES
-                (:title,:description ,:content,:cat_id)";
+            $sql = "INSERT INTO Cours (title,subtitle,img,isprojected,price,contenttype, description, content, cat_id,instructor) VALUES
+                (:title,:subtitle,:img,:isprojected,0,:contenttype,:description,:content,:cat_id,:instructor)";
             $sqlDatareader = $con->prepare($sql) ;
+          
             if($sqlDatareader->execute(
             [
                 ':title' => $Course->getTitle(),
+                ':subtitle' => $Course->getSubTitle(),
+                ':instructor' => $Course->getInstructor(),
+                ':img' => $Course->getImg(),
+                ':isprojected' => $Course->isProjected(),
                 ':description' => $Course->getDescription(),
+                ':contenttype' => $Course->getContentType(),
                 ':content' => $Course->getContent(),
                 ':cat_id' => $Course->getCategory(),
             ]
@@ -107,7 +136,6 @@ class CourseRespository
                     "status" => true ,
                     "message" => 'Course Added'
                 ];
-                
             }
             else 
             http_response_code(409);
@@ -119,17 +147,19 @@ class CourseRespository
     // Update Course from database
     public function findByIdAndUpdate(Course $Course): array {
         $con = Database::getConnection();
-        $sql = "UPDATE Cours SET title=:title , description = :description , content = :content ,  cat_id = :cat_id   
-        WHERE id = :id";
+        $sql = "UPDATE Cours SET title=:title , subtitle=:subtitle , description = :description , content = :content , cat_id = :cat_id    
+         WHERE id = :id";
         $sqlDatareader = $con->prepare($sql) ;
+        
         if($sqlDatareader->execute(
             [
                 ':title' => $Course->getTitle(),
+                ':subtitle' => $Course->getSubTitle(),
                 ':description' => $Course->getDescription(),
                 ':content' => $Course->getContent(),
                 ':cat_id' => $Course->getCategory(),
                 ':id' => $Course->getId()
-            ]) && $sqlDatareader->rowCount() > 0)
+            ]) )
             return [
                 "status" => true ,
                 "message" => 'Course Updated'
@@ -160,7 +190,45 @@ class CourseRespository
                 "message" => 'Failed to Delete Course for unknown reason, please try later'
             ];
     }
-
+    public function findByIdAndReplaceAllTags(Course $Course) {
+        $con = Database::getConnection();
+        $con->beginTransaction();
+        $sql = "DELETE FROM CoursTags WHERE cours_id =:courid";
+        $sqlData = $con->prepare($sql) ; 
+        if(!$sqlData->execute(
+            [
+                ':courid' => $Course->getId()
+            ])){
+                $con->rollBack();
+                return [
+                    "status" => false ,
+                    "message" => 'Operation failed'
+                ];
+            }else{
+                foreach ($Course->getTags() as $tag) {
+                    $sql = "INSERT INTO CoursTags (tag_id, cours_id) VALUES (:tagid, :courid) ";
+                    $sqlData = $con->prepare($sql) ; 
+                    if(!$sqlData->execute(
+                        [
+                            ':tagid' => $tag->id,
+                            ':courid' => $Course->getId()
+                        ]) && $sqlData->rowCount() > 0)
+                    {
+                        $con->rollBack();
+                        http_response_code(409);
+                        return [
+                            "status" => false ,
+                            "message" => 'Failed to make operation'
+                        ];
+                    }
+                }
+                $con->commit();
+                return [
+                    "status" => true ,
+                    "message" => 'Tags Replaced successfly'
+                ];  
+            }
+    }
     public function findByIdAndAddTag(Course $Course , int $tag) {
         $con = Database::getConnection();
 

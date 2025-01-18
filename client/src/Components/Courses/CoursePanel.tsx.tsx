@@ -24,7 +24,7 @@ type CourseType = {
 }
 function page({details}:PropsType) {
     return (
-      <div className="px-4 h-[50vh] overflow-y-scroll">
+      <div className="px-4 h-[35vh] overflow-y-scroll">
          <div className="flex flex-col pb-3">
                {details?.img ? 
              <>
@@ -48,10 +48,10 @@ function page({details}:PropsType) {
         </div>
         <div className="mt-6 border-t border-gray-100">
           <dl className="divide-y divide-gray-100">
-            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            {/* <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm/6 font-medium text-gray-900">Description</dt>
               <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{details?.description ?? 'NA'}</dd>
-            </div>
+            </div> */}
             <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm/6 font-medium text-gray-900">Category</dt>
               <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{details?.category ?? 'NA'}</dd>

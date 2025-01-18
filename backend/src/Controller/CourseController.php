@@ -4,6 +4,7 @@ namespace App\Controller;
 use App\Models\Course;
 use App\RouterServices\Request;
 use App\Repository\CourseRespository;
+use App\MiddleWare\AuthMiddleware;
 
 class CourseController
 {
@@ -30,11 +31,40 @@ class CourseController
     public function getCourses(Request $request){
         $CourseRespository = new CourseRespository();
         if(isset($request->query()['id']))
-            return $CourseRespository->findById($request->query()['id']);
+            if(is_numeric($request->query()['id']))
+                return $CourseRespository->findById($request->query()['id']);
+            else return false;
         else
             return $CourseRespository->Find();
     }
-
+    /**
+     * @OA\GET(
+     *      path="/getallcourses",
+     *      summary="Get all courses",
+     *      tags={"courses"},
+     *      @OA\Parameter(
+     *          name="id",
+     *          in="path",
+     *          required=false,
+     *          description="ID of the category",
+     *          @OA\Schema(
+     *              type="integer"
+     *          )
+     *      ),
+     *      @OA\Response(response="200", description="get all courses"),
+     *      @OA\Response(response="404", description="No Data Found"),
+     *      @OA\Response(response="409", description="Failed to make operation"),    
+     * )
+     */
+    public function getAllCourses(Request $request){
+        $CourseRespository = new CourseRespository();
+        if(isset($request->query()['id']))
+            if(is_numeric($request->query()['id']))
+                return $CourseRespository->findById($request->query()['id']);
+            else return false;
+        else
+            return $CourseRespository->FindAll();
+    }
      /**
      * @OA\POST(
      *      path="/addcourse",
@@ -52,23 +82,30 @@ class CourseController
 
     public function AddCourse(Request $request){
         $formData = $request->bodyRaw();
-        $parametres = ['title' , 'description' ,'category','content','tags'];
+        $parametres = ['title' ,'subtitle','img','contenttype', 'description' ,'category','content','tags'];
         $missingparam = array_filter($parametres, function ($parametre) use ($formData) {
             return !isset($formData->$parametre); 
         });
+      
         if(!$missingparam){
-            if(count($formData->tags)<=3){
+            if(count($formData->tags)<3){
                 http_response_code(422);
                 return [
                     "status" => false ,
                     "message" => 'Tags are requied ,minimum is 3'
                 ];
             }
+            $auth = new AuthMiddleware();
+            $id = $auth->ValideAuth();
             $CourseRespository = new CourseRespository();
             $newCourse = new Course(
                 title: $formData->title,
+                instructor: $id ,
+                subtitle: $formData->subtitle,
+                img: $formData->img,
                 description: $formData->description,
                 category: $formData->category,
+                contenttype: $formData->contenttype,
                 content: $formData->content,
                 tags: $formData->tags
             );
@@ -96,16 +133,15 @@ class CourseController
      *      @OA\Response(response="409", description="Failed to make operation"),    
      * )
      */
-
     public function AddCourseTag(Request $request){
         $CourseRespository = new CourseRespository();
         $formData = $request->bodyFormData();
-        $parametres = ['id' , 'tag'];
-        $missingparam = array_filter($parametres, function ($parametre) use ($formData) {
-            return !isset($_POST[$parametre]); 
-        });
-        if(!$missingparam){
+        $formDataRaw = $request->bodyRaw();
+        if(isset($formData['id']) && is_numeric($formData['id']) && !empty($formData['id']) && isset($formData['tag'])&& is_numeric($formData['tag'])  && !empty($formData['tag'])){
             return $CourseRespository->findByIdAndAddTag(new Course(id: $formData['id']), tag: $formData['tag']);
+        }
+        else if(isset($formDataRaw->id) && !empty($formDataRaw->id) && isset($formDataRaw->tags) && !empty($formDataRaw->tags) ){
+            return $CourseRespository->findByIdAndReplaceAllTags(new Course(id: $formDataRaw->id ,tags: $formDataRaw->tags));
         }
         else{
             return [
@@ -113,8 +149,9 @@ class CourseController
                 "message" => 'Missing parametres'
             ];
         }
+       
     }
-      /**
+    /**
      * @OA\DELETE(
      *      path="/delcoursetag",
      *      summary="Delete tag from course",
@@ -155,7 +192,7 @@ class CourseController
      */
     public function EditCourse(Request $request){
         $queryparam = $request->query();
-        $parametres = ['id','title' , 'description' ,'category','content'];
+        $parametres = ['id','title' ,'subtitle', 'description' ,'category','content'];
         $missingparam = array_filter($parametres, function ($parametre) use ($queryparam) {
             return !isset($queryparam[$parametre]); 
         });
@@ -164,6 +201,7 @@ class CourseController
             $newCourse = new Course(
                 id: $queryparam['id'],
                 title: $queryparam['title'],
+                subtitle: $queryparam['subtitle'],
                 description: $queryparam['description'],
                 category: $queryparam['category'],
                 content: $queryparam['content']

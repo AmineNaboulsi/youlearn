@@ -29,7 +29,7 @@ class AuthMiddleware
             http_response_code(401);
             return [
                 "status" => false,
-                "message" => "Unauthorized access. Please log in."
+                "message" => "Invalid Unauthorization . Please log in."
             ];
         }else if ($this->ValideAuth()==-2) {
             http_response_code(401);
@@ -41,7 +41,7 @@ class AuthMiddleware
             http_response_code(401);
             return [
                 "status" => false,
-                "message" => "Unauthorization failed. Please log in."
+                "message" => "Unauthorized access. Please log in."
             ];
         }
         $Userole = $UserRepository->findRoleById($id);

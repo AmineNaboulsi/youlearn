@@ -16,6 +16,18 @@ class UserRepository
         $sqldataReader->execute();
         return $sqldataReader->fetchAll(\PDO::FETCH_ASSOC);
     }
+    public function FindBy($by) {
+        $con = Database::getConnection();
+        $sqldataReader = $con->prepare("
+            SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
+            JOIN  Roles ur ON ur.id = u.role_id
+            WHERE ur.name = :byrole
+        ");
+        $sqldataReader->execute([
+            ":byrole" => $by
+        ]);
+        return $sqldataReader->fetchAll(\PDO::FETCH_ASSOC);
+    }
     // Find User by ID
     public function findById($id) {
         $con = Database::getConnection();
@@ -49,7 +61,7 @@ class UserRepository
         $con = Database::getConnection();
     
         // Use constants for reusable messages
-        $INVALID_CREDENTIALS = "Invalid email or password.";
+        $INVALID_CREDENTIALS = "Account not found.";
         $ACCOUNT_INACTIVE = "Your account is closed at the moment. Please contact support.";
         $LOGIN_SUCCESS = "Login successfully.";
     

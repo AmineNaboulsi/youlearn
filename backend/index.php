@@ -11,22 +11,24 @@ use App\MiddleWare\AuthMiddleware;
 
 header('Access-Control-Allow-Origin : *');
 header('Access-Control-Allow-Headers : *');
+header('Access-Control-Allow-Methods: *');
 $Routes = new RouterServiceProvider;
 
 $Routes->post('/signin' ,UserContoller::class , 'SignIn');
 $Routes->post('/signup',UserContoller::class , 'SignUp');
 $Routes->post('/validtk',UserContoller::class , 'Validtk' );
 $Routes->patch('/activate',UserContoller::class , 'BannedOrUnBanned' , AuthMiddleware::class , 'admin');
+$Routes->delete('/deluser' , UserContoller::class , 'DelUser', AuthMiddleware::class , 'admin');
+$Routes->get('/getenrollcourses' , UserContoller::class , 'EnrollCourses', AuthMiddleware::class , 'etudiant');
 //User
 
 $Routes->get('/getuser' , UserContoller::class , 'getUser');
-$Routes->get('/getusers' , UserContoller::class , 'getUsers', AuthMiddleware::class , 'admin');
-$Routes->post('/adduser' , UserContoller::class , 'Save', AuthMiddleware::class , 'admin');
-$Routes->put('/edituser' , UserContoller::class , 'EditUser',  AuthMiddleware::class , 'admin');
-$Routes->delete('/deluser' , UserContoller::class , 'DelUser', AuthMiddleware::class , 'admin');
+$Routes->get('/getteachers' , UserContoller::class , 'getTeachers', AuthMiddleware::class , 'admin');
+$Routes->get('/getstudents' , UserContoller::class , 'getStudents', AuthMiddleware::class , 'admin');
 
 //Courses
 $Routes->get('/getcourses' , CourseController::class , 'getCourses');
+$Routes->get('/getallcourses' , CourseController::class , 'getAllCourses', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->post('/addcourse' , CourseController::class , 'AddCourse', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->post('/addcoursetag' , CourseController::class , 'AddCourseTag', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->delete('/delcoursetag' , CourseController::class , 'DelCourseTag', AuthMiddleware::class , ['enseignant', 'admin']);
