@@ -3,6 +3,9 @@
 namespace App\Repository;
 use App\Models\Course;
 use App\Config\Database;
+use App\Repository\UserRepository;
+use PDO;
+
 class CourseRespository
 {
     // Find Course by ID
@@ -26,7 +29,31 @@ class CourseRespository
         }
         return $result;
     }
-     // Find Course by ID
+    // Find Course by ID
+    public function findByIdProject(Course $Course) {
+        $con = Database::getConnection();
+        $sql = "UPDATE Cours SET isprojected = :etat 
+        WHERE Cours.id = :id;";
+        $sqlDatareader = $con->prepare($sql) ;
+        if($sqlDatareader->execute(
+            [
+                ":id" => $Course->getId(),
+                ":etat" => $Course->isProjected()
+            ]
+        )){
+            return [
+                "status" => true ,
+                "message" => 'Course ' . ($Course->isProjected() ?'Projected' :'UnProjected' )
+            ];
+          
+        }else{
+            return [
+                "status" => true ,
+                "message" => 'Failed to  ' . ($Course->isProjected() ?'Projected' :'UnProjected' ) . 'Course'
+            ];
+        }
+    }
+    // Find Course by ID
     public function findByName(string $name) {
         $con = Database::getConnection();
         $sql = "SELECT * FROM Cours WHERE title = :name";
@@ -34,6 +61,56 @@ class CourseRespository
         $sqlDatareader->execute([":name" => $name]);
         $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
         return $result;
+    }
+    // Find Course INcript or not 
+    public function isEnrollcourse($iduser , $idcourse) {
+        $con = Database::getConnection();
+        $sql = "SELECT * FROM Inscription  where user_id = :user_id and cour_id = :cour_id";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute([":user_id" => $iduser , ":cour_id" => $idcourse ]);
+        $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+        $UserRepository = new UserRepository();
+        $role = $UserRepository->findRoleById($iduser);
+        if(count($result)>0) {
+            return [
+                "status" => true ,
+                'role' => $role
+            ];
+        }else 
+        {
+            return [
+                "status" => false ,
+                'role' => $role
+            ];
+        }
+    }
+    // Find Course by Etudiant and enroll
+    public function findByIdAndEnroll($iduser , $idcourse) {
+        $con = Database::getConnection();
+        $sql = "INSERT INTO Inscription (user_id, cour_id) VALUES (:user_id ,:cour_id)";
+        $sqlDatareader = $con->prepare($sql) ;
+        if($sqlDatareader->execute([":user_id" => $iduser , ":cour_id" => $idcourse ])){
+            return [
+                "status" => true ,
+                "message" => 'Enroll succssefully'
+            ];
+        }else{
+            return [
+                "status" => false ,
+                "message" => 'Failed to Enroll Course'
+            ];
+        }
+    }
+     // Find Course by Etudiant and enroll
+     public function EnrollCourses($iduser) {
+        $con = Database::getConnection();
+        $sql = "SELECT c.* FROM Inscription i 
+            JOIN `Cours` c ON c.id = i.cour_id
+            WHERE i.user_id = :user_id";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute([":user_id" => $iduser]);
+        $Resultat = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+        return $Resultat;
     }
     //Find 
     public function Find() {
@@ -59,7 +136,7 @@ class CourseRespository
         return $courses;
     }
      //Find All
-     public function FindAll() {
+    public function FindAll() {
         $con = Database::getConnection();
         $sql = "SELECT * FROM Cours";
         $sqlDatareader = $con->prepare($sql) ;

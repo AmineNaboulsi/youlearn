@@ -4,6 +4,7 @@ namespace App\Controller;
 use App\Models\User;
 use App\RouterServices\Request;
 use App\Repository\UserRepository;
+use App\Repository\CourseRespository;
 use App\MiddleWare\AuthMiddleware;
 
 /**
@@ -120,10 +121,7 @@ class UserContoller
                 "status" => false,
                 "message" => "Missing parametres"
             ];
-        return [
-            "status" => true ,
-            "message" => 'BannedOrUnBanned'
-        ];
+       
     }
     /**
      * @OA\GET(
@@ -138,11 +136,16 @@ class UserContoller
     public function Validtk(Request $request)
     {
         $AuthMiddleware = new AuthMiddleware();
-        if($AuthMiddleware->ValideAuth()>=0)
+        $id = $AuthMiddleware->ValideAuth() ;
+        $UserRepository = new UserRepository();
+        if($id>=0){
+            $role = $UserRepository->findRoleById($id);
             return [
                 "status" => true ,
+                "role" => $role ,
                 "code" => $AuthMiddleware->ValideAuth()
             ];
+        }
         else
             http_response_code(401);
             return [
@@ -198,18 +201,6 @@ class UserContoller
         $UserRepository = new UserRepository();
         return $UserRepository->FindBy('enseignant');
     }
-    /**
-     * @OA\GET(
-     *     path="/getenrollcourses",
-     *     summary="Get enrolls courses",
-     *     tags={"User"},
-     *     @OA\Response(response="200", description="Success"),
-     *     @OA\Response(response="404", description="Not Data Found"),
-     * )
-     */
-    public function EnrollCourses(Request $request){
-        $AuthMiddleware = new AuthMiddleware();
-    }
 
       /**
      * @OA\DELETE(
@@ -220,5 +211,15 @@ class UserContoller
      *     @OA\Response(response="404", description="Not Data Found"),
      * )
      */
-    public function DelUser(){}
+    public function DelUser(Request $request){
+        if(isset($_GET["id"])){
+            $UserRepository = new UserRepository();
+            return $UserRepository->DelById($_GET["id"]);
+        }else{
+            return [
+                "status" => false,
+                "message" => "Missing parametres"
+            ];
+        }
+    }
 }

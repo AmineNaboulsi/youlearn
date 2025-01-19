@@ -74,6 +74,7 @@ CREATE TABLE Inscription
         ON DELETE cascade,
     PRIMARY KEY (user_id , cour_id)
 );
+
 INSERT INTO Roles (name) VALUES
                              ('admin'),
                              ('enseignant'),
@@ -161,4 +162,6 @@ UPDATE `User` SET role_id = 3 WHERE id = 3;
 SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
             JOIN  Roles ur ON ur.id = u.role_id
             WHERE ur.name = 'etudiant';
-SELECT * FROM Cours 
+
+
+

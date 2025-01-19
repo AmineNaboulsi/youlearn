@@ -65,6 +65,65 @@ class CourseController
         else
             return $CourseRespository->FindAll();
     }
+       /**
+     * @OA\GET(
+     *     path="/isenrollcourse",
+     *     summary="Get enrolls courses",
+     *     tags={"User"},
+     *     @OA\Response(response="200", description="Success"),
+     *     @OA\Response(response="404", description="Not Data Found"),
+     * )
+     */
+    public function isEnrollcourse(Request $request){
+        $AuthMiddleware = new AuthMiddleware();
+        $id = $AuthMiddleware->ValideAuth();
+        $query = $request->query();
+        if($id && isset($query['id'])){
+            $RepoCourses = new CourseRespository();
+            return $RepoCourses->isEnrollcourse($id , $query['id']);
+        }else{
+            return null;
+        }
+    }
+      /**
+     * @OA\GET(
+     *     path="/enrollcourse",
+     *     summary="Get enrolls courses",
+     *     tags={"User"},
+     *     @OA\Response(response="200", description="Success"),
+     *     @OA\Response(response="404", description="Not Data Found"),
+     * )
+     */
+    public function EnrollCourse(Request $request){
+        $AuthMiddleware = new AuthMiddleware();
+        $id = $AuthMiddleware->ValideAuth();
+        $FormData = $request->bodyFormData();
+        if($id && isset($FormData['id'])){
+            $RepoCourses = new CourseRespository();
+            return $RepoCourses->findByIdAndEnroll($id ,$FormData['id']);
+        }else{
+            return null;
+        }
+    }
+       /**
+     * @OA\GET(
+     *     path="/getenrollcourses",
+     *     summary="Get enrolls courses",
+     *     tags={"User"},
+     *     @OA\Response(response="200", description="Success"),
+     *     @OA\Response(response="404", description="Not Data Found"),
+     * )
+     */
+    public function EnrollCourses(Request $request){
+        $AuthMiddleware = new AuthMiddleware();
+        $id = $AuthMiddleware->ValideAuth();
+        if($id){
+            $RepoCourses = new CourseRespository();
+            return $RepoCourses->EnrollCourses($id);
+        }else{
+            return null;
+        }
+    }
      /**
      * @OA\POST(
      *      path="/addcourse",
@@ -207,6 +266,44 @@ class CourseController
                 content: $queryparam['content']
             );
             return $CourseRespository->findByIdAndUpdate(
+                $newCourse 
+            );
+        }
+        else{
+            return [
+                "status" => false ,
+                "message" => 'Missing parametres'
+            ];
+        }
+    }
+        /**
+     * @OA\PUT(
+     *      path="/editcourse",
+     *      summary="Edit course",
+     *      tags={"courses"},
+     *      @OA\Parameter(name="id",in="path",required=true,),
+     *      @OA\Parameter(name="title",in="path",required=true,),
+     *      @OA\Parameter(name="description",in="path",required=true),
+     *      @OA\Parameter(name="content",in="path",required=true),
+     *      @OA\Parameter(name="category",in="path",required=true),
+     *      @OA\Response(response="200", description="get all courses"),
+     *      @OA\Response(response="404", description="No Data Found"),
+     *      @OA\Response(response="409", description="Failed to make operation"),    
+     * )
+     */
+    public function ProjectCourse(Request $request){
+        $queryparam = $request->query();
+        $parametres = ['id','etat'];
+        $missingparam = array_filter($parametres, function ($parametre) use ($queryparam) {
+            return !isset($queryparam[$parametre]); 
+        });
+        if(!$missingparam){
+            $CourseRespository = new CourseRespository();
+            $newCourse = new Course(
+                id: $queryparam['id'],
+                isProjected: $queryparam['etat']
+            );
+            return $CourseRespository->findByIdProject(
                 $newCourse 
             );
         }

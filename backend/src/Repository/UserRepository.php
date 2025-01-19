@@ -43,6 +43,30 @@ class UserRepository
         $User = $sqldataReader->fetch(\PDO::FETCH_ASSOC);
         return $User;
     }
+    // Del User by ID
+    public function DelById($id) {
+        $con = Database::getConnection();
+        $sqldataReader = $con->prepare("
+            DELETE FROM User u
+            WHERE u.id =:id ");
+        if($sqldataReader->execute([
+            ":id" => $id
+        ])){
+            return [
+                "status" => true,
+                "message" => "User deleted succssefuly"
+            ];
+        }else{
+            return [
+                "status" => false,
+                "message" => "Failed to delete User"
+            ];
+        }
+        // $User = $sqldataReader->fetchObject(User::class);
+        // return $User;
+        $User = $sqldataReader->fetch(\PDO::FETCH_ASSOC);
+        return $User;
+    }
     // Find role by ID
     public function findRoleById($id) {
         $con = Database::getConnection();
@@ -92,7 +116,6 @@ class UserRepository
     
         return $this->generateResponse(true, $LOGIN_SUCCESS, $token);
     }
-
     private function generateResponse(bool $status, string $message, string $token = null): array
     {
         $response = [

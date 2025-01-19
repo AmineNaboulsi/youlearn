@@ -19,7 +19,6 @@ $Routes->post('/signup',UserContoller::class , 'SignUp');
 $Routes->post('/validtk',UserContoller::class , 'Validtk' );
 $Routes->patch('/activate',UserContoller::class , 'BannedOrUnBanned' , AuthMiddleware::class , 'admin');
 $Routes->delete('/deluser' , UserContoller::class , 'DelUser', AuthMiddleware::class , 'admin');
-$Routes->get('/getenrollcourses' , UserContoller::class , 'EnrollCourses', AuthMiddleware::class , 'etudiant');
 //User
 
 $Routes->get('/getuser' , UserContoller::class , 'getUser');
@@ -27,13 +26,17 @@ $Routes->get('/getteachers' , UserContoller::class , 'getTeachers', AuthMiddlewa
 $Routes->get('/getstudents' , UserContoller::class , 'getStudents', AuthMiddleware::class , 'admin');
 
 //Courses
+$Routes->get('/getenrollcourses' , CourseController::class , 'EnrollCourses', AuthMiddleware::class , 'etudiant');
 $Routes->get('/getcourses' , CourseController::class , 'getCourses');
 $Routes->get('/getallcourses' , CourseController::class , 'getAllCourses', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->post('/addcourse' , CourseController::class , 'AddCourse', AuthMiddleware::class , ['enseignant', 'admin']);
+$Routes->patch('/projectcourse' , CourseController::class , 'ProjectCourse', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->post('/addcoursetag' , CourseController::class , 'AddCourseTag', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->delete('/delcoursetag' , CourseController::class , 'DelCourseTag', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->put('/editcourse' , CourseController::class , 'EditCourse' , AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->delete('/delcourse' , CourseController::class , 'DelCourse' , AuthMiddleware::class , ['enseignant', 'admin']);
+$Routes->post('/enrollcourse' , CourseController::class , 'Enrollcourse' , AuthMiddleware::class ,'etudiant');
+$Routes->get('/isenrollcourse' , CourseController::class , 'isEnrollcourse' , AuthMiddleware::class ,['enseignant', 'admin','etudiant']);
 
 //Tags
 $Routes->get('/gettags' , TagController::class , 'getTags' );
