@@ -1,10 +1,14 @@
 import {useState , useEffect} from 'react'
 import Cookies from 'js-cookie'
 import { useNavigate } from 'react-router'
-function AuthValidation(Component:any) {
+
+
+
+function AuthValidation(Component , allowedRoles) {
   return function CkeckPerm() {
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate()
+    
     useEffect(() => {
         const ValidateToken = async () =>{
             const url = import .meta.env.VITE_APP_URL;
@@ -18,6 +22,11 @@ function AuthValidation(Component:any) {
                     }
                 });
                 const data =  await res.json();
+                const rolesArray = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+                if (!rolesArray.includes(data.role)) {
+                    navigate("/unauthorized");
+                    return ;
+                }
                 if(!data.status && data.code == -3 ){
                     navigate('/unauthorized');
                     console.log("Catch Error");

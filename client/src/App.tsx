@@ -7,14 +7,14 @@ import Courses from './Pages/Courses'
 import Course from './Pages/Course'
 import Profile from './Pages/Profile'
 import Unauthorized from './Pages/Unauthorized'
-import Dashborad from './Pages/admin/Page'
-import ManageCourse from './Pages/Courses/page'
+import Dashborad from './Pages/admin/Dashborad'
+import ManageCourse from './Pages/Courses/Page'
 import AuthValidation from './Middleware/AuthValidation'
 
-const ProfileWithValidation = AuthValidation(Profile);
-const CourseWithValidation = AuthValidation(Course);
-const DashboradWithValidation = AuthValidation(Dashborad);
-const ManageCourseWithValidation = AuthValidation(ManageCourse);
+const ProfileWithValidation = AuthValidation(Profile,'etudiant');
+const CourseWithValidation = AuthValidation(Course,'etudiant');
+const DashboradWithValidation = AuthValidation(Dashborad,['admin','enseignant']);
+const ManageCourseWithValidation = AuthValidation(ManageCourse,['admin','enseignant']);
 function App() {
 
   return (

@@ -24,7 +24,7 @@ type CourseType = {
 }
 function page({details}:PropsType) {
     return (
-      <div className="px-4 h-[35vh] overflow-y-scroll">
+      <div className="px-4 h-[55vh] overflow-y-scroll">
          <div className="flex flex-col pb-3">
                {details?.img ? 
              <>

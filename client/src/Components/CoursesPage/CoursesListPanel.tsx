@@ -32,6 +32,7 @@ function CoursesListPanel() {
   const [Categorys, setCategorys] = useState<CategorieType[]>(); 
   const [Courses, setCourses] = useState<CourseType[]>(); 
   const [Logged , isLogged] = useState<boolean | null>(null);
+  const [Enroll , isEnroll] = useState<boolean | null>(null);
   const navigate = useNavigate();
   useEffect(()=>{
     const FetchCategories = async() =>{
@@ -67,20 +68,48 @@ function CoursesListPanel() {
       }
      
   }
-  ValidateToken();
+    ValidateToken();
     FetchCategories();
     FetchCourses();
 
 },[])
-const HandledInscriptionCourse = (course:CourseType) => {
+const HandledInscriptionCourse =  (course:CourseType) => {
   setCourseSelected(course);
   setAlert(true)
 }
 const onCancelAlert = () =>{
   setAlert(false)
 }
-const onValideAlert = () =>{
-  if(Logged==true) navigate('/course')
+  const EnrollUser = async() =>{
+    const url = import .meta.env.VITE_APP_URL;
+    const AuthToken = Cookies.get('auth-token')
+    const formd = new FormData();
+    formd.append('id',CourseSelected?.id)
+    try{
+        const res =  await fetch(`${url}/enrollcourse`,{
+            method : 'POST',
+            body : formd ,
+            headers :
+            {
+                Authorization : `Bearer ${AuthToken}`
+            }
+        });
+        const data =  await res.json();
+        console.log(data)
+    }catch(error){
+        console.log(error)
+    }
+}
+const onValideAlert = async(IsEnroll:boolean , isStudent :boolean) =>{
+  if(Logged==true){
+      if(!IsEnroll) {EnrollUser()}
+      if(isStudent){
+        navigate(`/course?id=${CourseSelected?.id}`)
+      }
+      else {
+        setAlert(false)
+      }
+  }
   else navigate('/signin');
 }
 

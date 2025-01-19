@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 import { BsSubstack } from "react-icons/bs";
 import Cookies from 'js-cookie'
-
 type validationmethods = {
-    onValide :  () => void ,
+    onValide :  (IsEnroll:boolean , isStudent :boolean) => void ,
     onCancel :  () => void ,
     Course: CourseType ,
-    Logged :boolean | null
+    Logged :boolean | null ,
+    isEnroll :boolean | null
 }
 type CourseType = {
     id : number,
@@ -17,8 +17,36 @@ type CourseType = {
     category : string,
     price : number
   }
-function AlertInscription({onValide , onCancel , Course , Logged}:validationmethods) {
+function AlertInscription({onValide , onCancel , Course , Logged }:validationmethods) {
 
+    const [loading ,isloading] = useState(true);
+    const [Student ,isStudent] = useState(false);
+    const [Enroll ,isEnroll] = useState(false);
+
+    useEffect(()=>{
+        const IsEnrollFetch = async() =>{
+            const url = import .meta.env.VITE_APP_URL;
+            const AuthToken = Cookies.get('auth-token')
+            try{
+                const res =  await fetch(`${url}/isenrollcourse?id=${Course?.id}`,{
+                    method : 'GET',
+                    headers :
+                    {
+                        Authorization : `Bearer ${AuthToken}`
+                    }
+                });
+                const data =  await res.json();
+                isEnroll(data?.status)
+                if(data?.role=="etudiant") isStudent(true)
+                else  isStudent(false)
+                isloading(false)
+            }catch(error){
+                console.log(error)
+            }
+        }
+        if(Logged) IsEnrollFetch();
+        else isloading(false)
+    },[])
   return (
     <>
     <div className="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -42,7 +70,7 @@ function AlertInscription({onValide , onCancel , Course , Logged}:validationmeth
                         </div>
                     </div>
                     </div>
-                        {Logged==null ? 
+                        {loading ? 
                         <>
                         <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-center items-center">
                             <svg aria-hidden="true" className="w-8 h-8 text-gray-200 animate-spin  fill-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -54,8 +82,10 @@ function AlertInscription({onValide , onCancel , Course , Logged}:validationmeth
                         :<>
                     <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
                          <button
-                                onClick={onValide}
-                                type="button" className="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto">{Logged ? 'Enroll now': 'Sign in first '}</button>
+                                onClick={()=>{
+                                    onValide(Enroll , Student)
+                                }}
+                                type="button" className="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto">{!Student ? 'Need Sign in As Student !!': !Logged ? 'Sign in first': Enroll ? 'View Course' : 'Enroll now'}</button>
                          <button
                                 onClick={onCancel}
                                 type="button" className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">Cancel</button>

@@ -2,7 +2,8 @@ import { useNavigate } from "react-router";
 function HeaderDashborad() {
   const navigate = useNavigate();
   const Exit = () =>{
-    navigate(-1);
+    // navigate(-1);
+    navigate('/courses');
   }
 
   return (

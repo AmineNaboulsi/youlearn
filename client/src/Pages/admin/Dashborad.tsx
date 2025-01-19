@@ -3,7 +3,7 @@ import CategriePanel from '../../Components/Categories/CategriePanel.tsx'
 import CoursesPanel from '../../Components/Courses/CoursePanel.tsx.tsx'
 import TagsPanel from '../../Components/Tags/TagPanel.tsx'
 import { Link , useNavigate } from 'react-router';
-import HeaderDashborad from '../../Components/Nav/HeaderDashborad'
+import HeaderDashborad from '../../Components/Nav/HeaderDashborad.tsx'
 import Cookies from 'js-cookie'
 import { FaRegTrashAlt } from "react-icons/fa";
 
@@ -36,8 +36,10 @@ type CourseType = {
   tags : TagType[]
 }
 
-function Page() {
+function Dashborad() {
   const [Courses , setCourses] = useState<CourseType[] | null>([]);
+  const [Permed , isPermed] = useState(false);
+  const [Admin , isAdmin] = useState(false);
   const [showCategoriePanel , setshowCategoriePanel] = useState(false);
   const [showTagPanel , setshowTagPanel] = useState(false);
   const [Categories , setCategories] = useState<CategorieType[] | null>([]);
@@ -69,8 +71,29 @@ function Page() {
         setUsers(data)
   }
     useEffect(()=>{
-        FetchCourses(0);
-        
+        const CheckPerm = async() =>
+        {
+            const url = import .meta.env.VITE_APP_URL;
+            const AuthToken = Cookies.get('auth-token')
+            const res =  await fetch(`${url}/validtk`,{
+                method : 'POST',
+                headers :
+                {
+                    Authorization : `Bearer ${AuthToken}`
+                }
+            });
+            const data =  await res.json();
+            if(data.role =="admin"){
+                isAdmin(true)
+                // FetchCourses(1);
+                HandledChangeList(1)
+            }else{
+                isAdmin(false)
+                HandledChangeList(0)
+            }
+            isPermed(true)
+        }     
+        CheckPerm();   
     },[])
     const HandelAdding = () =>{
         if(mangePiker==0)
@@ -166,11 +189,12 @@ function Page() {
   return (
     <div className="bg-gray-100 h-full">
         <HeaderDashborad />
-        <section>
-          <div className="container">
+        {Permed ? 
+            <section>
+            <div className="container">
             <div className="grid grid-cols-[70%,30%] gap-2 mt-5">
                 <div className="">
-                  <div >
+                    <div >
                     <div className="relative shadow-md sm:rounded-lg h-[70vh]">
                         <div className="flex items-center justify-between flex-column md:flex-row flex-wrap space-y-4 md:space-y-0 py-4 bg-white ">
                             <div className="px-4">
@@ -337,56 +361,66 @@ function Page() {
                                 </tbody>
                             </table>
                         </div>
-                       
+                        
                     </div>
-                  </div>
+                    </div>
                 </div>
                 <div className="">
                     <div className="bg-white rounded-md p-4 text-center shadow-md">
-                      <span >Manage</span>
-                      <div className="grid gap-3 mt-2">
-                          <div 
-                          onClick={()=>{
-                            HandledChangeList(0)
-                          }}
-                          className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==0 ? 'bg-gray-500 text-white' : 'hover:bg-gray-100' } `} >
-                              Courses
-                          </div>
-                          <div 
-                           onClick={()=>{
+                        <span >Manage</span>
+                        <div className="grid gap-3 mt-2">
+                            {Admin ?(
+                            <>
+                            <div 
+                            onClick={()=>{
                             HandledChangeList(1)
-                          }}
-                          className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==1 ? 'bg-gray-500 text-white' : 'hover:bg-gray-100 '} `}>
-                              Categorie
-                          </div>
-                          <div 
-                           onClick={()=>{
+                            }}
+                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==1 ? 'bg-gray-500 text-white' : 'hover:bg-gray-100 '} `}>
+                                Categorie
+                            </div>
+                            <div 
+                            onClick={()=>{
                             HandledChangeList(2)
-                          }}
-                          className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==2 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
-                              Tags
-                          </div>
-                          <div 
-                           onClick={()=>{
+                            }}
+                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==2 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
+                                Tags
+                            </div>
+                            <div 
+                            onClick={()=>{
                             HandledChangeList(3)
-                          }}
-                          className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==3 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
-                              Teachers
-                          </div>
-                          <div 
-                           onClick={()=>{
+                            }}
+                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==3 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
+                                Teachers
+                            </div>
+                            <div 
+                            onClick={()=>{
                             HandledChangeList(4)
-                          }}
-                          className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==4 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
-                              Students
-                          </div>
-                      </div>
+                            }}
+                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==4 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
+                                Students
+                            </div>
+                            </>
+                            ):
+                            <div 
+                            onClick={()=>{
+                            HandledChangeList(0)
+                            }}
+                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==0 ? 'bg-gray-500 text-white' : 'hover:bg-gray-100' } `} >
+                                Courses
+                            </div>
+                            }
+                            
+                        </div>
                     </div>
                     <>
                         {Details!=undefined && (
-                            <div className="bg-white rounded-md py-4 mt-3 ">
-                            {mangePiker==0 && <CoursesPanel details={Details} />}
-                            </div>
+                            <>
+                                {mangePiker==0 && (<>
+                                    <div className="bg-white rounded-md py-4 mt-3 ">
+                                        <CoursesPanel details={Details} />
+                                    </div>
+                                </>)}
+                            </>
                         )}
                         {
                             showCategoriePanel ? <CategriePanel  />
@@ -396,11 +430,15 @@ function Page() {
                     </>
                 </div>
             </div>
-          </div>
-        </section>
+            </div>
+            </section>
+        : <div className="col-span-4 py-20">
+        <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" className="animate-spin text-center justify-self-center will-change-transform" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+        </div>}
+        
     </div>
   )
 
 }
 
-export default Page
+export default Dashborad
