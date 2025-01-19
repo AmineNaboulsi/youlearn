@@ -28,7 +28,7 @@ function CoursesList() {
             if(data){setCategorys(data);
                 setCategorysSelected(data[0].category)
             }
-            // console.log(CategorysSelected)
+            console.log(CategorysSelected)
         }
         const FetchCourses = async() =>{
             const url = import.meta.env.VITE_APP_URL;
