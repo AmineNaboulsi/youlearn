@@ -2,7 +2,7 @@ import { useEffect, useState ,useRef} from 'react';
 import HeaderDashborad from '../../Components/Nav/HeaderDashborad'
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import Select from 'react-select'
+import Select, { MultiValue } from 'react-select';
 import { useNavigate } from 'react-router';
 import Cookies from 'js-cookie'
 import { FaRegTrashAlt } from "react-icons/fa";
@@ -29,10 +29,14 @@ type CourseType = {
   instructor:string,
   isprojected:boolean,
   price:number,
+  Categorie:string,
   subtitle:string,
   tags:[],
   title:string
 }
+
+type OptionCombo = { value: number , label: string }
+
 function Page() {
   const [value, setValue] = useState('');
   const [loadingdata, isloadingdata] = useState(false);
@@ -40,12 +44,12 @@ function Page() {
   const navigate = useNavigate();
   const [CourseSelected, setCourseSelected] = useState<CourseType | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedCategorie, setSelectedCategorie] = useState();
+  const [selectedTags, setSelectedTags] = useState<OptionCombo[]>();
+  const [selectedCategorie, setSelectedCategorie] = useState<number>();
   const [ModeAdding , isModeAdding] = useState(true);
   const [isVideo, setisVideo] = useState(false);
-  const [optionsCategorie , setoptionsCategorie] = useState<{ value: number; label: string }[]>([]);
-  const [optionsTag , setoptionsTag] = useState<{ value: number; label: string }[]>([]);
+  const [optionsCategorie , setoptionsCategorie] = useState<OptionCombo[]>([]);
+  const [optionsTag , setoptionsTag] = useState<[]>([]);
   const [ApiResponse , setApiResponse] = useState<ApiResponseType | undefined | null>(undefined);
     const FetchCategories = async() =>{
       const url = import.meta.env.VITE_APP_URL;
@@ -106,11 +110,11 @@ function Page() {
           overflowY: 'auto', 
         }),
       };
-      const handleChangeTags = (selectedOptions) => {
-        setSelectedTags(selectedOptions); 
+      const handleChangeTags = (selectedOptions: MultiValue<OptionCombo>) => {
+        setSelectedTags(selectedOptions as OptionCombo[]);
       };
-      const handleChangeCategorie = (selctedCategories) =>{
-        setSelectedCategorie(selctedCategories?.value)
+      const handleChangeCategorie = (selectedCategory: OptionCombo | null) => {
+        setSelectedCategorie(selectedCategory?.value)
       }
       const OnSubmitCourse = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -121,7 +125,7 @@ function Page() {
         }
       };
 
-    const UploadImageToAmineBB = async(image) =>{
+    const UploadImageToAmineBB = async(image:any) =>{
       const apiKey = import.meta.env.VITE_APP_IMGBBKEY;
       const apiUrl = `https://api.imgbb.com/1/upload?key=${apiKey}`;
       const formData = new FormData();
@@ -152,7 +156,7 @@ function Page() {
           data[key] = value.toString();
         });
         const file = formData.get("fileupload") as File | null;
-        if (file.size==0) {
+        if (file && file.size==0) {
           setApiResponse({
             status : false ,
             message : 'Please select a file to upload.'
@@ -171,7 +175,7 @@ function Page() {
 
           return;
         }
-        const alltag = selectedTags.map((tag)=>({ id :tag.value }))
+        const alltag = selectedTags ? selectedTags.map((tag:OptionCombo)=>({ id :tag.value })) : []
         if(alltag.length < 3 ){
           setApiResponse({
             status : false ,
@@ -215,14 +219,14 @@ function Page() {
     const EditCourse = async() =>{
       setApiResponse(null)
       isloadingdata(true)
-        const tags = selectedTags.map((tag) => ({
+        const tags = selectedTags ? selectedTags.map((tag:OptionCombo) => ({
           id: tag.value,
-        }))
+        })): []
         //$parametres = ['id','title' , 'description' ,'category','content'];
         const url = import.meta.env.VITE_APP_URL;
         const token = Cookies.get('auth-token')
         const newTags = {
-          id : CourseSelected.id,
+          id : CourseSelected ? CourseSelected.id : 0,
           tags : tags
         }
         const res1 = await fetch(`${url}/addcoursetag`,{
@@ -235,16 +239,17 @@ function Page() {
       });
       const response2 = await res1.json();
       if(response2.status){
-        const params = new URLSearchParams({
-          id: '' + CourseSelected.id,
-          title: '' + CourseSelected.title,
-          subtitle: '' + CourseSelected.subtitle,
-          description: '' + value,
-          img: '',
-          contenttype: '' + CourseSelected.contenttype,
-          content: '' + CourseSelected.content,
-          category: selectedCategorie,
-      });
+        const param = {
+          id: `${CourseSelected ? CourseSelected.id : 0}`,
+          title: `${CourseSelected ? CourseSelected.title : ''}`, 
+          subtitle: `${CourseSelected ? CourseSelected.subtitle : ''}`, 
+          description: value ,
+          img: '', 
+          contenttype: `${CourseSelected ? CourseSelected.contenttype : ''}`,
+          content: `${ CourseSelected ? CourseSelected.content : ''}`,
+          category: `${ selectedCategorie ?? '0'}`
+        };
+        const params = new URLSearchParams(param);
         // const imgurl = await UploadImageToAmineBB(file);
         const res = await fetch(`${url}/editcourse?${params.toString()}`,{
           method : 'PUT',
@@ -279,11 +284,8 @@ function Page() {
                             <div className="mt-2">
                               <input 
                               onChange={(e) => {
-                                setCourseSelected((prev) => ({
-                                  ...prev,
-                                  title: e.target.value,
-                                }));
-                                }}
+                                setCourseSelected((prev) => prev ? { ...prev, title: e.target.value } : null);
+                              }}
                               type="text" placeholder='Title' required name="title" value={CourseSelected?.title} className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
                             </div>
                           </div>
@@ -293,11 +295,8 @@ function Page() {
                             <div className="mt-2">
                               <input
                                onChange={(e) => {
-                                setCourseSelected((prev) => ({
-                                  ...prev,
-                                  subtitle: e.target.value,
-                                }));
-                                }}
+                                setCourseSelected((prev) => prev ? { ...prev, Subtitle: e.target.value } : null);
+                              }}
                               type="text" placeholder='Subtitle' required name="subtitle" value={CourseSelected?.subtitle} className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
                             </div>
                           </div>
@@ -316,7 +315,7 @@ function Page() {
                           </div>
                           <div className="sm:col-span-2 mt-4">
                             <label  className="block text-sm/6 font-medium text-gray-900">Tags</label>
-                            {(ModeAdding || optionsTag.length > 0 && selectedTags.length > 0 )&& (
+                            {(ModeAdding || optionsTag.length > 0 && (selectedTags && selectedTags.length > 0) )&& (
                                 
                                 <Select
                                   styles={customStyles}
@@ -353,10 +352,10 @@ function Page() {
                                 <div className="mt-2">
                                   <input
                                   onChange={(e) => {
-                                      setCourseSelected((prev) => ({
+                                      setCourseSelected((prev) => prev ? ({
                                         ...prev,
                                         content: e.target.value,
-                                      }));
+                                      }) : null);
                                     }}
                                   type="text" name="content" value={CourseSelected?.content } required placeholder='URL' className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
                                 </div>

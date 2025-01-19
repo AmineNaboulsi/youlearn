@@ -2,23 +2,23 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router'
 import Cookie from 'js-cookie'
 
-interface UserType {
+type UserType =  {
+    role: string,
     id: number,
     name: string,
     email: string,
-    isActive: number,
-    role: string,
+    isActive: boolean
 }
 
 function Header() {
   const navigate = useNavigate()
-  const [User , setUser] = useState<UserType | undefined | string>(undefined);
+  const [User , setUser] = useState<UserType | undefined>();
   useEffect(()=>{
     const FetchUserStatus = async()=>{
       const url = import.meta.env.VITE_APP_URL;
       const token = Cookie.get('auth-token');
       if(token==undefined) {
-        await setUser("null");
+        await setUser(undefined);
         return;
       }
       const res = await fetch(`${url}/getuser`,{
@@ -27,7 +27,7 @@ function Header() {
         }
       });
       if(res.status === 404) {
-        setUser("null");
+        setUser(undefined);
         return;
       }
       const data = await res.json();
@@ -37,7 +37,7 @@ function Header() {
   },[])
   return (
        <>
-       {User=="null" && (<>
+       {User==undefined && (<>
         <nav className="bg-white text-center text-white border-gray-200 dark:bg-gray-900 py-2">
               <span>
                   YouLearn is coming to Las Vegas, April 9-11. Register now to get over 50% off new Courses. 😎
@@ -59,7 +59,7 @@ function Header() {
                </div>
               </>
               :<>
-              {User=="null" ?
+              {User==undefined ?
               <>
               <div className="flex gap-4">
                 <Link to='/signin'>
@@ -81,17 +81,17 @@ function Header() {
               :
               <>
               <div className="flex gap-4">
-                <Link to={User?.role=="etudiant" ? '/profile':'/dashborad' }>
+                <Link to={User &&(( User.role == "etudiant") ? '/profile':'/dashborad' )}>
                   <button 
                       type="button" 
                       className="text-gray-900 hover:text-white border border-gray-800 hover:bg-gray-900 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2 text-center  dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800">
-                      {User?.role=="etudiant" ? 'Profile':'Dashborad' }
+                      {User && (User.role == "etudiant" ? 'Profile':'Dashborad') }
                   </button>
                 </Link>
                   <button 
                   onClick={()=>{
                     Cookie.remove('auth-token');
-                    setUser("null");
+                    setUser(undefined);
                     navigate('/signin');
                   }}
                       type="button" 

@@ -4,9 +4,8 @@ import Cookies from 'js-cookie'
 type validationmethods = {
     onValide :  (IsEnroll:boolean , isStudent :boolean) => void ,
     onCancel :  () => void ,
-    Course: CourseType ,
-    Logged :boolean | null ,
-    isEnroll :boolean | null
+    Course: CourseType | undefined ,
+    Logged :boolean | null 
 }
 type CourseType = {
     id : number,
@@ -64,8 +63,8 @@ function AlertInscription({onValide , onCancel , Course , Logged }:validationmet
                         <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                         <h3 className="text-lg font-bold text-gray-900" id="modal-title">Make Inscription </h3>
                         <div className="mt-2">
-                            <p className="text-md font-semibold text-gray-500">{Course.title }</p>
-                            <p className="text-sm text-gray-500 mt-2">{Course.subtitle }</p>
+                            <p className="text-md font-semibold text-gray-500">{Course && Course.title }</p>
+                            <p className="text-sm text-gray-500 mt-2">{Course && Course.subtitle }</p>
                         </div>
                         </div>
                     </div>

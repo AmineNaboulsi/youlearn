@@ -1,9 +1,8 @@
 import { IoIosNotificationsOutline } from "react-icons/io";
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router'
 import Cookie from 'js-cookie'
 
-interface UserType {
+type UserType = {
     id: number,
     name: string,
     email: string,
@@ -12,14 +11,13 @@ interface UserType {
 }
 
 function BannerProfile() {
-    const navigate = useNavigate()
-    const [User , setUser] = useState<UserType | undefined | string>(undefined);
+    const [User , setUser] = useState<UserType | undefined>(undefined);
     useEffect(()=>{
       const FetchUserStatus = async()=>{
         const url = import.meta.env.VITE_APP_URL;
         const token = Cookie.get('auth-token');
         if(token==undefined) {
-          await setUser("null");
+          await setUser(undefined);
           return;
         }
         const res = await fetch(`${url}/getuser`,{
@@ -28,7 +26,7 @@ function BannerProfile() {
           }
         });
         if(res.status === 404) {
-          setUser("null");
+          setUser(undefined);
           return;
         }
         const data = await res.json();
@@ -42,15 +40,15 @@ function BannerProfile() {
             <div className="container px-10">
                 <div className="relative h-[160px]">
                     <div className="absolute border-4 bg-white border-gray-300 w-auto -bottom-9 rounded-full">
-                        <img className="h-36 w-36 object-cover rounded-full" src="https://plus.unsplash.com/premium_photo-1673866484792-c5a36a6c025e?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="" srcset="" />
+                        <img className="h-36 w-36 object-cover rounded-full" src="https://plus.unsplash.com/premium_photo-1673866484792-c5a36a6c025e?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="" />
                         {/* <FaRegUser className="h-12 w-12" /> */}
                     </div>
                     <div className="grid grid-cols-[1fr,auto] justify-end items-end h-full">
                         <div className="flex justify-between items-center">
                             <div className="flex flex-col ml-44 justify-end h-full pb-2">
                                 {User ? (<>
-                                    <span className="font-semibold text-2xl text-black">{User?.name}</span>
-                                    <span className="font-normal text-md text-gray-500">{User?.email}</span>
+                                    <span className="font-semibold text-2xl text-black">{User && User?.name}</span>
+                                    <span className="font-normal text-md text-gray-500">{User && User?.email}</span>
                                 </>) : 
                                 <div className="">
                                     <div className="col-span-4 py-20">

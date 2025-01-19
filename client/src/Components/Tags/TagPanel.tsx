@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Cookies from 'js-cookie'
 
 type RApiType = {
@@ -12,7 +12,7 @@ function Page() {
     const url = import.meta.env.VITE_APP_URL;
     const authtoken = Cookies.get('auth-token');
     const form = new FormData()
-    form.append('name' , Name);
+    form.append('name' , ''+Name);
     const res = await fetch(`${url}/addtag`,{
       method : 'POST',
       body: form,

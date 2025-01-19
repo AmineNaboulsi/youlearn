@@ -13,13 +13,14 @@ type TagType = {
 }
 type CategorieType = {
     id: number,
-    email: string,
     name: string,
     isActive: boolean,
   }
 type UserType = {
     id: number,
-    name: string
+    email: string,
+    name: string,
+    isActive: boolean,
   }
 type CourseType = {
   id : number,
@@ -46,6 +47,7 @@ function Dashborad() {
   const [Users , setUsers] = useState<UserType[] | null>([]);
   const [Tags , setTags] = useState<TagType[] | null    >([]);
   const [Details , setDetails] = useState<CourseType | undefined>(undefined);
+
   const [mangePiker , setmangePiker] = useState(0);
   const navigate = useNavigate();
   const FetchCourses = async(index:number) =>{
@@ -125,7 +127,7 @@ function Dashborad() {
         if(data.status)
             HandledChangeList(2);
     }
-    const RemoveCategorie = async(id) =>{
+    const RemoveCategorie = async(id:number) =>{
         const url = import.meta.env.VITE_APP_URL;
         const token = Cookies.get('auth-token')
         const res = await fetch(`${url}/delcategorie?id=${id}`,{
@@ -138,10 +140,10 @@ function Dashborad() {
         if(data.status)
             HandledChangeList(2);
     }
-    const HandledActivateAccount = async (id:number , isA:number) => {
+    const HandledActivateAccount = async (id:number , isA:boolean) => {
         const url = import.meta.env.VITE_APP_URL;
         const token = Cookies.get('auth-token')
-        const res = await fetch(`${url}/activate?id=${id}&etat=${isA==1?0:1}`,{
+        const res = await fetch(`${url}/activate?id=${id}&etat=${isA?0:1}`,{
             method : 'PATCH',
             headers : {
                 Authorization : `Bearer ${token}`
@@ -171,7 +173,7 @@ function Dashborad() {
                 if(mangePiker==4) HandledChangeList(4)
             }
     }
-    const HanledProjectionControle = async(id:number , projectedEtat:number) =>{
+    const HanledProjectionControle = async(id:number , projectedEtat:boolean) =>{
         const url = import.meta.env.VITE_APP_URL;
         const token = Cookies.get('auth-token')
         const res = await fetch(`${url}/projectcourse?id=${id}&etat=${projectedEtat?0:1}`,{

@@ -32,7 +32,6 @@ function CoursesListPanel() {
   const [Categorys, setCategorys] = useState<CategorieType[]>(); 
   const [Courses, setCourses] = useState<CourseType[]>(); 
   const [Logged , isLogged] = useState<boolean | null>(null);
-  const [Enroll , isEnroll] = useState<boolean | null>(null);
   const navigate = useNavigate();
   useEffect(()=>{
     const FetchCategories = async() =>{
@@ -84,7 +83,7 @@ const onCancelAlert = () =>{
     const url = import .meta.env.VITE_APP_URL;
     const AuthToken = Cookies.get('auth-token')
     const formd = new FormData();
-    formd.append('id',CourseSelected?.id)
+    formd.append('id',''+CourseSelected?.id)
     try{
         const res =  await fetch(`${url}/enrollcourse`,{
             method : 'POST',
@@ -116,11 +115,11 @@ const onValideAlert = async(IsEnroll:boolean , isStudent :boolean) =>{
   return (
     <div className="bg-[#F5F5F3] px-4">
       {Alert && <AlertInscription 
-      onCancel={onCancelAlert}
-      onValide={onValideAlert}
-      Course={CourseSelected}
-      Logged={Logged}
-      />}
+              onCancel={onCancelAlert}
+              onValide={onValideAlert}
+              Course={CourseSelected}
+              Logged={Logged}
+              />}
     <div className="mt-3 h-full">
           <div className="relative grid grid-cols-[20%,1fr] gap-5">
             <div className="relative">

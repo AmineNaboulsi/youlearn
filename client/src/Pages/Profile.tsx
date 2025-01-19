@@ -1,6 +1,5 @@
 import BannerProfile from '../Components/Nav/BannerProfile'
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router'
 import Cookie from 'js-cookie'
 import { IoEyeSharp } from "react-icons/io5";
 import { IoDocumentTextOutline } from "react-icons/io5";
@@ -19,7 +18,6 @@ type CourseType = {
   title:string
 }
 function Profile() {
-  const navigate = useNavigate()
   const [Courses , setCourses] = useState<CourseType[ ] | undefined >(undefined);
   useEffect(()=>{
     const FetchUserStatus = async()=>{

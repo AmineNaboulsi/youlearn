@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 
 
 
-function AuthValidation(Component , allowedRoles) {
+function AuthValidation(Component :any, allowedRoles:string | Array<string>) {
   return function CkeckPerm() {
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate()
