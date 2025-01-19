@@ -28,14 +28,14 @@ function CoursesList() {
             if(data){setCategorys(data);
                 setCategorysSelected(data[0].category)
             }
-            console.log(CategorysSelected)
+            // console.log(CategorysSelected)
         }
         const FetchCourses = async() =>{
             const url = import.meta.env.VITE_APP_URL;
             const res = await fetch(`${url}/getcourses`);
             const data = await res.json();
             if(data){setCourses(data);}
-            console.log(data)
+            // console.log(data)
         } 
           FetchCategories();
           FetchCourses();
@@ -63,7 +63,7 @@ function CoursesList() {
                                     <span
                                         aria-current="page"
                                         className="inline-block p-4 border-b-2 border-transparent rounded-t-lg text-blue-500 cursor-pointer hover:underline  "
-                                        onClick={() => console.log('See More clicked')}
+                                        onClick={() => /console.log('See More clicked')}
                                     >
                                         See More...
                                     </span>

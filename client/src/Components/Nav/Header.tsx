@@ -13,14 +13,16 @@ type UserType =  {
 function Header() {
   const navigate = useNavigate()
   const [User , setUser] = useState<UserType | undefined>();
+  const [loading , setloading] = useState(false);
   useEffect(()=>{
     const FetchUserStatus = async()=>{
       const url = import.meta.env.VITE_APP_URL;
       const token = Cookie.get('auth-token');
       if(token==undefined) {
-        await setUser(undefined);
-        return;
+        setUser(undefined);
+        return; 
       }
+      setloading(true);
       const res = await fetch(`${url}/getuser`,{
         headers : {
           Authorization : `Bearer ${token}`
@@ -32,6 +34,7 @@ function Header() {
       }
       const data = await res.json();
       setUser(data);
+      setloading(false)
     }
     FetchUserStatus();
   },[])
@@ -49,7 +52,7 @@ function Header() {
         <section className='border-b-[1px] border-gray-300 h-[72.5px] shadow-md'>
             <div className="container flex justify-between items-center h-full ">
                <span className='font-bold text-xl'>YouLearn</span>
-              {User==undefined ?
+              {loading ?
               <>
                 <div className="flex gap-4">
                       <svg aria-hidden="true" className="w-8 h-5 text-gray-200 animate-spin  fill-gray-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">

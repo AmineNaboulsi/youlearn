@@ -45,7 +45,7 @@ function CoursesListPanel() {
       const res = await fetch(`${url}/getcourses`);
       const data = await res.json();
       if(data){setCourses(data);}
-      console.log(data)
+      // console.log(data)
     } 
     const ValidateToken = async () =>{
       const url = import .meta.env.VITE_APP_URL;
@@ -62,7 +62,7 @@ function CoursesListPanel() {
           isLogged(data.status)
           return  ;
       }catch(error){
-          console.log(error)
+          // console.log(error)
           return false ;
       }
      
@@ -94,9 +94,9 @@ const onCancelAlert = () =>{
             }
         });
         const data =  await res.json();
-        console.log(data)
+        // console.log(data)
     }catch(error){
-        console.log(error)
+        // console.log(error)
     }
 }
 const onValideAlert = async(IsEnroll:boolean , isStudent :boolean) =>{

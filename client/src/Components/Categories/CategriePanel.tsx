@@ -21,7 +21,6 @@ function Page() {
     });
     const data = await res.json();
     if(data) setApiResponse(data)
-      console.log(data)
   }
   return (
     <div className="p-4 rounded-md mt-2 bg-white shadow-md">
