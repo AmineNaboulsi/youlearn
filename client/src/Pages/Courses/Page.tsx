@@ -143,7 +143,7 @@ function Page() {
           return null;
         }
       } catch (error) {
-        //console.error("Error uploading image:", error);
+        console.error("Error uploading image:", error);
       }
     }
     const AddCourse = async() =>{

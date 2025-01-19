@@ -20,6 +20,7 @@ function Header() {
       const token = Cookie.get('auth-token');
       if(token==undefined) {
         setUser(undefined);
+        setloading(false)
         return; 
       }
       setloading(true);
@@ -30,6 +31,7 @@ function Header() {
       });
       if(res.status === 404) {
         setUser(undefined);
+        setloading(false)
         return;
       }
       const data = await res.json();
