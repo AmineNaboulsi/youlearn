@@ -63,7 +63,7 @@ function CoursesList() {
                                     <span
                                         aria-current="page"
                                         className="inline-block p-4 border-b-2 border-transparent rounded-t-lg text-blue-500 cursor-pointer hover:underline  "
-                                        onClick={() => /console.log('See More clicked')}
+                                        onClick={() => console.log('See More clicked')}
                                     >
                                         See More...
                                     </span>
