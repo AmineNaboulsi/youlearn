@@ -148,6 +148,21 @@ function Page() {
                 if(mangePiker==4) HandledChangeList(4)
             }
     }
+    const HanledProjectionControle = async(id:number , projectedEtat:number) =>{
+        const url = import.meta.env.VITE_APP_URL;
+        const token = Cookies.get('auth-token')
+        const res = await fetch(`${url}/projectcourse?id=${id}&etat=${projectedEtat?0:1}`,{
+            method : 'PATCH',
+            headers : {
+                Authorization : `Bearer ${token}`
+            }
+        });
+        const data = await res.json();
+        if(data.status)
+        {
+            HandledChangeList(0)
+        }
+    }
   return (
     <div className="bg-gray-100 h-full">
         <HeaderDashborad />
@@ -218,7 +233,7 @@ function Page() {
                                                 </div>  
                                             </th>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center">
+                                                <div onClick={()=>HanledProjectionControle(course.id , course.isprojected)} className="flex items-center cursor-pointer">
                                                     <div className={`h-2.5 w-2.5 rounded-full ${course.isprojected ? 'bg-green-500':'bg-red-500'} me-2`}></div>{course.isprojected ? 'Public': 'Private'}
                                                 </div>
                                             </td>
