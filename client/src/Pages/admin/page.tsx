@@ -89,7 +89,7 @@ function Page() {
         setshowCategoriePanel(false)
         setshowTagPanel(false)
     }
-    const RemoveTag = async(id) =>{
+    const RemoveTag = async(id:number) =>{
         const url = import.meta.env.VITE_APP_URL;
         const token = Cookies.get('auth-token')
         const res = await fetch(`${url}/deltag?id=${id}`,{
@@ -126,7 +126,27 @@ function Page() {
         });
         const data = await res.json();
         if(data.status)
-            HandledChangeList(3);
+        {
+            if(mangePiker==3) HandledChangeList(3)
+            if(mangePiker==4) HandledChangeList(4)
+        }
+            
+    }
+    const HandledDelUser = async (id:number) => {
+        const url = import.meta.env.VITE_APP_URL;
+        const token = Cookies.get('auth-token')
+        const res = await fetch(`${url}/deluser?id=${id}`,{
+            method : 'DELETE',
+            headers : {
+                Authorization : `Bearer ${token}`
+            }
+        });
+        const data = await res.json();
+        if(data.status)
+            {
+                if(mangePiker==3) HandledChangeList(3)
+                if(mangePiker==4) HandledChangeList(4)
+            }
     }
   return (
     <div className="bg-gray-100 h-full">
@@ -286,7 +306,7 @@ function Page() {
                                             </>}
                                                 
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td onClick={()=>HandledDelUser(user.id)} className="px-6 py-4">
                                                 <FaRegTrashAlt className='cursor-pointer text-red-500' />
                                             </td>
                                         </tr>
