@@ -78,8 +78,8 @@ class CourseRespository implements RepositoryInterface
     public function Search(string $name , $limit , $offset) {
         $con = Database::getConnection();
         $sql = "SELECT DISTINCT c.* FROM Cours c
-        LEFT JOIN `CoursTags` ct  ON ct.cours_id = c.id
-        LEFT JOIN `Tags` t on ct.tag_id = t.id
+        JOIN `CoursTags` ct ON ct.cours_id = c.id
+        JOIN `Tags` t on ct.tag_id = t.id
         WHERE c.title like :name or t.title like :name LIMIT $limit OFFSET $offset";
         $sqlDatareader = $con->prepare($sql) ;
         $sqlDatareader->execute([":name" => '%'.$name.'%']);
@@ -104,6 +104,63 @@ class CourseRespository implements RepositoryInterface
                 "courses" => $courses
             ];
         }else return $courses;
+    }
+    public function getStatistics($id){
+        $UserRepository = new UserRepository();
+        $role = $UserRepository->findRoleById($id);
+        $con = Database::getConnection();
+        $sql="";
+        $bidinpara=[];
+        if($role=="admin"){
+            $sql = "SELECT COUNT(*) as total FROM Inscription i  
+            JOIN (SELECT * FROM `Cours` cc ) c ON c.id = i.cour_id
+            UNION 
+            SELECT COUNT(*) as total FROM `Cours` c 
+            ";
+        }else{
+            $bidinpara=[':id'=> $id];
+            $sql = "SELECT COUNT(*) as total FROM Inscription i  
+            JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = :id) c ON c.id = i.cour_id
+            UNION 
+            SELECT COUNT(*) as total FROM `Cours` c 
+            WHERE c.instructor = :id;";
+        }
+            $sqlDatareader = $con->prepare($sql) ;
+            $sqlDatareader->execute($bidinpara);
+            $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+            $usersbyenrolls = [];
+            $cours = [
+                "name" => "",
+                "users" => []
+            ];
+            foreach ($this->getAllEnrollByCourse() as $key) {
+                $cours["name"] = $key['title'];
+                $cours["users"] = $this->getAllUserEnrollsByCourse($key['id']);
+                $usersbyenrolls[] = $cours; 
+            }
+            return [
+                'totalenrolls' => isset($result[0]) ? $result[0]['total'] : 0 ,
+                'totalcourses' => isset($result[1]) ? $result[1]['total'] : 0 ,
+                'users' => $usersbyenrolls
+            ] ;
+    }
+    public function getAllEnrollByCourse(){
+        $con = Database::getConnection();
+        $sql ="SELECT DISTINCT c.id , c.title FROM Inscription i  
+            JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = 8) c ON c.id = i.cour_id
+            JOIN User u ON  u.id=i.user_id;";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute();
+        return $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+    }
+    public function getAllUserEnrollsByCourse($cour_id){
+        $con = Database::getConnection();
+        $sql ="SELECT c.id , u.name , u.email, i.`date` FROM Inscription i  
+            JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = 8) c ON c.id = i.cour_id
+            JOIN User u ON  u.id=i.user_id WHERE i.cour_id=:cour_id";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute([':cour_id' => $cour_id ]);
+        return   $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
     }
     // Find Course INcript or not 
     public function isEnrollcourse($iduser , $idcourse) {
@@ -130,7 +187,7 @@ class CourseRespository implements RepositoryInterface
     // Find Course by Etudiant and enroll
     public function findByIdAndEnroll($iduser , $idcourse) {
         $con = Database::getConnection();
-        $sql = "INSERT INTO Inscription (user_id, cour_id) VALUES (:user_id ,:cour_id)";
+        $sql = "INSERT INTO Inscription (user_id, cour_id, date) VALUES (:user_id ,:cour_id,CURRENT_DATE)";
         $sqlDatareader = $con->prepare($sql) ;
         if($sqlDatareader->execute([":user_id" => $iduser , ":cour_id" => $idcourse ])){
             return [
@@ -170,10 +227,11 @@ class CourseRespository implements RepositoryInterface
     //Find 
     public function Find(int $limit ,int $offset) {
         $con = Database::getConnection();
-        $sql = "SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c
-                JOIN `Inscription` i on i.cour_id = c.id 
-                JOIN `User` u ON u.id = i.user_id
-                WHERE c.isprojected = 1 LIMIT $limit OFFSET $offset ";
+        $sql = "SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c 
+                 JOIN `Inscription` i on i.cour_id = c.id  
+                 JOIN `User` u ON u.id = i.user_id 
+                 GROUP BY i.cour_id  
+                 WHERE c.isprojected = 1 LIMIT $limit OFFSET $offset ";
         $sqlDatareader = $con->prepare($sql) ;
         $sqlDatareader->execute();
         $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);

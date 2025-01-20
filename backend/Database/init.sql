@@ -63,11 +63,11 @@ CREATE TABLE Cours
         ON DELETE SET NULL,
     PRIMARY KEY (id)
 );
-DESCRIBE Cours;
 CREATE TABLE Inscription
 (
     user_id INT ,
     cour_id INT ,
+    date DATE,
     foreign key (user_id) REFERENCES User(id) ON UPDATE cascade
         ON DELETE cascade ,
     foreign key (cour_id) REFERENCES Cours(id) ON UPDATE cascade
@@ -154,23 +154,18 @@ INSERT INTO CoursTags (tag_id, cours_id) VALUES
                                              (14, 5),
                                              (13, 6);
 
-DELETE FROM CoursTags where ID = 43
-
-SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
-            JOIN  Roles ur ON ur.id = u.role_id;
-UPDATE `User` SET role_id = 3 WHERE id = 3;
-SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
-            JOIN  Roles ur ON ur.id = u.role_id
-            WHERE ur.name = 'etudiant';
 
 
+SELECT DISTINCT c.id FROM Inscription i  
+            JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = 8) c ON c.id = i.cour_id
+            JOIN User u ON  u.id=i.user_id;
 
-SELECT DISTINCT c.* FROM Cours c
-LEFT JOIN `CoursTags` ct  ON ct.cours_id = c.id
-LEFT JOIN `Tags` t on ct.tag_id = t.id
-WHERE c.title like '%Marketing Digital : De Zéro à Expert%' or t.title like '%Marketing Digital : De Zéro à Expert%' ;
+SELECT c.id , u.name , u.email, i.`date` FROM Inscription i  
+            JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = 8) c ON c.id = i.cour_id
+            JOIN User u ON  u.id=i.user_id WHERE i.cour_id=
 
-SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c
-JOIN `Inscription` i on i.cour_id = c.id 
-JOIN `User` u ON u.id = i.user_id
-WHERE c.isprojected = 1;
+
+SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c 
+JOIN `Inscription` i on i.cour_id = c.id  
+JOIN `User` u ON u.id = i.user_id 
+GROUP BY i.cour_id  

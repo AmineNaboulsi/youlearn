@@ -3,7 +3,6 @@ import CoursesListPanel from '../Components/CoursesPage/CoursesListPanel'
 import { IoMdSearch } from "react-icons/io";
 import { useState } from 'react';
 import SearchBarPanel from '../Components/Sliders/SearchBar'
-import { FaXmark } from "react-icons/fa6";
 
 
 function Courses() {

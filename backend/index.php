@@ -26,6 +26,7 @@ $Routes->get('/getteachers' , UserContoller::class , 'getTeachers', AuthMiddlewa
 $Routes->get('/getstudents' , UserContoller::class , 'getStudents', AuthMiddleware::class , 'admin');
 
 //Courses
+$Routes->get('/getstatistics' , CourseController::class , 'Statistics', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->get('/getenrollcourses' , CourseController::class , 'EnrollCourses', AuthMiddleware::class , 'etudiant');
 $Routes->get('/getcourses' , CourseController::class , 'getCourses');
 $Routes->get('/search' , CourseController::class , 'Search');

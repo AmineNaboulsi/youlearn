@@ -5,6 +5,7 @@ use App\Models\Course;
 use App\RouterServices\Request;
 use App\Repository\CourseRespository;
 use App\MiddleWare\AuthMiddleware;
+use App\Repository\UserRepository;
 
 class CourseController
 {
@@ -39,6 +40,35 @@ class CourseController
         else if(isset($request->query()['limit']) && isset($request->query()['offset']) && is_numeric($request->query()['limit']) && is_numeric($request->query()['offset']))
             return $CourseRespository->Find(intval($request->query()['limit']),intval($request->query()['offset']));
         else return [];
+    }
+      /**
+     * @OA\GET(
+     *      path="/getstatistics",
+     *      summary="Get all courses",
+     *      tags={"courses"},
+     *      @OA\Parameter(
+     *          name="id",
+     *          in="path",
+     *          required=false,
+     *          description="ID of the category",
+     *          @OA\Schema(
+     *              type="integer"
+     *          )
+     *      ),
+     *      @OA\Response(response="200", description="get all courses"),
+     *      @OA\Response(response="404", description="No Data Found"),
+     *      @OA\Response(response="409", description="Failed to make operation"),    
+     * )
+     */
+    public function Statistics(Request $request){
+        $AuthMiddleware = new AuthMiddleware();
+        $id = $AuthMiddleware->ValideAuth();
+        if($id>0){
+            $CourseRespository = new CourseRespository();
+            return $CourseRespository->getStatistics($id);
+        }else{
+            return null;
+        }
     }
     /**
      * @OA\GET(
