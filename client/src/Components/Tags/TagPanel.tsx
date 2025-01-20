@@ -2,13 +2,20 @@ import { useState } from "react"
 import Cookies from 'js-cookie'
 
 type RApiType = {
-  status : string ,
+  status : boolean ,
   message : string
 }
 function Page() {
-  const [Name , setName] = useState<string>();
+  const [Name , setName] = useState<string>("");
   const [ApiResponse , setApiResponse] = useState<RApiType | null>(null);
   const AddCategorie = async() =>{
+    if(Name==""){
+      setApiResponse({
+        status : false ,
+        message : "Name Required"
+      });
+      return ;
+    }
     const url = import.meta.env.VITE_APP_URL;
     const authtoken = Cookies.get('auth-token');
     const form = new FormData()

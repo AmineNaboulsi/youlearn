@@ -45,7 +45,7 @@ function Course({course , HandledInscriptionCourse}:propsCourse) {
                                     <IoVideocam className="text-green-900"/>
                                     <span className="text-xs text-green-900">video</span>
                                   </div>:
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 bg-green-50 p-1 rounded-md border-[1px]">
                                     <IoIosDocument />
                                     <span className="text-xs">document</span>
                                   </div> 
