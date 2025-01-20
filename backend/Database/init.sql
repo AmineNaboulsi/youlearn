@@ -165,3 +165,12 @@ SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
 
 
 
+SELECT DISTINCT c.* FROM Cours c
+LEFT JOIN `CoursTags` ct  ON ct.cours_id = c.id
+LEFT JOIN `Tags` t on ct.tag_id = t.id
+WHERE c.title like '%Marketing Digital : De Zéro à Expert%' or t.title like '%Marketing Digital : De Zéro à Expert%' ;
+
+SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c
+JOIN `Inscription` i on i.cour_id = c.id 
+JOIN `User` u ON u.id = i.user_id
+WHERE c.isprojected = 1;

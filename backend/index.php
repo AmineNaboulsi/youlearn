@@ -28,6 +28,7 @@ $Routes->get('/getstudents' , UserContoller::class , 'getStudents', AuthMiddlewa
 //Courses
 $Routes->get('/getenrollcourses' , CourseController::class , 'EnrollCourses', AuthMiddleware::class , 'etudiant');
 $Routes->get('/getcourses' , CourseController::class , 'getCourses');
+$Routes->get('/search' , CourseController::class , 'Search');
 $Routes->get('/getallcourses' , CourseController::class , 'getAllCourses', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->post('/addcourse' , CourseController::class , 'AddCourse', AuthMiddleware::class , ['enseignant', 'admin']);
 $Routes->patch('/projectcourse' , CourseController::class , 'ProjectCourse', AuthMiddleware::class , ['enseignant', 'admin']);

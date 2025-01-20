@@ -3,10 +3,12 @@
 namespace App\Repository;
 use App\Models\Course;
 use App\Config\Database;
+use App\MiddleWare\AuthMiddleware;
 use App\Repository\UserRepository;
+use App\Interface\RepositoryInterface;
 use PDO;
 
-class CourseRespository
+class CourseRespository implements RepositoryInterface
 {
     // Find Course by ID
     public function findById(int $id) {
@@ -62,6 +64,47 @@ class CourseRespository
         $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
         return $result;
     }
+    public function SearchCount(string $name) {
+        $con = Database::getConnection();
+        $sql = "SELECT DISTINCT COUNT(*) as count FROM Cours c
+        LEFT JOIN `CoursTags` ct  ON ct.cours_id = c.id
+        LEFT JOIN `Tags` t on ct.tag_id = t.id
+        WHERE c.title like :name or t.title like :name ";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute([":name" => '%'.$name.'%']);
+        $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
+        return $result['count'];
+    }
+    public function Search(string $name , $limit , $offset) {
+        $con = Database::getConnection();
+        $sql = "SELECT DISTINCT c.* FROM Cours c
+        LEFT JOIN `CoursTags` ct  ON ct.cours_id = c.id
+        LEFT JOIN `Tags` t on ct.tag_id = t.id
+        WHERE c.title like :name or t.title like :name LIMIT $limit OFFSET $offset";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute([":name" => '%'.$name.'%']);
+        $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+
+        $courses = [];
+        foreach ($result as $cours) {
+            if($result){
+                $sql = "SELECT Tags.* FROM CoursTags 
+                JOIN `Tags` ON `Tags`.id = CoursTags.tag_id
+                WHERE CoursTags.cours_id = :cours_id";
+                $sqlDatareader = $con->prepare($sql) ;
+                $sqlDatareader->execute([":cours_id" => $cours['id']]);
+                $tags = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+                $cours['tags'] = $tags;
+                $courses[] = $cours;
+            }
+        }
+        if($offset==0){
+            return [
+                "count" => $this->SearchCount($name),
+                "courses" => $courses
+            ];
+        }else return $courses;
+    }
     // Find Course INcript or not 
     public function isEnrollcourse($iduser , $idcourse) {
         $con = Database::getConnection();
@@ -112,10 +155,25 @@ class CourseRespository
         $Resultat = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
         return $Resultat;
     }
-    //Find 
-    public function Find() {
+    //Find Total Number
+    public function FindTotal() {
         $con = Database::getConnection();
-        $sql = "SELECT * FROM Cours WHERE isprojected = 1";
+        $sql = "SELECT Count(*) as count FROM Cours c
+                JOIN `Inscription` i on i.cour_id = c.id 
+                JOIN `User` u ON u.id = i.user_id
+                WHERE c.isprojected = 1 ";
+        $sqlDatareader = $con->prepare($sql) ;
+        $sqlDatareader->execute();
+        $result = $sqlDatareader->fetch(\PDO::FETCH_ASSOC);
+        return $result['count'];
+    }
+    //Find 
+    public function Find(int $limit ,int $offset) {
+        $con = Database::getConnection();
+        $sql = "SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c
+                JOIN `Inscription` i on i.cour_id = c.id 
+                JOIN `User` u ON u.id = i.user_id
+                WHERE c.isprojected = 1 LIMIT $limit OFFSET $offset ";
         $sqlDatareader = $con->prepare($sql) ;
         $sqlDatareader->execute();
         $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
@@ -125,7 +183,7 @@ class CourseRespository
             if($result){
                 $sql = "SELECT Tags.* FROM CoursTags 
                 JOIN `Tags` ON `Tags`.id = CoursTags.tag_id
-                WHERE CoursTags.cours_id = :cours_id ; ";
+                WHERE CoursTags.cours_id = :cours_id";
                 $sqlDatareader = $con->prepare($sql) ;
                 $sqlDatareader->execute([":cours_id" => $cours['id']]);
                 $tags = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
@@ -133,33 +191,57 @@ class CourseRespository
                 $courses[] = $cours;
             }
         }
-        return $courses;
+        if($offset==0){
+            return [
+                "count" => $this->FindTotal(),
+                "courses" => $courses
+            ];
+        }else{
+            return $courses;
+        }
+        return null;
     }
      //Find All
     public function FindAll() {
-        $con = Database::getConnection();
-        $sql = "SELECT * FROM Cours";
-        $sqlDatareader = $con->prepare($sql) ;
-        $sqlDatareader->execute();
-        $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
-
-        $courses = [];
-        foreach ($result as $cours) {
-            if($result){
-                $sql = "SELECT Tags.* FROM CoursTags 
-                JOIN `Tags` ON `Tags`.id = CoursTags.tag_id
-                WHERE CoursTags.cours_id = :cours_id ; ";
-                $sqlDatareader = $con->prepare($sql) ;
-                $sqlDatareader->execute([":cours_id" => $cours['id']]);
-                $tags = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
-                $cours['tags'] = $tags;
-                $courses[] = $cours;
+        $AuthMiddleware = new AuthMiddleware();
+        $id = $AuthMiddleware->ValideAuth();
+        $UserRepository = new UserRepository();
+        if($id>0){
+            $role = $UserRepository->findRoleById($id);
+            $con = Database::getConnection();
+            $sql="";
+            $bindpara = [];
+            if($role=="admin")
+                $sql = "SELECT * FROM Cours";
+            else {
+                $sql = "SELECT * FROM Cours c
+                where c.instructor = :id";
+                $bindpara = [
+                    ":id" => $id
+                ];  
             }
+            $sqlDatareader = $con->prepare($sql) ;
+            $sqlDatareader->execute($bindpara);
+            $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+    
+            $courses = [];
+            foreach ($result as $cours) {
+                if($result){
+                    $sql = "SELECT Tags.* FROM CoursTags 
+                    JOIN `Tags` ON `Tags`.id = CoursTags.tag_id
+                    WHERE CoursTags.cours_id = :cours_id ; ";
+                    $sqlDatareader = $con->prepare($sql) ;
+                    $sqlDatareader->execute([":cours_id" => $cours['id']]);
+                    $tags = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+                    $cours['tags'] = $tags;
+                    $courses[] = $cours;
+                }
+            }
+            return $courses;
         }
-        return $courses;
     }
     // Save Course to database
-    public function Save(Course $Course) {
+    public function Save($Course) {
             if($this->findByName($Course->getTitle())){
                 return [
                     "status" => false ,
@@ -222,7 +304,7 @@ class CourseRespository
             ];
     }
     // Update Course from database
-    public function findByIdAndUpdate(Course $Course): array {
+    public function findByIdAndUpdate($Course): array {
         $con = Database::getConnection();
         $sql = "UPDATE Cours SET title=:title , subtitle=:subtitle , description = :description , content = :content , cat_id = :cat_id    
          WHERE id = :id";
@@ -249,7 +331,7 @@ class CourseRespository
             ];
     }
     // Delete Course from database
-    public function findByIdAndDelete(Course $Course): array {
+    public function findByIdAndDelete($Course): array {
         $con = Database::getConnection();
         $sql = "DELETE FROM Cours WHERE id = :id";
         $sqlDatareader = $con->prepare($sql) ;

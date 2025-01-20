@@ -42,7 +42,7 @@ function Header() {
   },[])
   return (
        <>
-       {User==undefined && (<>
+       {(User==undefined && !loading) && (<>
         <nav className="bg-white text-center text-white border-gray-200 dark:bg-gray-900 py-2">
               <span>
                   YouLearn is coming to Las Vegas, April 9-11. Register now to get over 50% off new Courses. 😎
@@ -53,7 +53,9 @@ function Header() {
             
         <section className='border-b-[1px] border-gray-300 h-[72.5px] shadow-md'>
             <div className="container flex justify-between items-center h-full ">
-               <span className='font-bold text-xl'>YouLearn</span>
+              <Link to='/'>
+                <span className='cursor-pointer font-bold text-xl'>YouLearn</span>
+              </Link>
               {loading ?
               <>
                 <div className="flex gap-4">

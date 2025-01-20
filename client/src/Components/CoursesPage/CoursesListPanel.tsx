@@ -3,15 +3,28 @@ import AlertInscription from './AlertInscription'
 import Course from './Course';
 import Cookies from 'js-cookie'
 import { useNavigate } from 'react-router';
-type CourseType = {
-  id : number,
-  title : string,
-  subtitle : string,
-  description : string,
-  img : string,
-  category : string,
-  price : number
+import { FaXmark } from "react-icons/fa6";
+
+type TagType = {
+  id: number,
+  title: string
 }
+
+type CourseType = {
+    id : number,
+    title : string,
+    subtitle : string,
+    description : string,
+    content : string,
+    isprojected : boolean,
+    img : string,
+    cat_id : number,
+    category : string,
+    instructor : string,
+    price : number
+    contenttype: string | null,
+    tags : TagType[]
+  }
 type CategorieType = {
   id : number,
   name : string
@@ -23,7 +36,12 @@ type PaginationType ={
   limit : number,
   currentpage :number
 }
-function CoursesListPanel() {
+type PropsType= {
+  CousreName :string, 
+  isTriggeredSearch : (triggered:boolean) => void
+  TriggeredSearch : boolean
+}
+function CoursesListPanel({CousreName,TriggeredSearch,isTriggeredSearch}:PropsType) {
   const [Alert, setAlert] = useState(false);
   const [CourseSelected, setCourseSelected] = useState<CourseType | undefined>(
     {
@@ -33,7 +51,13 @@ function CoursesListPanel() {
       description : "",
       img : "",
       category : "",
-      price : 0
+      price : 0,
+      content : "",
+      isprojected : true,
+      cat_id : 0,
+      instructor : "",
+      contenttype: "",
+      tags : []
     });
     const [Pagination , setPagination] = useState<PaginationType>({
       count : 0 ,
@@ -70,6 +94,42 @@ function CoursesListPanel() {
         setCourses([]);
       }
     } 
+    const SearchCourse = async() => {
+      try{
+        setCourses(undefined);
+        setPagination({
+          count : 0 ,
+          pages : 0 ,
+          nbvisible : 4 ,
+          limit : 6 ,
+          currentpage : 0
+        });
+        const url = import.meta.env.VITE_APP_URL;
+        const res = await fetch(`${url}/search?course=${CousreName}&limit=${Pagination.limit}&offset=${Pagination.currentpage * Pagination.limit}`);
+        const data = await res.json();
+        if(Pagination.currentpage==0) {
+          setPagination((prev)=>({
+              ...prev ,
+              count : data.count ,
+              pages : Math.ceil(data.count / prev.limit)
+          }));
+          setCourses(data.courses);
+        }else{
+          setPagination((prev)=>({
+            ...prev ,
+            pages : (prev.count / prev.limit) > Math.ceil(prev.count / prev.limit) ? Math.ceil(prev.count / prev.limit)+1:Math.ceil(prev.count / prev.limit) 
+          }));
+          setCourses(data);
+        }
+      }catch{
+        setCourses([]);
+      }
+    }  
+    useEffect(()=>{
+      if(Pagination.pages>0 && TriggeredSearch){
+        SearchCourse();
+      }
+    },[TriggeredSearch])
     useEffect(()=>{
       const FetchCategories = async() =>{
           const url = import.meta.env.VITE_APP_URL;
@@ -99,9 +159,12 @@ function CoursesListPanel() {
     }
       ValidateToken();
       FetchCategories();
+      console.log(CousreName)
     },[])
     useEffect(() => {
-      FetchCourses();
+      if(!TriggeredSearch)
+          FetchCourses();
+        
     }, [Pagination.currentpage]);
     const HandledInscriptionCourse =  (course:CourseType) => {
       setCourseSelected(course);
@@ -147,18 +210,18 @@ function CoursesListPanel() {
         ...prev ,
         currentpage : page-1
       }));
-      console.log(Pagination)
     }
 
   return (
-    <div className="bg-[#F5F5F3] px-4">
+    <div className="border-x-[#9a9a9a] border-x-[1px] px-4">
+
       {Alert && <AlertInscription 
               onCancel={onCancelAlert}
               onValide={onValideAlert}
               Course={CourseSelected}
               Logged={Logged}
               />}
-    <div className="mt-3 h-full">
+    <div className="h-full">
           <div className="relative grid grid-cols-[20%,1fr] gap-5">
             <div className="relative">
               <div className="sticky top-0">
@@ -180,73 +243,87 @@ function CoursesListPanel() {
                   </>}
                 </div>
             </div>
-            <div className="">
+
+            <div className="border-2 p-3 rounded-md">
               <div className="flex justify-center">
                   <div>
-                    <nav className="isolate select-none inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                    {Pagination.pages> 1 &&
+                      <nav className="isolate select-none inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                       <span
-                          onClick={()=>{
-                            if(Pagination.currentpage>0){
-                              console.log('currentpage : '+Pagination.currentpage + ' count :' + Pagination.pages)
-                              setPagination(prev=>({
-                                ...prev ,
-                                currentpage : prev.currentpage-1
-                              }))
-                            }
-                          }}
-                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-                          <span className="sr-only">Previous</span>
-                          <svg className="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" data-slot="icon">
-                            <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
-                          </svg>
-                        </span>
-                      {/* {Array.from({ length: Pagination.pages }, (_, i) => i + 1).map((page:number,i:number)=>(
-                          <>
-                          {Pagination.pages<=6 ?<>
-                            <span 
-                            onClick={()=>HandlePages(page)}
-                            className="cursor-pointer relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-                            {page}
-                            </span>
-                          
-                          </> :  (i< Pagination.currentpage -1 && i> Pagination.currentpage +1 )
-                          ? <>
+                            onClick={()=>{
+                              if(Pagination.currentpage>0){
+                                console.log('currentpage : '+Pagination.currentpage + ' count :' + Pagination.pages)
+                                setPagination(prev=>({
+                                  ...prev ,
+                                  currentpage : prev.currentpage-1
+                                }))
+                              }
+                            }}
+                            className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            <span className="sr-only">Previous</span>
+                            <svg className="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" data-slot="icon">
+                              <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+                            </svg>
+                      </span>
+                        {/* {Array.from({ length: Pagination.pages }, (_, i) => i + 1).map((page:number,i:number)=>(
+                            <>
+                            {Pagination.pages<=6 ?<>
                               <span 
                               onClick={()=>HandlePages(page)}
                               className="cursor-pointer relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
                               {page}
                               </span>
-                            </> : (i> Pagination.pages) ? <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span> :
-                            <></>
+                            
+                            </> :  (i< Pagination.currentpage -1 && i> Pagination.currentpage +1 )
+                            ? <>
+                                <span 
+                                onClick={()=>HandlePages(page)}
+                                className="cursor-pointer relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                                {page}
+                                </span>
+                              </> : (i> Pagination.pages) ? <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span> :
+                              <></>
+                            }
+                            </>
+                        ))} */}
+                        {Array.from({ length: Pagination.pages }, (_, i) => i + 1).map((page:number)=>(
+                            <>
+                            <span 
+                              onClick={()=>HandlePages(page)}
+                              className={`${Pagination.currentpage == page-1 ? 'bg-slate-500 text-gray-100 ' : 'text-gray-900  '} cursor-pointer relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0`}>
+                              {page}
+                              </span>
+                            </>
+                        ))}
+                        <span
+                        onClick={()=>{
+                          if(Pagination.currentpage<Pagination.pages-1){
+                            console.log('currentpage : '+Pagination.currentpage + ' count :' + Pagination.pages)
+                            setPagination(prev=>({
+                              ...prev ,
+                              currentpage : prev.currentpage+1
+                            }))
                           }
-                          </>
-                      ))} */}
-                       {Array.from({ length: Pagination.pages }, (_, i) => i + 1).map((page:number)=>(
-                          <>
-                          <span 
-                            onClick={()=>HandlePages(page)}
-                            className={`${Pagination.currentpage == page-1 ? 'bg-slate-500 text-gray-100 ' : 'text-gray-900  '} cursor-pointer relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0`}>
-                            {page}
-                            </span>
-                          </>
-                      ))}
-                      <span
+                        }}
+                        className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            <span className="sr-only">Next</span>
+                            <svg className="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" data-slot="icon">
+                              <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                      </nav>
+                    }
+                    {TriggeredSearch && 
+                      <div 
                       onClick={()=>{
-                        if(Pagination.currentpage<Pagination.pages-1){
-                          console.log('currentpage : '+Pagination.currentpage + ' count :' + Pagination.pages)
-                          setPagination(prev=>({
-                            ...prev ,
-                            currentpage : prev.currentpage+1
-                          }))
-                        }
+                        FetchCourses();
+                        isTriggeredSearch(false)
                       }}
-                      className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-                          <span className="sr-only">Next</span>
-                          <svg className="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" data-slot="icon">
-                            <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                          </svg>
-                      </span>
-                    </nav>
+                      className="cursor-pointer mt-1 rounded-xl bg-gray-100 flex items-center gap-2 px-2 py-1.5">
+                        <FaXmark size={16} />
+                        <span className='text-xs font-semibold text-gray-600'>{`Search By : ${CousreName}`}</span>
+                      </div>
+                    }
                   </div>
               </div>
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10 mdl:gap-4 lg:gap-10">

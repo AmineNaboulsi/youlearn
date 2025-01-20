@@ -31,11 +31,14 @@ class CourseController
     public function getCourses(Request $request){
         $CourseRespository = new CourseRespository();
         if(isset($request->query()['id']))
+        {
             if(is_numeric($request->query()['id']))
                 return $CourseRespository->findById($request->query()['id']);
-            else return false;
-        else
-            return $CourseRespository->Find();
+            else return [];
+        }
+        else if(isset($request->query()['limit']) && isset($request->query()['offset']) && is_numeric($request->query()['limit']) && is_numeric($request->query()['offset']))
+            return $CourseRespository->Find(intval($request->query()['limit']),intval($request->query()['offset']));
+        else return [];
     }
     /**
      * @OA\GET(
@@ -120,6 +123,25 @@ class CourseController
         if($id){
             $RepoCourses = new CourseRespository();
             return $RepoCourses->EnrollCourses($id);
+        }else{
+            return null;
+        }
+    }
+    /**
+     * @OA\GET(
+     *     path="/search",
+     *     summary="",
+     *     tags={"Course"},
+     *     @OA\Response(response="200", description="Success"),
+     *     @OA\Response(response="404", description="Not Data Found"),
+     * )
+     */
+    public function Search(Request $request){
+        $param = ['course' , 'limit','offset'];
+        if(isset($request->query()['course']) && isset($request->query()['limit'])
+         && isset($request->query()['offset']) && is_numeric($request->query()['limit']) && is_numeric($request->query()['offset'])){
+            $RepoCourses = new CourseRespository();
+            return $RepoCourses->Search($request->query()['course'] , $request->query()['limit'] ,$request->query()['offset']);
         }else{
             return null;
         }

@@ -3,9 +3,10 @@
 namespace App\Repository;
 use App\Models\Tag;
 use App\Config\Database;
+use App\Interface\RepositoryInterface;
 use PDO;
 
-class TagRepository
+class TagRepository implements RepositoryInterface
 {
         // Find Tag by ID
         public function findById(int $id) {
@@ -34,7 +35,7 @@ class TagRepository
             return $result;
         }
         // Save Tag to database
-        public function Save(Tag $Tag) {
+        public function Save($Tag) {
             $con = Database::getConnection();
             if(!$this->FindByName($Tag->getName())){
                 $sql = "INSERT INTO Tags (title) VALUES (:title)";
@@ -58,9 +59,8 @@ class TagRepository
             }
           
         }
-    
         // Update Tag from database
-        public function findByIdAndUpdate(Tag $Tag): array {
+        public function findByIdAndUpdate($Tag): array {
             $con = Database::getConnection();
             $sql = "UPDATE Tags SET title=:title WHERE id = :id";
             $sqlDatareader = $con->prepare($sql) ;
@@ -79,9 +79,8 @@ class TagRepository
                     "message" => 'Failed to Update Tag for unknown reason, please try later'
                 ];
         }
-
         // Delete Tag from database
-        public function findByIdAndDelete(Tag $Tag): array {
+        public function findByIdAndDelete($Tag): array {
             $con = Database::getConnection();
             $sql = "DELETE FROM Tags WHERE id = :id";
             $sqlDatareader = $con->prepare($sql) ;

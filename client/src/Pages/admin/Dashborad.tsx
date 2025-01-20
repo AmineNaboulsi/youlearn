@@ -6,7 +6,8 @@ import { Link , useNavigate } from 'react-router';
 import HeaderDashborad from '../../Components/Nav/HeaderDashborad.tsx'
 import Cookies from 'js-cookie'
 import { FaRegTrashAlt } from "react-icons/fa";
-
+import { IoStatsChartSharp } from "react-icons/io5";
+import PanelStatistics from '../../Components/Statics/PanelStatistics.tsx'
 type TagType = {
   id: number,
   title: string
@@ -47,6 +48,7 @@ function Dashborad() {
   const [Users , setUsers] = useState<UserType[] | null>([]);
   const [Tags , setTags] = useState<TagType[] | null    >([]);
   const [Details , setDetails] = useState<CourseType | undefined>(undefined);
+  const [ModeStatics , isModeStatics] = useState(false);
 
   const [mangePiker , setmangePiker] = useState(0);
   const navigate = useNavigate();
@@ -63,6 +65,9 @@ function Dashborad() {
         headers : {Authorization : `Bearer ${token}`}
     });
     const data = await res.json();
+    if(data?.status){
+        return;
+    }
     if(index==0)
         setCourses(data)
     else if( index==1 )
@@ -86,13 +91,13 @@ function Dashborad() {
             });
             const data =  await res.json();
             if(data.role =="admin"){
+                // admin
                 isAdmin(true)
-                // FetchCourses(1);
-                HandledChangeList(1)
             }else{
+                // teacher
                 isAdmin(false)
-                HandledChangeList(0)
             }
+            HandledChangeList(0)
             isPermed(true)
         }     
         CheckPerm();   
@@ -199,14 +204,25 @@ function Dashborad() {
                     <div >
                     <div className="relative shadow-md sm:rounded-lg h-[70vh]">
                         <div className="flex items-center justify-between flex-column md:flex-row flex-wrap space-y-4 md:space-y-0 py-4 bg-white ">
-                            <div className="px-4">
+                            <div className="px-4 flex gap-2 items-center">
                                 {mangePiker<=2 && 
-                                    <button 
-                                    onClick={HandelAdding}
-                                    data-dropdown-toggle="dropdownAction" className="inline-flex items-center text-gray-500 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-lg text-sm px-3 py-1.5 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" type="button">
-                                        Add {mangePiker==0 ? 'Course' : mangePiker==1 ? 'Categorie' : 'Tag'}
-                                    </button>
+                                    <>
+                                        {(mangePiker==0 && Admin)? <></> : <>
+                                        <button 
+                                        onClick={HandelAdding}
+                                        data-dropdown-toggle="dropdownAction" className="inline-flex items-center text-gray-500 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-lg text-sm px-3 py-1.5 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" type="button">
+                                            Add {mangePiker==0 ? 'Course' : mangePiker==1 ? 'Categorie' : 'Tag'}
+                                        </button>
+                                        </>}
+                                    </>
                                 }
+                                <div 
+                                onClick={()=>{
+                                    isModeStatics(!ModeStatics)
+                                }}
+                                className={`cursor-pointer p-2 border-[1px] ${ModeStatics ? ' bg-orange-500 ':' bg-white '} border-orange-500  rounded-lg`}>
+                                    <IoStatsChartSharp className={`  ${ModeStatics ? "text-white" : "text-orange-500" }`} />
+                                </div>
                             </div>
                             <div className="relative flex items-center pr-3">
                                 <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
@@ -214,10 +230,13 @@ function Dashborad() {
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
                                     </svg>
                                 </div>
-                                <input type="text" className="block pl-10 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg w-80 bg-gray-50 focus:ring-blue-500 focus:border-blue-500  dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder={`Search for ${mangePiker==0 ? ' course ': mangePiker==0 ? 'categorie':'tag' }`}/>
+                                <input type="text" className="block pl-10 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg w-80 bg-gray-50 focus:ring-blue-500 focus:border-blue-500  dark:placeholder-gray-400  dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder={`Search for ${mangePiker==0 ? ' course ': mangePiker==0 ? 'categorie':'tag' }`}/>
                             </div>
                         </div>
                         <div className="h-full overflow-y-auto">
+                            {ModeStatics ? 
+                            <PanelStatistics />
+                            :
                             <table className="relative w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
                                 <thead className="sticky backdrop-blur-sm z-[100] top-0 text-xs uppercase  "> 
                                     <tr>
@@ -237,9 +256,11 @@ function Dashborad() {
                                             Active
                                             </th>
                                         }
-                                        <th scope="col" className="px-6 py-3">
-                                            Action
-                                        </th>
+                                        {(mangePiker==0 && !Admin )&&
+                                            <th scope="col" className="px-6 py-3">
+                                                Action
+                                            </th>
+                                        }
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -248,7 +269,7 @@ function Dashborad() {
                                         <>
                                         <tr className="relative bg-white border-b ">
                                             <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
-                                                <img className="w-10 h-10 rounded-full" src="/docs/images/people/profile-picture-1.jpg" alt="Jese image" />
+                                                <img className="w-10 h-10 rounded-full" src={course.img} alt="Jese image" />
                                                 <div className="ps-3">
                                                     <div 
                                                     onClick={()=>{
@@ -263,11 +284,13 @@ function Dashborad() {
                                                     <div className={`h-2.5 w-2.5 rounded-full ${course.isprojected ? 'bg-green-500':'bg-red-500'} me-2`}></div>{course.isprojected ? 'Public': 'Private'}
                                                 </div>
                                             </td>
+                                            {(mangePiker==0 && !Admin )&&
                                             <td className="px-6 py-4">
                                                 <Link to={`/dashborad/course?id=${course.id}`}>
                                                 <span data-modal-target="editUserModal" data-modal-show="editUserModal" className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</span>
                                                 </Link>
                                             </td>
+                                            }
                                         </tr>
                                         </>
                                     )):<>
@@ -321,7 +344,7 @@ function Dashborad() {
                                     </div>
                                     </>}
                                     </> : <>
-                                    {Users ? Users.map((user:UserType)=>(<>
+                                    {(Users!=undefined) ? Users?.map((user:UserType)=>(<>
                                         <>
                                             <tr className="relative bg-white border-b ">
                                             <th scope="row" className="flex items-center px-6 py-4 text-gray-900 whitespace-nowrap dark:text-white">
@@ -362,6 +385,7 @@ function Dashborad() {
                                 
                                 </tbody>
                             </table>
+                            }
                         </div>
                         
                     </div>
@@ -371,38 +395,6 @@ function Dashborad() {
                     <div className="bg-white rounded-md p-4 text-center shadow-md">
                         <span >Manage</span>
                         <div className="grid gap-3 mt-2">
-                            {Admin ?(
-                            <>
-                            <div 
-                            onClick={()=>{
-                            HandledChangeList(1)
-                            }}
-                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==1 ? 'bg-gray-500 text-white' : 'hover:bg-gray-100 '} `}>
-                                Categorie
-                            </div>
-                            <div 
-                            onClick={()=>{
-                            HandledChangeList(2)
-                            }}
-                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==2 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
-                                Tags
-                            </div>
-                            <div 
-                            onClick={()=>{
-                            HandledChangeList(3)
-                            }}
-                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==3 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
-                                Teachers
-                            </div>
-                            <div 
-                            onClick={()=>{
-                            HandledChangeList(4)
-                            }}
-                            className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==4 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
-                                Students
-                            </div>
-                            </>
-                            ):
                             <div 
                             onClick={()=>{
                             HandledChangeList(0)
@@ -410,8 +402,38 @@ function Dashborad() {
                             className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==0 ? 'bg-gray-500 text-white' : 'hover:bg-gray-100' } `} >
                                 Courses
                             </div>
+                            {Admin &&
+                            <>
+                                <div 
+                                onClick={()=>{
+                                HandledChangeList(1)
+                                }}
+                                className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==1 ? 'bg-gray-500 text-white' : 'hover:bg-gray-100 '} `}>
+                                    Categorie
+                                </div>
+                                <div 
+                                onClick={()=>{
+                                HandledChangeList(2)
+                                }}
+                                className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==2 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
+                                    Tags
+                                </div>
+                                <div 
+                                onClick={()=>{
+                                HandledChangeList(3)
+                                }}
+                                className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==3 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
+                                    Teachers
+                                </div>
+                                <div 
+                                onClick={()=>{
+                                HandledChangeList(4)
+                                }}
+                                className={`rounded-md border-2 cursor-pointer py-1 ${mangePiker==4 ? 'bg-gray-500 text-white' :'hover:bg-gray-100' } `}>
+                                    Students
+                                </div>
+                            </>
                             }
-                            
                         </div>
                     </div>
                     <>

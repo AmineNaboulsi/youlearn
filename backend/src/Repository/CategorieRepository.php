@@ -4,8 +4,8 @@ namespace App\Repository;
 
 use App\Models\Categorie;
 use App\Config\Database;
-
-class CategorieRepository
+use App\Interface\RepositoryInterface;
+class CategorieRepository implements RepositoryInterface
 {
     // Find Categorie by ID
     public function findById(int $id) {
@@ -34,7 +34,7 @@ class CategorieRepository
         return $result;
     }
     // Save Tag to database
-    public function Save(Categorie $Categorie) {
+    public function Save($Categorie) {
         $con = Database::getConnection();
         if($this->FindByName($Categorie->getName())){
             return [
@@ -57,9 +57,8 @@ class CategorieRepository
                 "message" => 'Failed to add Categorie for unknown reason, please try later'
             ];
     }
-
     // Update Categorie from database
-    public function findByIdAndUpdate(Categorie $Categorie): array {
+    public function findByIdAndUpdate($Categorie): array {
         $con = Database::getConnection();
         $sql = "UPDATE Categories SET name=:name WHERE id = :id";
         $sqlDatareader = $con->prepare($sql) ;
@@ -80,7 +79,7 @@ class CategorieRepository
     }
 
     // Delete Categorie from database
-    public function findByIdAndDelete(Categorie $Categorie): array {
+    public function findByIdAndDelete($Categorie): array {
         $con = Database::getConnection();
         $sql = "DELETE FROM Categories WHERE id = :id";
         $sqlDatareader = $con->prepare($sql) ;

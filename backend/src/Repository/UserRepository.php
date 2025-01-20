@@ -4,6 +4,7 @@ namespace App\Repository;
 use App\Models\User;
 use App\Config\Database;
 use App\Config\JwtUtil;
+use App\Interface\RepositoryInterface;
 class UserRepository
 {
     //Find All
@@ -80,6 +81,7 @@ class UserRepository
         $sqldataReader = $sqldataReader->fetch();
         return $sqldataReader['role'];
     }
+    //Sign In
     public function SignIn(User $user)
     {
         $con = Database::getConnection();
@@ -116,6 +118,7 @@ class UserRepository
     
         return $this->generateResponse(true, $LOGIN_SUCCESS, $token);
     }
+    //Make Response
     private function generateResponse(bool $status, string $message, string $token = null): array
     {
         $response = [
@@ -130,7 +133,7 @@ class UserRepository
         return $response;
     }
     // create new account    
-    public function save(User $user): array
+    public function save($user): array
     {
         $con = Database::getConnection();
         try {
@@ -179,7 +182,7 @@ class UserRepository
             ];
         }
     }
-
+    //get Role in user id
     private function getRoleId(string $roleName): int
     {
         $con = Database::getConnection();
@@ -189,7 +192,7 @@ class UserRepository
         $role = $roleQuery->fetch(\PDO::FETCH_ASSOC);
         return $role ? $role['id'] : 0;
     }
-
+    //banne or unbanne user
     public function BannedOrUnBanned(User $user) {
         $con = Database::getConnection();
         $sqldataReader = $con->prepare("UPDATE User SET isActive=:etat WHERE id=:id");
