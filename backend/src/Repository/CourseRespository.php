@@ -133,24 +133,27 @@ class CourseRespository implements RepositoryInterface
                 "name" => "",
                 "users" => []
             ];
-            foreach ($this->getAllEnrollByCourse() as $key) {
+            foreach ($this->getAllEnrollByCourse($id) as $key) {
                 $cours["name"] = $key['title'];
                 $cours["users"] = $this->getAllUserEnrollsByCourse($key['id']);
                 $usersbyenrolls[] = $cours; 
             }
+            usort($usersbyenrolls, function ($a, $b) {
+                return count($b['users']) <=> count($a['users']);
+            });
             return [
                 'totalenrolls' => isset($result[0]) ? $result[0]['total'] : 0 ,
                 'totalcourses' => isset($result[1]) ? $result[1]['total'] : 0 ,
                 'users' => $usersbyenrolls
             ] ;
     }
-    public function getAllEnrollByCourse(){
+    public function getAllEnrollByCourse($id){
         $con = Database::getConnection();
         $sql ="SELECT DISTINCT c.id , c.title FROM Inscription i  
-            JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = 8) c ON c.id = i.cour_id
-            JOIN User u ON  u.id=i.user_id;";
+            JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = :id) c ON c.id = i.cour_id
+            JOIN User u ON u.id=i.user_id ;";
         $sqlDatareader = $con->prepare($sql) ;
-        $sqlDatareader->execute();
+        $sqlDatareader->execute([":id"=>$id]);
         return $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
     }
     public function getAllUserEnrollsByCourse($cour_id){
@@ -227,10 +230,9 @@ class CourseRespository implements RepositoryInterface
     //Find 
     public function Find(int $limit ,int $offset) {
         $con = Database::getConnection();
-        $sql = "SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c 
-                 JOIN `Inscription` i on i.cour_id = c.id  
-                 JOIN `User` u ON u.id = i.user_id 
-                 GROUP BY i.cour_id  
+        $sql = "SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected 
+                , u.name as instructor FROM Cours c
+                LEFT JOIN `User` u ON u.id = c.instructor  
                  WHERE c.isprojected = 1 LIMIT $limit OFFSET $offset ";
         $sqlDatareader = $con->prepare($sql) ;
         $sqlDatareader->execute();

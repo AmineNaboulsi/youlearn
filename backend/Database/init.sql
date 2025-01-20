@@ -164,8 +164,9 @@ SELECT c.id , u.name , u.email, i.`date` FROM Inscription i
             JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = 8) c ON c.id = i.cour_id
             JOIN User u ON  u.id=i.user_id WHERE i.cour_id=
 
+SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected 
+, u.name as instructor FROM Cours c
+LEFT JOIN `User` u ON u.id = c.instructor
 
-SELECT c.id , c.title ,c.subtitle , c.description , c.cat_id ,c.content , c.contenttype , c.img , c.price , c.isprojected , u.name as instructor FROM Cours c 
-JOIN `Inscription` i on i.cour_id = c.id  
-JOIN `User` u ON u.id = i.user_id 
-GROUP BY i.cour_id  
+UPDATE  Cours SET instructor=8 WHERE instructor IS NULL ;
+        
