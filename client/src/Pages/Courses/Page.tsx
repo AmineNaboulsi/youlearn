@@ -5,7 +5,6 @@ import 'react-quill/dist/quill.snow.css';
 import Select, { MultiValue } from 'react-select';
 import { useNavigate } from 'react-router';
 import Cookies from 'js-cookie'
-import { FaRegTrashAlt } from "react-icons/fa";
 
 type TagType = {
   id: number,
