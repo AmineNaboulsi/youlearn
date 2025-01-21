@@ -43,6 +43,8 @@ class Course
     public function getContentType() : string {return $this->contenttype;}
     public function getTags() : array {return $this->tags;}
 
+    public function getCourseType() {return null;}
+
     public function setId($id){$this->id = $id;}
     public function setTitle($title){$this->title = $title;}
     public function setDescription($description){$this->description = $description;}

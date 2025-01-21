@@ -6,6 +6,8 @@ use App\Config\Database;
 use App\MiddleWare\AuthMiddleware;
 use App\Repository\UserRepository;
 use App\Interface\RepositoryInterface;
+use App\Models\Video;
+use App\Models\Document;
 use PDO;
 
 class CourseRespository implements RepositoryInterface
@@ -77,10 +79,12 @@ class CourseRespository implements RepositoryInterface
     }
     public function Search(string $name , $limit , $offset) {
         $con = Database::getConnection();
-        $sql = "SELECT DISTINCT c.* FROM Cours c
+        $sql = "SELECT DISTINCT c.* ,  u.name as instructor FROM Cours c
         JOIN `CoursTags` ct ON ct.cours_id = c.id
         JOIN `Tags` t on ct.tag_id = t.id
-        WHERE c.title like :name or t.title like :name LIMIT $limit OFFSET $offset";
+        JOIN `User` u ON u.id = c.instructor 
+        WHERE c.isprojected = 1 and (c.title like :name or t.title like :name ) LIMIT $limit OFFSET $offset";
+        
         $sqlDatareader = $con->prepare($sql) ;
         $sqlDatareader->execute([":name" => '%'.$name.'%']);
         $result = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
@@ -133,7 +137,11 @@ class CourseRespository implements RepositoryInterface
                 "name" => "",
                 "users" => []
             ];
-            foreach ($this->getAllEnrollByCourse($id) as $key) {
+            $EnrollByCourse = [];
+            if($role=="admin") $EnrollByCourse = $this->getAllEnrollByCourse($id);
+            else $EnrollByCourse = $this->getAllEnrollByCourse();
+
+            foreach ($EnrollByCourse as $key) {
                 $cours["name"] = $key['title'];
                 $cours["users"] = $this->getAllUserEnrollsByCourse($key['id']);
                 $usersbyenrolls[] = $cours; 
@@ -147,13 +155,21 @@ class CourseRespository implements RepositoryInterface
                 'users' => $usersbyenrolls
             ] ;
     }
-    public function getAllEnrollByCourse($id){
+    public function getAllEnrollByCourse($id=-1){
         $con = Database::getConnection();
-        $sql ="SELECT DISTINCT c.id , c.title FROM Inscription i  
+        $bindpara = [];
+        if($id=-1){
+            $sql ="SELECT DISTINCT c.id , c.title FROM Inscription i  
+            JOIN (SELECT * FROM `Cours` cc ) c ON c.id = i.cour_id
+            JOIN User u ON u.id=i.user_id ;";
+        }else{
+            $sql ="SELECT DISTINCT c.id , c.title FROM Inscription i  
             JOIN (SELECT * FROM `Cours` cc WHERE cc.instructor = :id) c ON c.id = i.cour_id
             JOIN User u ON u.id=i.user_id ;";
+            $bindpara= [":id"=>$id] ;
+        }
         $sqlDatareader = $con->prepare($sql) ;
-        $sqlDatareader->execute([":id"=>$id]);
+        $sqlDatareader->execute($bindpara);
         return $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
     }
     public function getAllUserEnrollsByCourse($cour_id){
@@ -247,6 +263,7 @@ class CourseRespository implements RepositoryInterface
                 $sqlDatareader = $con->prepare($sql) ;
                 $sqlDatareader->execute([":cours_id" => $cours['id']]);
                 $tags = $sqlDatareader->fetchAll(\PDO::FETCH_ASSOC);
+                $cours['tags'] = $tags;
                 $cours['tags'] = $tags;
                 $courses[] = $cours;
             }
