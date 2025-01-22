@@ -328,21 +328,7 @@ class CourseController
             ];
         }
     }
-        /**
-     * @OA\PUT(
-     *      path="/editcourse",
-     *      summary="Edit course",
-     *      tags={"courses"},
-     *      @OA\Parameter(name="id",in="path",required=true,),
-     *      @OA\Parameter(name="title",in="path",required=true,),
-     *      @OA\Parameter(name="description",in="path",required=true),
-     *      @OA\Parameter(name="content",in="path",required=true),
-     *      @OA\Parameter(name="category",in="path",required=true),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
-     */
+        
     public function ProjectCourse(Request $request){
         $queryparam = $request->query();
         $parametres = ['id','etat'];

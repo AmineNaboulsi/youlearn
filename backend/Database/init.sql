@@ -170,3 +170,9 @@ LEFT JOIN `User` u ON u.id = c.instructor
 
 UPDATE  Cours SET instructor=8 WHERE instructor IS NULL ;
         
+
+SELECT COUNT(*) as total FROM Inscription i  
+JOIN (SELECT * FROM `Cours` cc where cc.instructor = 8 ) c ON c.id = i.cour_id
+
+SELECT * FROM `Inscription` i
+JOIN `Cours` c ON c.id = i.cour_id
