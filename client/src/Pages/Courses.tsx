@@ -3,6 +3,7 @@ import CoursesListPanel from '../Components/CoursesPage/CoursesListPanel'
 import { IoMdSearch } from "react-icons/io";
 import { useState } from 'react';
 import SearchBarPanel from '../Components/Sliders/SearchBar'
+import Footer from '../Components/Footer/Footer'
 
 
 function Courses() {
@@ -52,6 +53,7 @@ function Courses() {
               </div>
             </div>
         </section>
+        <Footer />
     </>
   )
 

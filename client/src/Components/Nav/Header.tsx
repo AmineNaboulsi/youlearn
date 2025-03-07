@@ -43,7 +43,7 @@ function Header() {
   return (
        <>
        {(User==undefined && !loading) && (<>
-        <nav className="bg-white text-center text-white border-gray-200 dark:bg-gray-900 py-2">
+        <nav className="bg-white text-center max-md:text-xs max-md:px-10 text-white border-gray-200 dark:bg-gray-900 py-2">
               <span>
                   YouLearn is coming to Las Vegas, April 9-11. Register now to get over 50% off new Courses. 😎
               </span>
@@ -51,7 +51,7 @@ function Header() {
        
        </>) }
             
-        <section className='border-b-[1px] border-gray-300 h-[72.5px] shadow-md'>
+        <section className='max-md:px-5 border-b-[1px] border-gray-300 h-[72.5px] shadow-md'>
             <div className="container flex justify-between items-center h-full ">
               <Link to='/'>
                 <span className='cursor-pointer font-bold text-xl'>YouLearn</span>
