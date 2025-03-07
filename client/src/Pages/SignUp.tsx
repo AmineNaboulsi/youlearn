@@ -1,5 +1,5 @@
 import {Link , useNavigate} from 'react-router-dom'
-const Logobg = new URL('../assets/bg4189.jpg', '').href;
+import Logobg from '../assets/bg4189.jpg'
 import { useState } from 'react';
 
 type CredentialType = {

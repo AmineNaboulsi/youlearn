@@ -22,7 +22,7 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('react')) return 'react-vendor';
             if (id.includes('lodash')) return 'lodash-vendor';
-            return 'vendor'; // Separate dependencies
+            return 'vendor'; 
           }
         }
       }
