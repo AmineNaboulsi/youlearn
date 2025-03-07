@@ -14,6 +14,7 @@ export default defineConfig({
     compression({ algorithm: 'brotliCompress' }) 
   ],
   build: {
+    outDir: 'build',
     chunkSizeWarningLimit: 500, 
     rollupOptions: {
       output: {
