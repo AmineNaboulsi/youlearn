@@ -1,5 +1,5 @@
 import {Link , useNavigate} from 'react-router-dom'
-import Logobg from '../assets/bg4189.jpg'
+const Logobg = new URL('../assets/bg4189.jpg', '').href;
 import { useState } from 'react';
 import Cookies from 'js-cookie'
 
