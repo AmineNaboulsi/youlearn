@@ -1,6 +1,5 @@
 import Header from '../Components/Nav/Header'
 import Footer from '../Components/Footer/Footer'
-import SliderBanner from '../Components/Sliders/SliderBanner'
 import { Link } from 'react-router'
 import { BookOpen, Clock, Globe, Users } from 'lucide-react'
 
@@ -51,8 +50,6 @@ function Home() {
           </div>
         </div>
       </section>
-      
-      <SliderBanner />
       
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

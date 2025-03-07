@@ -19,19 +19,18 @@ function App() {
 
   return (
     <BrowserRouter>
-    <Routes>
-      <Route path="/" index element={<Home />} />
-      <Route path="/courses" index element={<Courses />} />
-      <Route path="/profile" index element={<ProfileWithValidation />} />
-      <Route path="/Course" index element={<CourseWithValidation />} />
-      <Route path="/signup" index element={<SignUp />} />
-      <Route path="/signin" index element={<SignIn />} />
-      <Route path="/unauthorized" index element={<Unauthorized />} />
-      <Route path="*" element={<NotFound />} />
-      <Route path="/dashborad" index element={<DashboradWithValidation />} />
-      <Route path="/dashborad/course" index element={<ManageCourseWithValidation />} />
-    </Routes>
-   
+      <Routes>
+        <Route path="/" index element={<Home />} />
+        <Route path="/courses" index element={<Courses />} />
+        <Route path="/profile" index element={<ProfileWithValidation />} />
+        <Route path="/Course" index element={<CourseWithValidation />} />
+        <Route path="/signup" index element={<SignUp />} />
+        <Route path="/signin" index element={<SignIn />} />
+        <Route path="/unauthorized" index element={<Unauthorized />} />
+        <Route path="*" element={<NotFound />} />
+        <Route path="/dashborad" index element={<DashboradWithValidation />} />
+        <Route path="/dashborad/course" index element={<ManageCourseWithValidation />} />
+      </Routes>
   </BrowserRouter>
   )
 }
