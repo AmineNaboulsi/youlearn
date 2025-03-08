@@ -24,7 +24,7 @@ function Courses() {
   return (
     <>
         <Header />
-        <section className='h-full'>
+        <section className='overflow-auto'>
           {SearchBar && <SearchBarPanel 
             onCancelSearch={onCancelSearch}
             onSearch={onSearch}
