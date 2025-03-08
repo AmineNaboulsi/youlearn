@@ -1,5 +1,4 @@
 import {Link , useNavigate} from 'react-router-dom'
-import Logobg from '../assets/bg4189.jpg'
 import { useState } from 'react';
 import Cookies from 'js-cookie'
 
@@ -82,7 +81,7 @@ function SignIn() {
         <div className="grid md:grid-cols-2 items-center gap-4 max-md:gap-8 h-full w-full rounded-md">
           <div className="w-[100%] h-[90vh] flex justify-center items-center rounded-xl ">
             <img 
-            src={Logobg}
+            src="https://i.ibb.co/nsbPXP8Y/bg4189.jpg"
             className=" w-[80%] h-[80%] object-cover" alt="login-image" />
           </div>
           <div className="md:max-w-md w-full px-4 py-4">

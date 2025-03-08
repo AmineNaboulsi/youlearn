@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import Cookies from 'js-cookie'
 import { MdKeyboardArrowDown } from "react-icons/md";
-import LogoNoData from '../../assets/nodata.png'
 type StatisticsType ={
     isloading : boolean ,
     totalcourses : number,
@@ -137,7 +136,9 @@ function PanelStatistics() {
             )):(usersEnrolles && usersEnrolles?.length==0) ? 
             <div className="flex flex-col justify-center">
                 <div className="grid justify-center items-center">
-                    <img className="ml-3 h-24" src={LogoNoData} alt=""/>
+                    <img className="ml-3 h-24" 
+                    src="https://i.ibb.co/5h5JL6tL/nodata.png"
+                     alt=""/>
                     <span>no Data Found</span>
                 </div>
             </div>:<>Loading ... </>}

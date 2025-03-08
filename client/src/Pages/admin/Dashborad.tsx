@@ -8,7 +8,6 @@ import Cookies from 'js-cookie'
 import { FaRegTrashAlt } from "react-icons/fa";
 import { IoStatsChartSharp } from "react-icons/io5";
 import PanelStatistics from '../../Components/Statics/PanelStatistics.tsx'
-import LogoNoData  from '../../assets/nodata.png'
 type TagType = {
   id: number,
   title: string
@@ -381,7 +380,9 @@ function Dashborad() {
                                     :(Users!=null && Users?.length == 0 ) ? 
                                     <div className="flex flex-col justify-center">
                                         <div className="grid justify-center items-center">
-                                            <img className="ml-3 h-24" src={LogoNoData} alt=""/>
+                                            <img className="ml-3 h-24" 
+                                            src="https://i.ibb.co/5h5JL6tL/nodata.png"
+                                            alt=""/>
                                             <span>no Data Found</span>
                                         </div>
                                     </div>:
