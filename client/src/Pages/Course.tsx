@@ -1,6 +1,8 @@
 import { useEffect , useState } from 'react'
 import Header from '../Components/Nav/Header'
 import { useNavigate } from 'react-router';
+import CourseView from './CourseView';
+
 type CourseType = {
   cat_id :number,
   content :string,
@@ -45,12 +47,7 @@ function Course() {
     <div>
       <Header />
       <div className="container flex justify-center mt-10">
-          {Course ? 
-            <>
-              <iframe width="560" height="315" src={Course?.content} title="video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"></iframe>
-            </>
-          : <>
-          </>}
+        <CourseView Course={Course} />
       </div>
       
     </div>
