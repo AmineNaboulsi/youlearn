@@ -94,8 +94,41 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
-log "pulling images"
-docker compose -f "$COMPOSE_FILE" pull --quiet keycloak api web
+# Which services to refresh, derived rather than listed.
+#
+# This was a hardcoded `keycloak api web`, and adding a fourth built image
+# (clamav) silently did not update it: the first tick pulled it because nothing
+# was cached, and every tick after that reused the stale local copy. A fix
+# published to the registry could never reach the host, with the deploy
+# reporting success the whole time.
+#
+# Anything served from our own registry is ours to keep current. The pinned
+# public images are left to `up -d`, which fetches them if they are missing —
+# they change only when this file changes.
+# shellcheck disable=SC1091
+set -a; . ./.env; set +a
+
+# Read from the rendered config, which has every variable already substituted,
+# so this sees the same image names compose will use. `config --images SERVICE`
+# looks like the obvious tool and is not: the service filter is ignored and it
+# returns every image in the file.
+targets=$(
+  docker compose -f "$COMPOSE_FILE" config 2>/dev/null | awk -v reg="$OCI_REGISTRY" '
+    /^  [a-zA-Z0-9_-]+:$/ { service = $1; sub(/:$/, "", service) }
+    $1 == "image:" && index($2, reg "/") == 1 { print service }
+  ' | tr "\n" " "
+)
+
+if [ -z "$targets" ]; then
+  log "ERROR: no service resolves to ${OCI_REGISTRY:-<unset>} — refusing to reconcile"
+  log "  That means OCI_REGISTRY in .env no longer matches the compose file,"
+  log "  and nothing would ever be updated."
+  exit 1
+fi
+
+log "pulling images:$targets"
+# shellcheck disable=SC2086
+docker compose -f "$COMPOSE_FILE" pull --quiet $targets
 
 log "reconciling"
 docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
