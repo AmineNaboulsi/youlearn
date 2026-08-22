@@ -194,6 +194,10 @@ was previously greyscaled, which threw that away. It still uses a plain `<img>`
 rather than `next/image` — the URL comes from an instructor, and the image
 optimizer would make the server fetch whatever host they typed.
 
+A lesson you have finished is struck through in the contents, beside the tick
+that already marks it. The tick is precise; the rule is what makes a
+half-finished course readable at a glance.
+
 The stats sections on the home page and dashboard are rebuilds of the
 [Aceternity stats blocks](https://ui.aceternity.com/blocks/stats-sections) —
 "with grid background" and "with number ticker" — in this palette, driven by
