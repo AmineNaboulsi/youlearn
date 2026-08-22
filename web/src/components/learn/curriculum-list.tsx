@@ -71,6 +71,15 @@ export function CurriculumList({
                       className={cn(
                         "block truncate text-[13px]",
                         isCurrent ? "font-semibold text-ink" : "text-ink-soft",
+                        // Struck through once it is finished. The tick already
+                        // says so, but only the rule reads as "done" down a
+                        // list of twenty at a glance. Thin and ghosted, so a
+                        // finished course is not a page of crossed-out text.
+                        done && "line-through decoration-ink-ghost decoration-1",
+                        // Muted too — except on the lesson you are actually
+                        // watching, which stays full strength even after it
+                        // has been finished, because it is still where you are.
+                        done && !isCurrent && "text-ink-muted",
                       )}
                     >
                       {lesson.title}

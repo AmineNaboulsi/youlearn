@@ -187,10 +187,16 @@ everywhere — and the Keycloak login theme in `keycloak/themes/youlearn` uses t
 same type scale, radii, borders and grid motif, so the hand-off to the identity
 provider is invisible.
 
-Emphasis comes from weight, size, border and space rather than hue. Course
-artwork is rendered in greyscale, which is also why it uses a plain `<img>`
-rather than `next/image`: the URL comes from an instructor, and the image
+Emphasis comes from weight, size, border and space rather than hue. The one
+exception is course artwork, which is shown in its own colours: a cover is how
+an instructor says what a course is about before anyone reads the title, and it
+was previously greyscaled, which threw that away. It still uses a plain `<img>`
+rather than `next/image` — the URL comes from an instructor, and the image
 optimizer would make the server fetch whatever host they typed.
+
+A lesson you have finished is struck through in the contents, beside the tick
+that already marks it. The tick is precise; the rule is what makes a
+half-finished course readable at a glance.
 
 The stats sections on the home page and dashboard are rebuilds of the
 [Aceternity stats blocks](https://ui.aceternity.com/blocks/stats-sections) —

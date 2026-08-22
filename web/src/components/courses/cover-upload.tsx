@@ -156,8 +156,10 @@ export function CoverUpload({
       <div className="flex flex-wrap items-start gap-4 rounded-lg border border-line bg-surface-sunk p-3">
         <div className="relative aspect-[16/9] w-32 flex-none overflow-hidden rounded-md border border-line bg-surface">
           {preview ? (
+            // In colour, like CourseThumb renders it. A preview that does not
+            // match the catalogue is a preview of the wrong thing.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="" className="size-full object-cover grayscale contrast-[1.05]" />
+            <img src={preview} alt="" className="size-full object-cover" />
           ) : (
             <div aria-hidden className="grid-bg-sm size-full opacity-70" />
           )}
