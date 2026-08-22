@@ -151,12 +151,8 @@ services:
       # given a path to scan and resolves it in its own filesystem.
       - storage-data:/var/www/storage:ro
       - clamav-db:/var/lib/clamav
-    healthcheck:
-      test: ["CMD-SHELL", "clamdcheck.sh"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
-      start_period: 180s
+    # No healthcheck here: the image defines one, and compose would override
+    # it. See the note in docker-compose.prod.yml.
     networks: [youlearn]
 
 volumes:
