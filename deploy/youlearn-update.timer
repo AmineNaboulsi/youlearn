@@ -1,0 +1,19 @@
+[Unit]
+Description=Check for a new YouLearn release every two minutes
+Documentation=https://github.com/AmineNaboulsi/youlearn
+
+[Timer]
+# Soon after boot, so an instance that was stopped catches up on its own.
+OnBootSec=2min
+OnUnitActiveSec=2min
+
+# Without this every instance would hit OCIR on the same wall-clock second.
+# Harmless with one host; free insurance if there is ever a second.
+RandomizedDelaySec=30
+
+# A tick missed while the instance was off runs once on the next boot rather
+# than being silently skipped.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

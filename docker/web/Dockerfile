@@ -34,10 +34,17 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
+# Which commit this image was built from. Deploys are pull-based, so CI cannot
+# watch the rollout directly — it polls /api/health until this value is the one
+# answering. Declared in the runtime stage only, so changing it does not
+# invalidate the build cache for any layer above.
+ARG BUILD_SHA=unknown
+
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    BUILD_SHA=${BUILD_SHA}
 
 # Unprivileged. The standalone server needs no write access to its own files.
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
