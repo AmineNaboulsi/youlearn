@@ -82,6 +82,18 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+# `docker compose` is a CLI plugin, and the CLI gives up on plugin discovery
+# entirely when it cannot read its config directory — after which `compose` is
+# not a command and the arguments fall through to the base CLI, producing
+# "unknown shorthand flag: 'f' in -f". That message says nothing about the
+# actual cause, so check for it here and name it.
+if ! docker compose version >/dev/null 2>&1; then
+  log "ERROR: 'docker compose' is not usable by this service"
+  log "  HOME=${HOME:-unset} DOCKER_CONFIG=${DOCKER_CONFIG:-unset}"
+  log "  Both must point somewhere readable; the unit sets them to $APP_DIR."
+  exit 1
+fi
+
 log "pulling images"
 docker compose -f "$COMPOSE_FILE" pull --quiet keycloak api web
 
