@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { UploadedAsset, UploadTicket } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
