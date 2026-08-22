@@ -36,6 +36,10 @@ COPY docker/clamav/clamd.conf     /etc/clamav/clamd.conf
 COPY docker/clamav/freshclam.conf /etc/clamav/freshclam.conf
 COPY docker/clamav/entrypoint.sh  /usr/local/bin/entrypoint.sh
 
+# Our own test signature. The entrypoint installs it into the database
+# directory, so a self-test works on a fresh volume too.
+COPY docker/clamav/youlearn-selftest.ndb /usr/local/share/youlearn/youlearn-selftest.ndb
+
 RUN chmod 0755 /usr/local/bin/entrypoint.sh \
  && mkdir -p /var/lib/clamav /run/clamav \
  && chown -R clamav:clamav /var/lib/clamav /run/clamav
