@@ -15,9 +15,10 @@ import { cn } from "@/lib/cn";
  *    /api/media/<id>, which proxies the API rather than handing the browser a
  *    token, and it cannot rot the way a third-party link can.
  *
- *  - Rendered in greyscale. The platform is monochrome, and photography is the
- *    one place colour would otherwise leak in. It also means a badly-chosen
- *    image cannot clash with anything.
+ *  - Rendered in its own colours. The rest of the platform is monochrome and
+ *    stays that way; artwork is the one place where colour is the point. A
+ *    cover is how an instructor says what a course is about before anyone has
+ *    read the title, and a greyscale filter threw that away.
  */
 export function CourseThumb({
   src,
@@ -63,7 +64,7 @@ export function CourseThumb({
         decoding="async"
         sizes={sizes}
         referrerPolicy="no-referrer"
-        className="size-full object-cover grayscale contrast-[1.05] transition-transform duration-500 group-hover:scale-[1.03]"
+        className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
       />
       <span className="sr-only">{title}</span>
     </div>
