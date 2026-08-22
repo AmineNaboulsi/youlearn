@@ -11,7 +11,7 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#ffffff">
     <title>${msg("loginTitle",(realm.displayName!''))}</title>
-    <link rel="icon" href="${url.resourcesPath}/img/favicon.svg" type="image/svg+xml"/>
+    <link rel="icon" href="${url.resourcesPath}/img/favicon.png" type="image/png"/>
     <#if properties.styles?has_content>
         <#list properties.styles?split(' ') as style>
             <link href="${url.resourcesPath}/${style}" rel="stylesheet"/>
@@ -36,7 +36,7 @@
     <aside class="yl-brand" aria-hidden="true">
         <div class="yl-brand__inner">
             <div class="yl-brand__mark">
-                <span class="yl-brand__glyph">Y</span>
+                <img class="yl-brand__glyph" src="${url.resourcesPath}/img/logo-mark.png" alt=""/>
                 <span class="yl-brand__word">YouLearn</span>
             </div>
             <p class="yl-brand__tagline">All the skills you need,<br/>in one place.</p>
@@ -55,7 +55,7 @@
         <div class="${properties.kcContentWrapperClass!}">
 
             <a class="yl-mobile-brand" href="${properties.appUrl!'/'}">
-                <span class="yl-brand__glyph">Y</span> YouLearn
+                <img class="yl-brand__glyph" src="${url.resourcesPath}/img/logo-mark.png" alt=""/> YouLearn
             </a>
 
             <div class="${properties.kcFormCardClass!}">

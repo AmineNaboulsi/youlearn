@@ -58,6 +58,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Fail here, naming what is missing, rather than several steps later with
+      # a message about the thing that was configured from it. An unset `vars.X`
+      # interpolates to an empty string, so every consumer downstream receives a
+      # plausible-looking empty argument instead of an error.
+      - name: Check required configuration
+        env:
+          OCI_REGISTRY: ${{ vars.OCI_REGISTRY }}
+          APP_URL: ${{ vars.APP_URL }}
+          OCI_USERNAME: ${{ secrets.OCI_USERNAME }}
+          OCI_AUTH_TOKEN: ${{ secrets.OCI_AUTH_TOKEN }}
+          OCI_NAMESPACE: ${{ secrets.OCI_NAMESPACE }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          missing=()
+          required="OCI_REGISTRY APP_URL OCI_USERNAME OCI_AUTH_TOKEN OCI_NAMESPACE"
+          required="$required SSH_HOST SSH_PRIVATE_KEY SSH_KNOWN_HOSTS"
+          for name in $required; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Not configured: ${missing[*]}"
+            echo "Set these under Settings -> Secrets and variables -> Actions:"
+            echo "  Variables: OCI_REGISTRY, APP_URL"
+            echo "  Secrets:   OCI_USERNAME, OCI_AUTH_TOKEN, OCI_NAMESPACE,"
+            echo "             SSH_HOST, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS"
+            echo "The table in infra/README.md says what each one holds."
+            exit 1
+          fi
+
+          # This becomes the redirect-URI allowlist on the Keycloak client. A
+          # plain-http origin there would be a downgrade for every login.
+          case "$APP_URL" in
+            https://*) ;;
+            *) echo "::error::APP_URL must be an https:// URL, got '$APP_URL'"; exit 1 ;;
+          esac
+
       - id: meta
         run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 

@@ -55,10 +55,11 @@ export function CoverUpload({
     setStatus("uploading");
 
     // Shown immediately, so the card is not empty while the bytes move.
-    setLocalPreview((old) => {
-      if (old) URL.revokeObjectURL(old);
-      return URL.createObjectURL(file);
-    });
+    //
+    // Created outside the state updater on purpose: React StrictMode invokes
+    // updaters twice, which would mint two object URLs and leak whichever one
+    // lost. Releasing them is the effect below's job, in one place.
+    setLocalPreview(URL.createObjectURL(file));
 
     const beginResponse = await fetch("/api/uploads", {
       method: "POST",
@@ -124,12 +125,18 @@ export function CoverUpload({
     setStatus("idle");
     setPercent(0);
     setMessage(null);
-    setLocalPreview((old) => {
-      if (old) URL.revokeObjectURL(old);
-      return null;
-    });
+    setLocalPreview(null);
     if (inputRef.current) inputRef.current.value = "";
   }, []);
+
+  // An object URL pins its blob in memory until it is revoked, and nothing
+  // revokes it on unmount — navigating away mid-upload would strand the whole
+  // file. The cleanup also runs when the preview is replaced, releasing the
+  // previous one.
+  useEffect(() => {
+    if (!localPreview) return;
+    return () => URL.revokeObjectURL(localPreview);
+  }, [localPreview]);
 
   const busy = status === "uploading" || status === "finalising";
 

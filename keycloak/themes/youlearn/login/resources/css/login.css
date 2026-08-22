@@ -103,17 +103,15 @@
   gap: 0.6rem;
 }
 
+/* The brand mark. An <img> since the logo became a file — the source art is
+   already white on black, so this needs no background of its own. */
 .yl-brand__glyph {
-  display: inline-grid;
-  place-items: center;
+  display: inline-block;
   width: 2rem;
   height: 2rem;
   border-radius: var(--radius-sm);
-  background: var(--ink);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.95rem;
-  letter-spacing: -0.02em;
+  object-fit: cover;
+  vertical-align: middle;
 }
 
 .yl-brand__word {
