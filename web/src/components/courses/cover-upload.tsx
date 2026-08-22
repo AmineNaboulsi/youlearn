@@ -24,6 +24,8 @@ type Status = "idle" | "uploading" | "finalising" | "done" | "error";
 interface Envelope<T> {
   data?: T;
   message?: string;
+  /** The API's machine-readable code, e.g. "infected_file". */
+  error?: string;
   fields?: Record<string, string>;
 }
 
@@ -43,6 +45,7 @@ export function CoverUpload({
   const [status, setStatus] = useState<Status>("idle");
   const [percent, setPercent] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +55,7 @@ export function CoverUpload({
   const upload = useCallback(async (file: File) => {
     setMessage(null);
     setPercent(0);
+    setErrorCode(null);
     setStatus("uploading");
 
     // Shown immediately, so the card is not empty while the bytes move.
@@ -109,6 +113,7 @@ export function CoverUpload({
       setStatus("error");
       // Both "that is not really an image" and "that failed a malware scan"
       // surface here: the server can only tell once every byte has arrived.
+      setErrorCode(complete.error ?? null);
       setMessage(complete.message ?? "The file was rejected.");
       return;
     }
@@ -125,6 +130,7 @@ export function CoverUpload({
     setStatus("idle");
     setPercent(0);
     setMessage(null);
+    setErrorCode(null);
     setLocalPreview(null);
     if (inputRef.current) inputRef.current.value = "";
   }, []);
@@ -175,6 +181,12 @@ export function CoverUpload({
             )}
           />
 
+          {status === "finalising" ? (
+            <p className="text-[11px] text-ink-muted">
+              Transfer complete. Checking the file for malware before storing it.
+            </p>
+          ) : null}
+
           {busy ? (
             <div
               className="h-1.5 w-full overflow-hidden rounded-full bg-line"
@@ -185,7 +197,10 @@ export function CoverUpload({
               aria-label="Cover upload progress"
             >
               <div
-                className="h-full bg-ink transition-[width] duration-200"
+                className={cn(
+                  "h-full bg-ink transition-[width] duration-200",
+                  status === "finalising" && "scan-stripes",
+                )}
                 style={{ width: `${status === "finalising" ? 100 : percent}%` }}
               />
             </div>
@@ -224,8 +239,19 @@ export function CoverUpload({
       </div>
 
       {status === "error" && message ? (
-        <p className="rounded-lg border border-l-[3px] border-line border-l-danger bg-danger-soft px-3 py-2.5 text-[12px] leading-relaxed text-danger-strong">
-          {message}
+        <p
+          role="alert"
+          className="rounded-lg border border-l-[3px] border-line border-l-danger bg-danger-soft px-3 py-2.5 text-[12px] leading-relaxed text-danger-strong"
+        >
+          {errorCode === "infected_file" ? (
+            <>
+              <strong className="font-medium">Malware scan failed.</strong> That file was
+              rejected and has not been stored. If you believe this is wrong, try exporting
+              the image again from its original source.
+            </>
+          ) : (
+            message
+          )}
         </p>
       ) : null}
 

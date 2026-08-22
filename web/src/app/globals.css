@@ -183,3 +183,32 @@ body {
     scrollbar-color: var(--color-ink-ghost) transparent;
   }
 }
+
+/* -----------------------------------------------------------------------------
+   Scanning
+   -------------------------------------------------------------------------- */
+
+/* A moving bar for work whose duration is unknown.
+   The transfer's progress bar is full by the time the malware scan starts, and
+   a full bar that then sits still for thirty seconds reads as a hang. This
+   keeps it visibly working without claiming a percentage it cannot know. */
+@utility scan-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-ink) 0 8px,
+    var(--color-ink-soft) 8px 16px
+  );
+  background-size: 22px 100%;
+  animation: scan-stripes 900ms linear infinite;
+}
+
+@keyframes scan-stripes {
+  from { background-position: 0 0; }
+  to   { background-position: 22px 0; }
+}
+
+/* Respect a reader who has asked for less movement; the label still says
+   "scanning…", so nothing is lost. */
+@media (prefers-reduced-motion: reduce) {
+  .scan-stripes { animation: none; }
+}

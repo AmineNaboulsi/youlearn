@@ -42,6 +42,7 @@ export function VideoUpload({
   const [status, setStatus] = useState<Status>("idle");
   const [percent, setPercent] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
   const abortRef = useRef<{ cancelled: boolean; uploadId: string | null }>({
@@ -54,6 +55,7 @@ export function VideoUpload({
     setStatus("idle");
     setPercent(0);
     setMessage(null);
+    setErrorCode(null);
     setFileName(null);
     abortRef.current = { cancelled: false, uploadId: null };
     if (inputRef.current) inputRef.current.value = "";
@@ -76,6 +78,7 @@ export function VideoUpload({
     async (file: File) => {
       setFileName(file.name);
       setMessage(null);
+      setErrorCode(null);
       setPercent(0);
       abortRef.current = { cancelled: false, uploadId: null };
 
@@ -146,8 +149,10 @@ export function VideoUpload({
 
       if (!completeResponse.ok || !complete.data) {
         setStatus("error");
-        // This is where a file that is not really a video is refused — the
-        // server sniffs the content only once every byte has arrived.
+        // This is where a file that is not really a video is refused, and where
+        // a malware detection surfaces — the server can only tell either once
+        // every byte has arrived.
+        setErrorCode(complete.error ?? null);
         setMessage(complete.message ?? "The file was rejected.");
         return;
       }
@@ -225,7 +230,7 @@ export function VideoUpload({
               {status === "reading"
                 ? "reading…"
                 : status === "finalising"
-                  ? "checking…"
+                  ? "scanning…"
                   : `${percent}%`}
             </span>
           </div>
@@ -239,15 +244,22 @@ export function VideoUpload({
             aria-label="Upload progress"
           >
             <div
-              className="h-full bg-ink transition-[width] duration-200"
-              style={{ width: `${percent}%` }}
+              className={cn(
+                "h-full bg-ink transition-[width] duration-200",
+                // The bar is full during the scan but the work is not finished,
+                // so it moves instead of sitting at 100% looking stalled.
+                status === "finalising" && "scan-stripes",
+              )}
+              style={{ width: `${status === "finalising" ? 100 : percent}%` }}
             />
           </div>
 
           <p className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-muted">
             <span>
-              {status === "done"
-                ? "Uploaded. Save the lesson to attach it."
+              {status === "finalising"
+                ? "Transfer complete. Checking the file for malware before storing it — this can take a moment on a large video."
+                : status === "done"
+                ? "Uploaded, scanned and clean. Save the lesson to attach it."
                 : "Sent in pieces — a slow connection will not lose the whole file."}
             </span>
             {busy ? (
@@ -264,8 +276,18 @@ export function VideoUpload({
       ) : null}
 
       {status === "error" && message ? (
-        <p className="rounded-lg border border-l-[3px] border-line border-l-ink bg-surface-sunk px-3 py-2.5 text-[12px] leading-relaxed text-ink-soft">
-          {message}{" "}
+        <p
+          role="alert"
+          className="rounded-lg border border-l-[3px] border-line border-l-danger bg-danger-soft px-3 py-2.5 text-[12px] leading-relaxed text-danger-strong"
+        >
+          {errorCode === "infected_file" ? (
+            <>
+              <strong className="font-medium">Malware scan failed.</strong> That video was
+              rejected and has not been stored.{" "}
+            </>
+          ) : (
+            <>{message} </>
+          )}
           <button
             type="button"
             onClick={reset}
