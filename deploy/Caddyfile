@@ -5,6 +5,25 @@
 # ports 80 and 443 are open in BOTH the OCI security list and the instance's
 # iptables — the second one catches almost everybody.
 
+# Global options. Must be the first block in the file.
+{
+	# Caddy's admin API — the thing that can rewrite this proxy's entire
+	# configuration at runtime — defaults to listening on localhost:2019. That
+	# is inside this container's own network namespace, and the container
+	# publishes only 80 and 443, so it was never reachable from the internet or
+	# from a sibling container. It was not exposed; this makes it not exist.
+	#
+	# Off rather than allowlisted to one address: the config is a file that
+	# ships with the deploy, so there is nothing this API would be used for
+	# that `docker compose up -d` does not already do. An endpoint that cannot
+	# be reached from anywhere beats one that can be reached from somewhere.
+	#
+	# The cost is `caddy reload`. Changing this file now needs the container
+	# restarted, which is exactly what the update timer does when the file
+	# changes, so nothing in the deploy path notices.
+	admin off
+}
+
 # Access logs are off in Caddy unless a site asks for them, and this stack ran
 # without any: the first hop a request makes recorded nothing about it, so the
 # caller's address for an upload the scanner refused was simply not written
