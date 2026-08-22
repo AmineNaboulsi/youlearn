@@ -120,7 +120,7 @@ RUN { \
 # Apache serves /var/www/html, so nothing under it has a URL of its own.
 RUN mkdir -p /var/www/html/var/cache /var/www/storage/tmp \
  && chown -R www-data:www-data /var/www/html/var /var/www/storage \
- && chmod 750 /var/www/storage \
+ && chmod 755 /var/www/storage /var/www/storage/tmp \
  && chmod -R 555 /var/www/html/src /var/www/html/index.php
 
 # Mount a volume here, or uploaded videos vanish on the next deploy.

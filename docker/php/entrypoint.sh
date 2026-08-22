@@ -15,6 +15,18 @@ chown -R www-data:www-data /var/www/html/var
 # ownership has to be set on every boot rather than baked into the image.
 mkdir -p "${STORAGE_ROOT:-/var/www/storage}/tmp"
 chown -R www-data:www-data "${STORAGE_ROOT:-/var/www/storage}"
-chmod 750 "${STORAGE_ROOT:-/var/www/storage}"
+
+# 0755 on the DIRECTORIES, not 0750.
+#
+# clamd scans by path from its own container, running as the clamav user. With
+# 0750 it has no execute bit here, cannot traverse into the directory, and
+# replies "Access denied" — which this API correctly treats as a failed scan
+# and refuses the upload. The symptom is every upload failing with
+# "The file could not be scanned", pointing nowhere near a permission bit.
+#
+# Only traversal is opened up. Files keep their own modes: 0640 for stored
+# assets, 0644 for in-flight temp files, which is what clamd actually reads.
+chmod 755 "${STORAGE_ROOT:-/var/www/storage}"
+chmod 755 "${STORAGE_ROOT:-/var/www/storage}/tmp"
 
 exec "$@"
