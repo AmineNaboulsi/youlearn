@@ -66,6 +66,7 @@ fi
 install -m 0644 "$REPO_DIR/docker-compose.prod.yml" "$COMPOSE_FILE"
 install -d -m 0755 "$APP_DIR/deploy" "$APP_DIR/backend"
 install -m 0644 "$REPO_DIR/deploy/Caddyfile" "$APP_DIR/deploy/Caddyfile"
+install -m 0644 "$REPO_DIR/deploy/vector.yaml" "$APP_DIR/deploy/vector.yaml"
 
 # Migrations are copied but never applied automatically. A schema change that
 # runs itself during an unattended restart is how a bad migration takes the
