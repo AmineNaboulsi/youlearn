@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { env } from "@/lib/env";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
 import "./globals.css";
@@ -21,6 +22,10 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // Without this, Next resolves opengraph-image.png against
+  // http://localhost:3000 — so every shared link points at a host nobody else
+  // can reach, and the preview silently never loads.
+  metadataBase: new URL(env.appUrl),
   title: {
     default: "YouLearn",
     template: "%s · YouLearn",

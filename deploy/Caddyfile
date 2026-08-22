@@ -6,9 +6,25 @@
 # iptables — the second one catches almost everybody.
 
 {$KEYCLOAK_PUBLIC_URL} {
-	reverse_proxy keycloak:8080 {
-		# Keycloak builds its redirect URLs from these. Without them it emits
+	reverse_proxy {
+		# Re-resolve rather than trusting the address found at startup.
+		#
+		# Every deploy recreates this container with a new IP, and a static
+		# upstream is resolved once when Caddy loads its config. Worse, if the
+		# upstream does not exist yet at that moment — which is exactly the case
+		# on a first bring-up — the lookup fails and Caddy keeps serving 502
+		# from that failure indefinitely, long after the container is healthy.
+		dynamic a {
+			name keycloak
+			port 8080
+			refresh 10s
+		}
+
+		# Keycloak builds its redirect URLs from these; without them it emits
 		# http:// links behind an https:// proxy and the login loops forever.
+		# Caddy sets all three itself and warns that they are redundant — kept
+		# explicit because a silent default is a poor thing to depend on for
+		# that difference.
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-Host {host}
 		header_up X-Forwarded-For {remote_host}
@@ -17,7 +33,15 @@
 
 {$WEB_ORIGIN} {
 	# The Next.js app — the `web` service in docker-compose.prod.yml.
-	reverse_proxy web:3000 {
+	reverse_proxy {
+		# See the note above: `web` is recreated on every deploy, and Caddy
+		# cached a failed lookup from before it existed.
+		dynamic a {
+			name web
+			port 3000
+			refresh 10s
+		}
+
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-For {remote_host}
 	}
