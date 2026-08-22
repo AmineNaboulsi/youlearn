@@ -35,10 +35,66 @@ terraform apply
 
 You need five values in `terraform.tfvars`: the tenancy and compartment OCIDs
 (both are the tenancy OCID if you use the root compartment), your SSH public
-key, your own IP for `ssh_allowed_cidr`, and your two hostnames.
+key, your own address in `ssh_allowed_cidrs`, and your two hostnames.
 
 `terraform.tfvars` and the state file both hold generated database passwords in
 clear text. Both are git-ignored.
+
+### SSH is pinned to your address
+
+`ssh_allowed_cidrs` is a list, and each entry becomes its own ingress rule —
+home, office and a phone hotspot can each be a `/32` rather than sharing one
+range wide enough to cover them all. Everything else about port 22 is closed.
+
+Home connections are handed a new address every few days, and when yours
+changes the symptom is unmistakable: **SSH hangs and times out while the site
+itself is perfectly fine.** 80 and 443 are open to the world; only 22 is not.
+
+```bash
+./scripts/allow-my-ip.sh          # replace the list with wherever you are now
+./scripts/allow-my-ip.sh --add    # keep the old entries, add this one
+./scripts/allow-my-ip.sh --plan   # show the change, apply nothing
+```
+
+Make it the way you always connect, and the address is never wrong:
+
+```bash
+alias youlearn-ssh='./scripts/allow-my-ip.sh --yes && eval "$(terraform -chdir=infra output -raw ssh_command)"'
+```
+
+It finds your public address, rewrites that one line in `terraform.tfvars`, and
+applies **only** the security list:
+
+```bash
+terraform -chdir=infra apply -target=oci_core_security_list.public
+```
+
+`-target` is not for routine use and Terraform says so every time. It earns its
+place here: the security list is the entire change, and the moment you are
+locked out is the wrong moment to read a full plan that also diffs the instance
+and the generated passwords. A plain `terraform apply` does the same thing.
+
+By hand, if you would rather not run the script:
+
+```bash
+curl -s ifconfig.me                          # your address
+# edit infra/terraform.tfvars:
+#   ssh_allowed_cidrs = ["203.0.113.7/32"]
+cd infra
+terraform plan     # expect: 1 to change, 0 to add, 0 to destroy
+terraform apply
+```
+
+**What a correct plan looks like.** One resource changed —
+`oci_core_security_list.public` — and nothing else. The instance is *not*
+touched, nothing restarts, and the rule is live within seconds of apply
+returning. If the plan wants to destroy or replace the instance, stop: that is
+a different change that has crept in, not this one.
+
+**If you are locked out and the script cannot help.** It talks to OCI, not to
+the instance, so it works from any network. If you cannot reach OCI either, the
+console offers an "Instance console connection" — a serial console that needs
+no ingress rule at all.
 
 ---
 
@@ -131,7 +187,7 @@ a native arm64 runner and pushes them to OCIR as both `latest` and the short
 commit SHA.
 
 **It never connects to the instance.** Port 22 is open only to
-`ssh_allowed_cidr`, and letting a GitHub runner through would mean opening sshd
+`ssh_allowed_cidrs`, and letting a GitHub runner through would mean opening sshd
 to the internet or putting a VPN in the deploy path. Instead the instance polls:
 a systemd timer runs `deploy/update.sh` every two minutes, which pulls this
 repository for configuration and OCIR for images, then runs `docker compose up
@@ -189,6 +245,90 @@ docker push  $REG/$NS/youlearnweb:latest
 
 ---
 
+## Reading the logs
+
+Every container writes to stdout, and docker keeps three 10 MB files per
+container — enough to read a crash that just happened, and nothing more. The
+update timer recreates containers on every release, and a recreated container
+takes its log with it, so "what did the scanner refuse last month" was not a
+question this stack could answer.
+
+Two services in `docker-compose.prod.yml` fix that. `logs-collector` (Vector)
+reads what docker already collected and forwards it to `logs` (VictoriaLogs),
+which keeps it on its own volume for `LOGS_RETENTION` — 90 days by default.
+
+### The interface
+
+VictoriaLogs ships a web UI, **vmui**. It is bound to `127.0.0.1` on purpose:
+it has no login of its own, and publishing it would hand anyone who finds the
+port every log this platform produces. Port 22 already admits only the
+operator's address, so the way in is a tunnel:
+
+```bash
+ssh -L 9428:127.0.0.1:9428 ubuntu@<instance>
+# then open http://127.0.0.1:9428/select/vmui
+```
+
+A query box, a time-range picker, and results as a table or as JSON. The
+queries are [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/):
+
+```logsql
+malware_rejected                              # every refused upload, ever
+_time:7d malware_rejected                     # …in the last week
+_time:[2026-07-01, 2026-08-01] scan_unavailable
+_time:1d container_name:youlearn-clamav-1 FOUND
+_time:30d malware_rejected | stats count()
+```
+
+`_time` is optional in the UI, which has its own picker; it matters when
+scripting against the HTTP API, which needs no browser at all:
+
+```bash
+curl -s http://127.0.0.1:9428/select/logsql/query   --data-urlencode 'query=malware_rejected'   --data-urlencode 'start=2026-07-01'   --data-urlencode 'end=2026-08-01'
+```
+
+If you would rather have it in a browser without a tunnel, give it a hostname
+in `deploy/Caddyfile` behind `basic_auth` — do not set `LOGS_BIND=0.0.0.0`.
+
+### What a refused upload looks like
+
+Three containers describe the same event, and searching for either marker finds
+all of it:
+
+| Where | Line |
+| ----- | ---- |
+| `youlearn-clamav-1` | `…/tmp/{upload-id}.part: YouLearn.SelfTest.Marker FOUND` |
+| `youlearn-api-1` | `[youlearn] malware_rejected signature=… size_bytes=… path=…` |
+| `youlearn-api-1` | `[youlearn] scan_unavailable reason=… host=clamav:3310 …` when clamd could not be reached at all |
+
+The path ends in the upload id, which is the join back to the `upload_sessions`
+row and therefore to the account that sent it. That indirection is the current
+limit of this: the logs say *what* was refused, and the database says *who*.
+Recording the two together — a `security_events` table alongside `export_audit`,
+with a date-ranged page in the dashboard — is the next step, and the one that
+makes this queryable without an SSH client.
+
+`docs/malicious-upload-lifecycle.svg` traces the whole path, hop by hop, with
+what each one logs.
+
+### When the pipeline itself is the problem
+
+The local files are still there, and `docker compose logs` still works:
+
+```bash
+docker compose logs -f logs-collector   # is it shipping?
+docker compose logs --since 30m api     # the last half hour, no tunnel needed
+curl -s http://127.0.0.1:9428/health    # on the instance
+```
+
+The collector needs `/var/run/docker.sock`, which is root on this host. That is
+the price of reading container logs — Promtail, Alloy and Dozzle all charge it
+— and nothing else in this stack gets the socket. Put
+`tecnativa/docker-socket-proxy` in front of it, allowing `GET` only, if that
+trade stops being acceptable.
+
+---
+
 ## Things that will bite
 
 **The lockfile must be resolved on Linux.** `npm ci` refuses to run when
@@ -215,8 +355,8 @@ clamav. OCIR, in the same region, serves all three application images in about
 a second.
 
 Run the **Mirror base images** workflow once, then set `CADDY_IMAGE`,
-`POSTGRES_IMAGE`, `MYSQL_IMAGE` and `CLAMAV_IMAGE` in the instance's `.env` to
-the OCIR copies it prints. That takes Docker Hub out of the runtime path
+`POSTGRES_IMAGE`, `MYSQL_IMAGE`, `VICTORIALOGS_IMAGE`, `VECTOR_IMAGE` and
+`CLAMAV_IMAGE` in the instance's `.env` to the OCIR copies it prints. That takes Docker Hub out of the runtime path
 entirely. Until then, a base image that is not already on the host will
 intermittently fail to arrive, and `docker compose up -d` fails with it.
 
