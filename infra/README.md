@@ -227,6 +227,34 @@ docker pull --platform linux/arm64 <image>
 docker save --platform linux/arm64 <image> | gzip | ssh ubuntu@<ip> 'gunzip | docker load'
 ```
 
+**Proving uploads are actually scanned.** A scanner that is switched off looks
+exactly like one that finds nothing, so a successful upload is not evidence
+either way. Generate a file the scanner must reject:
+
+```bash
+./scripts/make-scanner-test-file.sh
+# then upload scanner-test.jpg as a course cover
+```
+
+Expected: refused, with "Malware scan failed." and `{"error":"infected_file"}`.
+If it uploads cleanly, uploads are not being scanned.
+
+EICAR cannot test this path, and it is worth knowing why before reaching for
+it. ClamAV detects EICAR only when the file *is* the EICAR file — embedding the
+string in a JPEG triggers nothing, by the standard's design — and a bare EICAR
+file is `text/plain`, which the content sniffer refuses as an unsupported type
+before the scanner is ever consulted. A rejection would prove only that type
+checking works. The clamav image therefore carries a signature for a marker of
+its own (`docker/clamav/youlearn-selftest.ndb`), which is what makes a
+detectable *image* possible at all.
+
+To exercise the scanner without going through the UI, against a file clamd is
+known to detect:
+
+```bash
+docker exec youlearn-clamav-1 bash -c 'exec 3<>/dev/tcp/127.0.0.1/3310; printf "zPING\0" >&3; head -c 4 <&3'
+```
+
 **ClamAV needs the same path the API uses.** clamd is handed an absolute path
 and resolves it in its own filesystem, so the storage volume is mounted into the
 clamav container read-only at the identical mount point. Get that wrong and

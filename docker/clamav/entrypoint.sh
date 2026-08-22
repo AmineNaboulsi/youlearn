@@ -30,6 +30,20 @@ if ! compgen -G "$DB/*.c[vl]d" > /dev/null; then
   exit 1
 fi
 
+# A signature for our own test marker.
+#
+# Copied in on every start rather than left on the volume: the database
+# directory is a volume, so a fresh one would otherwise have no way to be
+# verified, and freshclam may rewrite what it manages.
+#
+# This exists because there is no other way to test the upload path end to end.
+# EICAR is the only universal test signature, ClamAV detects it only when the
+# file IS the EICAR file, and such a file is text/plain — which this platform's
+# content sniffer refuses as an unsupported type before the scanner is ever
+# consulted. So a detectable *image* is impossible without a signature of our
+# own. See scripts/make-scanner-test-file.sh.
+install -o clamav -g clamav -m 0644   /usr/local/share/youlearn/youlearn-selftest.ndb "$DB/youlearn-selftest.ndb"
+
 # Keep definitions current in the background. Killed with the container.
 freshclam --config-file=/etc/clamav/freshclam.conf --daemon --stdout &
 
