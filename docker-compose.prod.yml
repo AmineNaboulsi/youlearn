@@ -1,0 +1,208 @@
+# =============================================================================
+# YouLearn — running the pushed images on a server.
+#
+# Unlike docker-compose.yml (which builds from source and bind-mounts the
+# working tree), this pulls the two images from OCIR and mounts nothing but
+# data volumes.
+#
+#   docker login ocir.<region>.oci.oraclecloud.com
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Everything secret comes from a .env file next to this one. Nothing in this
+# file, and nothing in either image, contains a credential.
+#
+# TLS terminates at the bundled Caddy service. Only it publishes ports; Keycloak
+# and the API speak plain HTTP on the internal network and are unreachable from
+# outside the host.
+# =============================================================================
+
+services:
+  # TLS termination. Caddy obtains and renews Let's Encrypt certificates on its
+  # own, provided both hostnames resolve here and 80/443 are open in BOTH the
+  # OCI security list and the instance's iptables.
+  proxy:
+    # Overridable so the public images can be mirrored into OCIR when Docker Hub
+    # is unreachable or rate-limiting. Default is the upstream image.
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:?set KEYCLOAK_PUBLIC_URL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - keycloak
+      - api
+      - web
+    networks: [youlearn]
+
+  keycloak-db:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [youlearn]
+
+  keycloak:
+    image: ${OCI_REGISTRY:?set OCI_REGISTRY}/${OCI_NAMESPACE:?set OCI_NAMESPACE}/${KEYCLOAK_REPO:-youlearnkeycloak}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    command: ["start", "--optimized", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+
+      # The public URL users reach Keycloak on. Wrong here means redirect URIs
+      # and token issuers disagree, and every login fails.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:?set KEYCLOAK_PUBLIC_URL}
+
+      # TLS terminates upstream, so Keycloak must read the real scheme and
+      # client address from the proxy rather than from the socket.
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+
+      # First boot only. Once a real administrator exists, remove these two
+      # lines and redeploy — leaving them is leaving a known account behind.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+    networks: [youlearn]
+
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.4}
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: youlearn
+      MYSQL_USER: youlearn
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Runs once, on an empty data directory. Later schema changes go through
+      # backend/Database/migrations/ by hand.
+      - ./backend/Database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uyoulearn", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [youlearn]
+
+  api:
+    image: ${OCI_REGISTRY}/${OCI_NAMESPACE}/${API_REPO:-youlearnapi}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: youlearn
+      DB_USER: youlearn
+      DB_PASS: ${MYSQL_PASSWORD}
+
+      # Internal: how this container reaches Keycloak. Public: what appears in
+      # the `iss` claim of tokens minted through the browser. Both are accepted
+      # by the verifier; neither may be guessed.
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
+      KEYCLOAK_REALM: youlearn
+      KEYCLOAK_AUDIENCE: youlearn-api
+
+      # Generated by Keycloak on first import — read it with
+      # scripts/read-client-secrets.sh and put it here.
+      KEYCLOAK_ADMIN_CLIENT_ID: youlearn-admin
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?set KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+      # Exact origins only. A wildcard would let any site read per-user data.
+      ALLOWED_ORIGINS: ${WEB_ORIGIN:?set WEB_ORIGIN}
+
+      RATE_LIMIT_PEPPER: ${RATE_LIMIT_PEPPER:?set RATE_LIMIT_PEPPER}
+
+      # The reverse proxy in front of this stack. Without it, X-Forwarded-For is
+      # ignored and every rate-limit bucket and audit row records the proxy's
+      # address instead of the caller's.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+
+      STORAGE_ROOT: /var/www/storage
+    volumes:
+      # Uploaded covers and lesson videos. Losing this volume loses every video
+      # on the platform — back it up like a database.
+      - storage-data:/var/www/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks: [youlearn]
+
+  # The Next.js front end. This is the only thing users' browsers talk to
+  # besides Keycloak: the PHP API has no public route, and every call to it is
+  # made from this server so the access token never reaches client JavaScript.
+  web:
+    image: ${OCI_REGISTRY}/${OCI_NAMESPACE}/${WEB_REPO:-youlearnweb}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+
+      # Must match the redirect URI registered on the youlearn-web client in
+      # Keycloak exactly, or every login ends in "Invalid parameter: redirect_uri".
+      APP_URL: ${WEB_ORIGIN:?set WEB_ORIGIN}
+
+      # Container-network address. The API publishes no port and is not
+      # routable from outside this host.
+      API_URL: http://api
+
+      # Public issuer goes in tokens and is where the browser is sent to sign
+      # in; internal issuer is how this container reaches Keycloak directly,
+      # skipping the proxy and the public DNS round trip.
+      KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/youlearn
+      KEYCLOAK_ISSUER_INTERNAL: http://keycloak:8080/realms/youlearn
+      KEYCLOAK_CLIENT_ID: youlearn-web
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?set KEYCLOAK_CLIENT_SECRET}
+
+      # Encrypts the session cookie. Rotating it signs everybody out, which is
+      # the point: it is all that stands between a stolen cookie and a usable
+      # refresh token.
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+    depends_on:
+      api:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks: [youlearn]
+
+volumes:
+  keycloak-db-data:
+  mysql-data:
+  storage-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  youlearn:
+    driver: bridge

@@ -1,0 +1,15 @@
+# Shell scripts and Dockerfiles must use LF regardless of the platform they are
+# edited on. A CRLF shebang makes `exec` fail with a bare
+# "no such file or directory", which is one of the least helpful errors Linux
+# produces — the file is right there, it is the trailing \r that is missing.
+* text=auto eol=lf
+
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf
+entrypoint.sh   text eol=lf
+
+# Binary
+*.png  binary
+*.jpg  binary
+*.ico  binary

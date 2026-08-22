@@ -1,0 +1,137 @@
+# YouLearn local stack.
+#   keycloak-db  Postgres backing Keycloak
+#   keycloak     Identity provider (realm + custom light theme auto-imported)
+#   mysql        Application database
+#   api          PHP backend (resource server, validates Keycloak RS256 tokens)
+# The Next.js app runs on the host (`cd web && npm run dev`) so SSR hot-reload works.
+
+services:
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: youlearn-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [youlearn]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    container_name: youlearn-keycloak
+    command:
+      - start-dev
+      - --import-realm
+      - --http-port=8080
+      - --spi-theme-static-max-age=-1
+      - --spi-theme-cache-themes=false
+      - --spi-theme-cache-templates=false
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/realm:/opt/keycloak/data/import:ro
+      - ./keycloak/themes/youlearn:/opt/keycloak/themes/youlearn:ro
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
+    networks: [youlearn]
+
+  mysql:
+    image: mysql:8.4
+    container_name: youlearn-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: youlearn
+      MYSQL_USER: youlearn
+      MYSQL_PASSWORD: youlearn
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/Database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/Database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uyoulearn", "-pyoulearn"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [youlearn]
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      # The registry image is built from the `prod` target instead, which copies
+      # the source in rather than expecting the bind mount below.
+      target: dev
+    container_name: youlearn-api
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: youlearn
+      DB_USER: youlearn
+      DB_PASS: youlearn
+      # Issuer as seen from inside the container network. Tokens minted by the
+      # browser-facing URL carry the public issuer, so both are accepted.
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_REALM: youlearn
+      KEYCLOAK_AUDIENCE: youlearn-api
+      # Client-credentials identity used only for the Keycloak Admin REST API
+      # (user suspension, role changes, session revocation). Never leaves this
+      # container. Replace both this and the realm's client secret outside dev.
+      KEYCLOAK_ADMIN_CLIENT_ID: youlearn-admin
+      KEYCLOAK_ADMIN_CLIENT_SECRET: youlearn-admin-secret-change-me
+      # Keys the rate-limiter's actor hashes so the table never stores a raw
+      # user id or IP address.
+      RATE_LIMIT_PEPPER: local-dev-pepper-change-me
+      # Uploaded covers and lesson videos. Deliberately OUTSIDE /var/www/html:
+      # Apache serves the web root, so nothing here has a URL of its own and
+      # every byte is handed out by a permission-checked controller.
+      STORAGE_ROOT: /var/www/storage
+      ALLOWED_ORIGINS: http://localhost:3100
+      APP_ENV: local
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html
+      # A named volume, not a bind mount: uploads must survive a rebuild, and
+      # must not end up in the repository.
+      - storage-data:/var/www/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks: [youlearn]
+
+volumes:
+  keycloak-db-data:
+  mysql-data:
+  storage-data:
+
+networks:
+  youlearn:
+    driver: bridge

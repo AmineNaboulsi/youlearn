@@ -1,0 +1,43 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+/**
+ * Time until the access token renews.
+ *
+ * A client component because it is a *live* value: rendering it once on the
+ * server would show a number that is already stale by the time it is read, and
+ * calling Date.now() during a render is exactly the impurity the React
+ * compiler warns about. Here it ticks, which is what a countdown should do.
+ *
+ * Renders nothing until mounted, so the server and the first client render
+ * agree and there is no hydration mismatch.
+ */
+export function TokenCountdown({ expiresAt }: { expiresAt: string }) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    const target = new Date(expiresAt).getTime();
+
+    const tick = () => setRemaining(Math.max(0, Math.floor((target - Date.now()) / 1000)));
+
+    tick();
+    const timer = setInterval(tick, 15_000);
+
+    return () => clearInterval(timer);
+  }, [expiresAt]);
+
+  if (remaining === null) {
+    return <span className="text-ink-muted">—</span>;
+  }
+
+  return <span className="tabular">{describe(remaining)}</span>;
+}
+
+function describe(seconds: number): string {
+  if (seconds <= 0) return "renewing now";
+  if (seconds < 60) return `${seconds}s`;
+
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes} min ${seconds % 60}s`;
+}

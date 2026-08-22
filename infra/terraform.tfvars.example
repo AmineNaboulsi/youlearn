@@ -1,0 +1,22 @@
+# Copy to terraform.tfvars and fill in. That file is git-ignored.
+
+# --- Oracle Cloud ------------------------------------------------------------
+oci_region           = "af-casablanca-1"
+# Root compartment = your tenancy OCID. Console: Identity -> Compartments,
+# or the Tenancy page you already have open.
+oci_compartment_ocid = "ocid1.tenancy.oc1..xxxxx"
+oci_tenancy_ocid     = "ocid1.tenancy.oc1..xxxxx"
+
+# ssh-keygen -t ed25519 -C youlearn -f ~/.ssh/youlearn
+ssh_public_key = "ssh-ed25519 AAAA... youlearn"
+
+# Your own address. Deliberately has no default — curl -s ifconfig.me
+ssh_allowed_cidr = "203.0.113.7/32"
+
+# Always Free totals: 4 OCPUs and 24 GB across all A1 instances.
+instance_ocpus     = 2
+instance_memory_gb = 12
+
+# --- application -------------------------------------------------------------
+app_domain  = "learn.example.com"
+auth_domain = "auth.example.com"

@@ -1,376 +1,281 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
-use App\Models\Course;
-use App\RouterServices\Request;
-use App\Repository\CourseRespository;
-use App\MiddleWare\AuthMiddleware;
-use App\Repository\UserRepository;
 
-class CourseController
+use App\Http\HttpException;
+use App\Http\Pagination;
+use App\Http\Request;
+use App\Http\Response;
+use App\Repository\CourseRepository;
+use App\Repository\EnrollmentRepository;
+use App\Security\Permission;
+use App\Security\Principal;
+use App\Support\Validator;
+
+final class CourseController
 {
+    private CourseRepository $courses;
+    private EnrollmentRepository $enrollments;
 
-      /**
-     * @OA\GET(
-     *      path="/getcourses",
-     *      summary="Get all courses",
-     *      tags={"courses"},
-     *      @OA\Parameter(
-     *          name="id",
-     *          in="path",
-     *          required=false,
-     *          description="ID of the category",
-     *          @OA\Schema(
-     *              type="integer"
-     *          )
-     *      ),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
-     */
-    public function getCourses(Request $request){
-        $CourseRespository = new CourseRespository();
-        if(isset($request->query()['id']))
-        {
-            if(is_numeric($request->query()['id']))
-                return $CourseRespository->findById($request->query()['id']);
-            else return [];
-        }
-        else if(isset($request->query()['limit']) && isset($request->query()['offset']) && is_numeric($request->query()['limit']) && is_numeric($request->query()['offset']))
-            return $CourseRespository->Find(intval($request->query()['limit']),intval($request->query()['offset']));
-        else return [];
+    public function __construct()
+    {
+        $this->courses     = new CourseRepository();
+        $this->enrollments = new EnrollmentRepository();
     }
-      /**
-     * @OA\GET(
-     *      path="/getstatistics",
-     *      summary="Get all courses",
-     *      tags={"courses"},
-     *      @OA\Parameter(
-     *          name="id",
-     *          in="path",
-     *          required=false,
-     *          description="ID of the category",
-     *          @OA\Schema(
-     *              type="integer"
-     *          )
-     *      ),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
-     */
-    public function Statistics(Request $request){
-        $AuthMiddleware = new AuthMiddleware();
-        $id = $AuthMiddleware->ValideAuth();
-        if($id>0){
-            $CourseRespository = new CourseRespository();
-            return $CourseRespository->getStatistics($id);
-        }else{
-            return null;
-        }
-    }
-    /**
-     * @OA\GET(
-     *      path="/getallcourses",
-     *      summary="Get all courses",
-     *      tags={"courses"},
-     *      @OA\Parameter(
-     *          name="id",
-     *          in="path",
-     *          required=false,
-     *          description="ID of the category",
-     *          @OA\Schema(
-     *              type="integer"
-     *          )
-     *      ),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
-     */
-    public function getAllCourses(Request $request){
-        $CourseRespository = new CourseRespository();
-        if(isset($request->query()['id']))
-            if(is_numeric($request->query()['id']))
-                return $CourseRespository->findById($request->query()['id']);
-            else return false;
-        else
-            return $CourseRespository->FindAll();
-    }
-       /**
-     * @OA\GET(
-     *     path="/isenrollcourse",
-     *     summary="Get enrolls courses",
-     *     tags={"User"},
-     *     @OA\Response(response="200", description="Success"),
-     *     @OA\Response(response="404", description="Not Data Found"),
-     * )
-     */
-    public function isEnrollcourse(Request $request){
-        $AuthMiddleware = new AuthMiddleware();
-        $id = $AuthMiddleware->ValideAuth();
-        $query = $request->query();
-        if($id && isset($query['id'])){
-            $RepoCourses = new CourseRespository();
-            return $RepoCourses->isEnrollcourse($id , $query['id']);
-        }else{
-            return null;
-        }
-    }
-      /**
-     * @OA\GET(
-     *     path="/enrollcourse",
-     *     summary="Get enrolls courses",
-     *     tags={"User"},
-     *     @OA\Response(response="200", description="Success"),
-     *     @OA\Response(response="404", description="Not Data Found"),
-     * )
-     */
-    public function EnrollCourse(Request $request){
-        $AuthMiddleware = new AuthMiddleware();
-        $id = $AuthMiddleware->ValideAuth();
-        $FormData = $request->bodyFormData();
-        if($id && isset($FormData['id'])){
-            $RepoCourses = new CourseRespository();
-            return $RepoCourses->findByIdAndEnroll($id ,$FormData['id']);
-        }else{
-            return null;
-        }
-    }
-       /**
-     * @OA\GET(
-     *     path="/getenrollcourses",
-     *     summary="Get enrolls courses",
-     *     tags={"User"},
-     *     @OA\Response(response="200", description="Success"),
-     *     @OA\Response(response="404", description="Not Data Found"),
-     * )
-     */
-    public function EnrollCourses(Request $request){
-        $AuthMiddleware = new AuthMiddleware();
-        $id = $AuthMiddleware->ValideAuth();
-        if($id){
-            $RepoCourses = new CourseRespository();
-            return $RepoCourses->EnrollCourses($id);
-        }else{
-            return null;
-        }
-    }
-    /**
-     * @OA\GET(
-     *     path="/search",
-     *     summary="",
-     *     tags={"Course"},
-     *     @OA\Response(response="200", description="Success"),
-     *     @OA\Response(response="404", description="Not Data Found"),
-     * )
-     */
-    public function Search(Request $request){
-        $param = ['course' , 'limit','offset'];
-        if(isset($request->query()['course']) && isset($request->query()['limit'])
-         && isset($request->query()['offset']) && is_numeric($request->query()['limit']) && is_numeric($request->query()['offset'])){
-            $RepoCourses = new CourseRespository();
-            return $RepoCourses->Search($request->query()['course'] , $request->query()['limit'] ,$request->query()['offset']);
-        }else{
-            return null;
-        }
-    }
-     /**
-     * @OA\POST(
-     *      path="/addcourse",
-     *      summary="Add course",
-     *      tags={"courses"},
-     *      @OA\Parameter(name="title",in="path",required=true,),
-     *      @OA\Parameter(name="description",in="path",required=true),
-     *      @OA\Parameter(name="content",in="path",required=true),
-     *      @OA\Parameter(name="category",in="path",required=true),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
-     */
 
-    public function AddCourse(Request $request){
-        $formData = $request->bodyRaw();
-        $parametres = ['title' ,'subtitle','img','contenttype', 'description' ,'category','content','tags'];
-        $missingparam = array_filter($parametres, function ($parametre) use ($formData) {
-            return !isset($formData->$parametre); 
-        });
-      
-        if(!$missingparam){
-            if(count($formData->tags)<3){
-                http_response_code(422);
-                return [
-                    "status" => false ,
-                    "message" => 'Tags are requied ,minimum is 3'
-                ];
-            }
-            $auth = new AuthMiddleware();
-            $id = $auth->ValideAuth();
-            $CourseRespository = new CourseRespository();
-            $newCourse = new Course(
-                title: $formData->title,
-                instructor: $id ,
-                subtitle: $formData->subtitle,
-                img: $formData->img,
-                description: $formData->description,
-                category: $formData->category,
-                contenttype: $formData->contenttype,
-                content: $formData->content,
-                tags: $formData->tags
-            );
-            return $CourseRespository->save(
-                $newCourse 
-            );
-        }
-        else{
-            http_response_code(422);
-            return [
-                "status" => false ,
-                "message" => 'Missing parametres'
-            ];
-        }
-    }
-      /**
-     * @OA\POST(
-     *      path="/addcoursetag",
-     *      summary="Add tag to course",
-     *      tags={"courses"},
-     *      @OA\Parameter(name="id",in="path",required=true,),
-     *      @OA\Parameter(name="tag",in="path",required=true),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
-     */
-    public function AddCourseTag(Request $request){
-        $CourseRespository = new CourseRespository();
-        $formData = $request->bodyFormData();
-        $formDataRaw = $request->bodyRaw();
-        if(isset($formData['id']) && is_numeric($formData['id']) && !empty($formData['id']) && isset($formData['tag'])&& is_numeric($formData['tag'])  && !empty($formData['tag'])){
-            return $CourseRespository->findByIdAndAddTag(new Course(id: $formData['id']), tag: $formData['tag']);
-        }
-        else if(isset($formDataRaw->id) && !empty($formDataRaw->id) && isset($formDataRaw->tags) && !empty($formDataRaw->tags) ){
-            return $CourseRespository->findByIdAndReplaceAllTags(new Course(id: $formDataRaw->id ,tags: $formDataRaw->tags));
-        }
-        else{
-            return [
-                "status" => false ,
-                "message" => 'Missing parametres'
-            ];
-        }
-       
-    }
     /**
-     * @OA\DELETE(
-     *      path="/delcoursetag",
-     *      summary="Delete tag from course",
-     *      tags={"courses"},
-     *      @OA\Parameter(name="id",in="path",required=true,),
-     *      @OA\Parameter(name="tag",in="path",required=true),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
+     * Public catalogue. Published courses only, whoever is asking.
+     *
+     * @param array<string, string> $params
      */
+    public function index(Request $request, ?Principal $principal, array $params): Response
+    {
+        $page = Pagination::fromRequest($request, 12, CourseRepository::MAX_PAGE_SIZE);
 
-    public function DelCourseTag(Request $request){
-        $CourseRespository = new CourseRespository();
-        if(isset($request->query()['id']) && isset($request->query()['tag']))
-            return $CourseRespository->findByIdAndDeleteTag(new Course(id:$request->query()['id']), $request->query()['tag']);
-        else{
-            return [
-                "status" => false ,
-                "message" => 'Missing parametres'
-            ];
-        }
+        $result = $this->courses->paginate([
+            'search'         => $request->query('q'),
+            'category_id'    => $this->optionalId($request->query('category')),
+            'tag_ids'        => $this->idList($request->query('tags')),
+            'published_only' => true,
+        ], $page->perPage, $page->offset);
+
+        return Response::json([
+            'status'     => true,
+            'data'       => $result['items'],
+            'pagination' => $page->meta($result['total']),
+        ]);
     }
-       /**
-     * @OA\PUT(
-     *      path="/editcourse",
-     *      summary="Edit course",
-     *      tags={"courses"},
-     *      @OA\Parameter(name="id",in="path",required=true,),
-     *      @OA\Parameter(name="title",in="path",required=true,),
-     *      @OA\Parameter(name="description",in="path",required=true),
-     *      @OA\Parameter(name="content",in="path",required=true),
-     *      @OA\Parameter(name="category",in="path",required=true),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
+
+    /**
+     * The authoring list: courses the caller may edit.
+     *
+     * @param array<string, string> $params
      */
-    public function EditCourse(Request $request){
-        $queryparam = $request->query();
-        $parametres = ['id','title' ,'subtitle', 'description' ,'category','content'];
-        $missingparam = array_filter($parametres, function ($parametre) use ($queryparam) {
-            return !isset($queryparam[$parametre]); 
-        });
-        if(!$missingparam){
-            $CourseRespository = new CourseRespository();
-            $newCourse = new Course(
-                id: $queryparam['id'],
-                title: $queryparam['title'],
-                subtitle: $queryparam['subtitle'],
-                description: $queryparam['description'],
-                category: $queryparam['category'],
-                content: $queryparam['content']
-            );
-            return $CourseRespository->findByIdAndUpdate(
-                $newCourse 
-            );
+    public function mine(Request $request, ?Principal $principal, array $params): Response
+    {
+        $principal = $this->require($principal);
+        $page      = Pagination::fromRequest($request, 12, CourseRepository::MAX_PAGE_SIZE);
+
+        $result = $this->courses->paginate([
+            'search'         => $request->query('q'),
+            'category_id'    => $this->optionalId($request->query('category')),
+            // An admin manages the whole catalogue; an instructor manages theirs.
+            'instructor_id'  => $principal->can(Permission::COURSE_MANAGE_ANY) ? null : $principal->userId,
+            'published_only' => false,
+        ], $page->perPage, $page->offset);
+
+        return Response::json([
+            'status'     => true,
+            'data'       => $result['items'],
+            'pagination' => $page->meta($result['total']),
+        ]);
+    }
+
+    /** @param array<string, string> $params */
+    public function show(Request $request, ?Principal $principal, array $params): Response
+    {
+        $id = (int) $params['id'];
+
+        // An unpublished course is visible to whoever may manage it, and to
+        // nobody else — including anonymous callers, who get a plain 404 rather
+        // than a 403 that would confirm the course exists.
+        $maySeeDrafts = $principal !== null && $this->mayManage($principal, $id, throwOnDenied: false);
+
+        $course = $this->courses->find($id, includeUnpublished: $maySeeDrafts);
+        if ($course === null) {
+            throw HttpException::notFound('That course does not exist.');
         }
-        else{
-            return [
-                "status" => false ,
-                "message" => 'Missing parametres'
+
+        $payload = ['status' => true, 'data' => $course];
+
+        if ($principal !== null) {
+            $payload['viewer'] = [
+                'is_enrolled' => $this->enrollments->isEnrolled($principal->userId, $id),
+                'can_manage'  => $maySeeDrafts,
+                'can_enroll'  => $principal->can(Permission::ENROLLMENT_CREATE),
             ];
         }
+
+        return Response::json($payload);
     }
-        
-    public function ProjectCourse(Request $request){
-        $queryparam = $request->query();
-        $parametres = ['id','etat'];
-        $missingparam = array_filter($parametres, function ($parametre) use ($queryparam) {
-            return !isset($queryparam[$parametre]); 
-        });
-        if(!$missingparam){
-            $CourseRespository = new CourseRespository();
-            $newCourse = new Course(
-                id: $queryparam['id'],
-                isProjected: $queryparam['etat']
-            );
-            return $CourseRespository->findByIdProject(
-                $newCourse 
-            );
-        }
-        else{
-            return [
-                "status" => false ,
-                "message" => 'Missing parametres'
-            ];
-        }
+
+    /** @param array<string, string> $params */
+    public function store(Request $request, ?Principal $principal, array $params): Response
+    {
+        $principal = $this->require($principal);
+
+        [$data, $tagIds] = $this->validated($request);
+
+        $id = $this->courses->create($data, $tagIds, $principal->userId);
+
+        return Response::json([
+            'status'  => true,
+            'message' => 'Course created.',
+            'data'    => $this->courses->find($id, includeUnpublished: true),
+        ], 201);
     }
-       /**
-     * @OA\DELETE(
-     *      path="/delcourse",
-     *      summary="Delete specific course",
-     *      tags={"courses"},
-     *      @OA\Parameter(name="id",in="path",required=true,),
-     *      @OA\Response(response="200", description="get all courses"),
-     *      @OA\Response(response="404", description="No Data Found"),
-     *      @OA\Response(response="409", description="Failed to make operation"),    
-     * )
+
+    /** @param array<string, string> $params */
+    public function update(Request $request, ?Principal $principal, array $params): Response
+    {
+        $principal = $this->require($principal);
+        $id        = (int) $params['id'];
+
+        $this->mayManage($principal, $id);
+
+        [$data, $tagIds] = $this->validated($request);
+
+        $this->courses->update($id, $data, $tagIds);
+
+        return Response::json([
+            'status'  => true,
+            'message' => 'Course updated.',
+            'data'    => $this->courses->find($id, includeUnpublished: true),
+        ]);
+    }
+
+    /** @param array<string, string> $params */
+    public function setPublished(Request $request, ?Principal $principal, array $params): Response
+    {
+        $principal = $this->require($principal);
+        $id        = (int) $params['id'];
+
+        $this->mayManage($principal, $id);
+
+        $validator = Validator::for($request->json());
+        $published = $validator->bool('is_published');
+        $validator->validate();
+
+        $this->courses->setPublished($id, $published);
+
+        return Response::json([
+            'status'  => true,
+            'message' => $published ? 'Course published.' : 'Course unpublished.',
+            'data'    => $this->courses->find($id, includeUnpublished: true),
+        ]);
+    }
+
+    /** @param array<string, string> $params */
+    public function destroy(Request $request, ?Principal $principal, array $params): Response
+    {
+        $principal = $this->require($principal);
+        $id        = (int) $params['id'];
+
+        $this->mayManage($principal, $id);
+
+        $this->courses->delete($id);
+
+        return Response::json(['status' => true, 'message' => 'Course deleted.']);
+    }
+
+    // ------------------------------------------------------------- helpers --
+
+    /**
+     * @return array{0: array<string, mixed>, 1: list<int>}
      */
-    public function DelCourse(Request $request){
-        $CourseRespository = new CourseRespository();
-        if(isset($request->query()['id']))
-            return $CourseRespository->findByIdAndDelete(new Course(id:$request->query()['id']));
-        else
-        return [
-            "status" => false ,
-            "message" => 'Missing parametres'
+    private function validated(Request $request): array
+    {
+        $body      = $request->json();
+        $validator = Validator::for($body);
+
+        $data = [
+            'title'        => $validator->requiredString('title', 3, 255),
+            'subtitle'     => $validator->optionalString('subtitle', 500),
+            'description'  => $validator->optionalString('description', 5_000),
+            'content'      => $validator->optionalString('content', 200_000),
+            'content_type' => $validator->enum('content_type', ['text', 'video', 'document'], 'text'),
+            'img'          => $validator->optionalUrl('img'),
+            'category_id'  => $validator->optionalInt('category_id', null),
+            'is_published' => $validator->bool('is_published') ? 1 : 0,
         ];
+
+        // Three tags was the rule in the original app and it is a good one —
+        // it is what makes tag filtering worth having at all.
+        $tagIds = $validator->intList('tags', 3, 12);
+
+        $validator->validate();
+
+        return [$data, $tagIds];
+    }
+
+    private function require(?Principal $principal): Principal
+    {
+        if ($principal === null) {
+            throw HttpException::unauthorized();
+        }
+
+        return $principal;
+    }
+
+    /**
+     * Ownership check.
+     *
+     * Role alone is not enough here: `course.manage` says "may manage courses",
+     * not "may manage *this* course". Without this an instructor could edit or
+     * delete a colleague's material, which is exactly what the previous
+     * implementation allowed.
+     */
+    private function mayManage(Principal $principal, int $courseId, bool $throwOnDenied = true): bool
+    {
+        if (!$principal->can(Permission::COURSE_MANAGE)) {
+            if ($throwOnDenied) {
+                throw HttpException::forbidden();
+            }
+
+            return false;
+        }
+
+        if ($principal->can(Permission::COURSE_MANAGE_ANY)) {
+            return true;
+        }
+
+        $ownerId = $this->courses->instructorIdOf($courseId);
+
+        if ($ownerId === null) {
+            if ($throwOnDenied) {
+                throw HttpException::notFound('That course does not exist.');
+            }
+
+            return false;
+        }
+
+        if ($ownerId !== $principal->userId) {
+            if ($throwOnDenied) {
+                throw HttpException::forbidden('This course belongs to another instructor.');
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function optionalId(?string $value): ?int
+    {
+        return ($value !== null && preg_match('/^\d{1,10}$/', $value) === 1 && (int) $value > 0)
+            ? (int) $value
+            : null;
+    }
+
+    /** @return list<int> */
+    private function idList(?string $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        $ids = [];
+        foreach (explode(',', $value) as $part) {
+            $part = trim($part);
+            if (preg_match('/^\d{1,10}$/', $part) === 1 && (int) $part > 0) {
+                $ids[(int) $part] = true;
+            }
+        }
+
+        // Bounded so a crafted query string cannot build an arbitrarily large
+        // IN (...) list and a matching subquery.
+        return \array_slice(array_keys($ids), 0, 12);
     }
 }

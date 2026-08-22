@@ -1,216 +1,194 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
-use App\Models\User;
+
 use App\Config\Database;
-use App\Config\JwtUtil;
-use App\Interface\RepositoryInterface;
-class UserRepository
+use App\Http\HttpException;
+use PDO;
+
+/**
+ * The local mirror of Keycloak users.
+ *
+ * Nothing here authenticates anyone — there is no password column. These rows
+ * exist so course authorship and enrolment can be foreign keys, and so a
+ * reporting query can join a name without a round trip to the IdP.
+ */
+final class UserRepository
 {
-    //Find All
-    public function Find() {
-        $con = Database::getConnection();
-        $sqldataReader = $con->prepare("
-            SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
-            JOIN  Roles ur ON ur.id = u.role_id
-        ");
-        $sqldataReader->execute();
-        return $sqldataReader->fetchAll(\PDO::FETCH_ASSOC);
-    }
-    public function FindBy($by) {
-        $con = Database::getConnection();
-        $sqldataReader = $con->prepare("
-            SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
-            JOIN  Roles ur ON ur.id = u.role_id
-            WHERE ur.name = :byrole
-        ");
-        $sqldataReader->execute([
-            ":byrole" => $by
-        ]);
-        return $sqldataReader->fetchAll(\PDO::FETCH_ASSOC);
-    }
-    // Find User by ID
-    public function findById($id) {
-        $con = Database::getConnection();
-        $sqldataReader = $con->prepare("
-            SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
-            JOIN  Roles ur ON ur.id = u.role_id
-            WHERE u.id =:id ");
-        $sqldataReader->execute([
-            ":id" => $id
-        ]);
-        // $User = $sqldataReader->fetchObject(User::class);
-        // return $User;
-        $User = $sqldataReader->fetch(\PDO::FETCH_ASSOC);
-        return $User;
-    }
-    // Del User by ID
-    public function DelById($id) {
-        $con = Database::getConnection();
-        $sqldataReader = $con->prepare("
-            DELETE FROM User u
-            WHERE u.id =:id ");
-        if($sqldataReader->execute([
-            ":id" => $id
-        ])){
-            return [
-                "status" => true,
-                "message" => "User deleted succssefuly"
-            ];
-        }else{
-            return [
-                "status" => false,
-                "message" => "Failed to delete User"
-            ];
-        }
-        // $User = $sqldataReader->fetchObject(User::class);
-        // return $User;
-        $User = $sqldataReader->fetch(\PDO::FETCH_ASSOC);
-        return $User;
-    }
-    // Find role by ID
-    public function findRoleById($id) {
-        $con = Database::getConnection();
-        $sqldataReader = $con->prepare("
-            SELECT u.id , u.name , u.email , u.isActive , ur.name as role  FROM User u
-            JOIN  Roles ur ON ur.id = u.role_id
-            WHERE u.id =:id ");
-        $sqldataReader->execute([
-            ":id" => $id
-        ]);
-        $sqldataReader = $sqldataReader->fetch();
-        return $sqldataReader['role'];
-    }
-    //Sign In
-    public function SignIn(User $user)
+    /**
+     * Create or refresh the mirror row for a verified token subject.
+     *
+     * @return array<string, mixed>
+     */
+    public function syncFromToken(string $keycloakId, string $email, string $name, string $role): array
     {
-        $con = Database::getConnection();
-    
-        // Use constants for reusable messages
-        $INVALID_CREDENTIALS = "Account not found.";
-        $ACCOUNT_INACTIVE = "Your account is closed at the moment. Please contact support.";
-        $LOGIN_SUCCESS = "Login successfully.";
-    
-        // Prepare the query
-        $query = $con->prepare("SELECT id , password, isActive FROM User WHERE email = :email");
-        $query->execute([":email" => $user->email]);
-        $userData = $query->fetch();
-    
-        // Check if the user exists
-        if (!$userData) {
-            return $this->generateResponse(false, $INVALID_CREDENTIALS);
-        }
-    
-        // Verify the password
-        if (!password_verify($user->getPassword(), $userData['password'])) {
-            return $this->generateResponse(false, $INVALID_CREDENTIALS);
-        }
-    
-        // Check if the account is active
-        if ($userData['isActive'] == 0) {
-            return $this->generateResponse(false, $ACCOUNT_INACTIVE);
-        }
-    
-        // Generate user object and token
-        $user = new User('', $user->email, '');
-        $user->id = $userData['id'];
-        $token = JwtUtil::generateToken($user);
-    
-        return $this->generateResponse(true, $LOGIN_SUCCESS, $token);
-    }
-    //Make Response
-    private function generateResponse(bool $status, string $message, string $token = null): array
-    {
-        $response = [
-            "status" => $status,
-            "message" => $message
-        ];
-    
-        if ($token) {
-            $response["token"] = $token;
-        }
-    
-        return $response;
-    }
-    // create new account    
-    public function save($user): array
-    {
-        $con = Database::getConnection();
+        $pdo = Database::connection();
+
+        // The role always comes from the token, so demoting someone in Keycloak
+        // takes effect on their very next request rather than at some later sync.
+        $upsert = $pdo->prepare(
+            'INSERT INTO users (keycloak_id, name, email, role, is_active, last_seen_at)
+                  VALUES (:kc, :name, :email, :role, 1, NOW())
+             ON DUPLICATE KEY UPDATE
+                  name         = VALUES(name),
+                  email        = VALUES(email),
+                  role         = VALUES(role),
+                  last_seen_at = NOW()'
+        );
+
         try {
-            $checkQuery = $con->prepare("SELECT email FROM User WHERE email = :email");
-            $checkQuery->execute([":email" => $user->email]);
-
-            if ($checkQuery->rowCount() > 0) {
-                return [
-                    "status" => false,
-                    "message" => "Email already taken."
-                ];
-            }
-            if (strcmp($user->getRole() , 'admin')==0 || $this->getRoleId($user->getRole()) == 0) {
-                return [
-                    "status" => false,
-                    "message" => "No role with this specific information."
-                ];
-            }
-            $idRole = $user->getRole()=='enseignant' ? 0 : 1 ;
-            $userQuery = $con->prepare("
-            INSERT INTO User (name, email, password, isActive,role_id) 
-            VALUES (:name, :email, :password, :active, :role_id)");
-            $userInserted = $userQuery->execute([
-                ":name" => $user->name,
-                ":email" => $user->email,
-                ":password" => $user->HashedPassword() ,
-                ":active" => $idRole,
-                ":role_id" => $this->getRoleId($user->getRole())
+            $upsert->execute([
+                ':kc'    => $keycloakId,
+                ':name'  => mb_substr($name, 0, 255),
+                ':email' => mb_substr($email, 0, 320),
+                ':role'  => $role,
             ]);
-
-            if (!$userInserted) {
-                return [
-                    "status" => false,
-                    "message" => "Failed to sign up. Please try again later."
-                ];
+        } catch (\PDOException $e) {
+            // 23000 here means the email is already held by a *different*
+            // keycloak_id. That is a genuine identity conflict — two realm
+            // users claiming one mailbox — and must not be papered over.
+            if ($e->getCode() === '23000') {
+                $existing = $this->findByEmail($email);
+                if ($existing !== null && $existing['keycloak_id'] !== $keycloakId) {
+                    throw new HttpException(
+                        409,
+                        'identity_conflict',
+                        'Another account already uses this email address. Please contact support.'
+                    );
+                }
             }
-
-            return [
-                "status" => true,
-                "message" => "Account created successfully."
-            ];
-        } catch (\Exception $e) {
-            return [
-                "status" => false,
-                "message" => "An error occurred: Failed to create account " 
-            ];
+            throw $e;
         }
+
+        $user = $this->findByKeycloakId($keycloakId);
+        if ($user === null) {
+            throw new HttpException(500, 'server_error', 'Account could not be provisioned.');
+        }
+
+        return $user;
     }
-    //get Role in user id
-    private function getRoleId(string $roleName): int
+
+    /** @return array<string, mixed>|null */
+    public function findByKeycloakId(string $keycloakId): ?array
     {
-        $con = Database::getConnection();
-        $roleQuery = $con->prepare("SELECT id FROM Roles WHERE name = :role");
-        $roleQuery->execute([":role" => $roleName]);
+        $stmt = Database::connection()->prepare(
+            'SELECT id, keycloak_id, name, email, role, is_active, last_seen_at, created_at
+               FROM users WHERE keycloak_id = :kc LIMIT 1'
+        );
+        $stmt->execute([':kc' => $keycloakId]);
 
-        $role = $roleQuery->fetch(\PDO::FETCH_ASSOC);
-        return $role ? $role['id'] : 0;
+        return $stmt->fetch() ?: null;
     }
-    //banne or unbanne user
-    public function BannedOrUnBanned(User $user) {
-        $con = Database::getConnection();
-        $sqldataReader = $con->prepare("UPDATE User SET isActive=:etat WHERE id=:id");
-        if(
-            $sqldataReader->execute([
-                ":etat" => $user->isActive?1:0 ,
-                ":id" => $user->id
-            ])){
-            return [
-                "status" => true,
-                "message" => "Account ".($user->isActive ? 'UnBanned' : 'Banned')." Successfuly"
-            ];
-        }else{
-            return [
-                "status" => false,
-                "message" => "Failed to ".($user->isActive ? 'UnBanned' : 'Banned')." Client , Please try again later."
-            ];
+
+    /** @return array<string, mixed>|null */
+    public function findByEmail(string $email): ?array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT id, keycloak_id, name, email, role, is_active FROM users WHERE email = :email LIMIT 1'
+        );
+        $stmt->execute([':email' => $email]);
+
+        return $stmt->fetch() ?: null;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findById(int $id): ?array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT id, keycloak_id, name, email, role, is_active, last_seen_at, created_at
+               FROM users WHERE id = :id LIMIT 1'
+        );
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Paginated directory, optionally filtered by role and free-text search.
+     *
+     * @param list<string> $roles
+     * @return array{items: list<array<string, mixed>>, total: int}
+     */
+    public function paginate(array $roles, ?string $search, int $limit, int $offset): array
+    {
+        $pdo = Database::connection();
+
+        $where  = [];
+        $params = [];
+
+        if ($roles !== []) {
+            $placeholders = [];
+            foreach (array_values($roles) as $i => $role) {
+                $placeholders[]      = ':role' . $i;
+                $params[':role' . $i] = $role;
+            }
+            $where[] = 'u.role IN (' . implode(', ', $placeholders) . ')';
         }
+
+        if ($search !== null && $search !== '') {
+            // One placeholder per comparison: native prepares reject a repeated name.
+            $where[] = '(u.name LIKE :search_name OR u.email LIKE :search_email)';
+            $needle  = '%' . $this->escapeLike($search) . '%';
+            $params[':search_name']  = $needle;
+            $params[':search_email'] = $needle;
+        }
+
+        $clause = $where === [] ? '' : ' WHERE ' . implode(' AND ', $where);
+
+        $countStmt = $pdo->prepare('SELECT COUNT(*) FROM users u' . $clause);
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $sql = 'SELECT u.id, u.keycloak_id, u.name, u.email, u.role, u.is_active, u.last_seen_at, u.created_at,
+                       (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id)     AS enrollment_count,
+                       (SELECT COUNT(*) FROM courses c     WHERE c.instructor_id = u.id) AS course_count
+                  FROM users u' . $clause . '
+                 ORDER BY u.created_at DESC, u.id DESC
+                 LIMIT :limit OFFSET :offset';
+
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return ['items' => $stmt->fetchAll(), 'total' => $total];
     }
 
+    public function setActive(int $id, bool $active): void
+    {
+        $stmt = Database::connection()->prepare('UPDATE users SET is_active = :active WHERE id = :id');
+        $stmt->bindValue(':active', $active ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    public function delete(int $id): void
+    {
+        $stmt = Database::connection()->prepare('DELETE FROM users WHERE id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    public function countCoursesAuthoredBy(int $id): int
+    {
+        $stmt = Database::connection()->prepare('SELECT COUNT(*) FROM courses WHERE instructor_id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * LIKE has its own wildcards; a search for "50%" should not match everything.
+     */
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+    }
 }

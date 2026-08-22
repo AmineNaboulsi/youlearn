@@ -1,0 +1,619 @@
+/* ==========================================================================
+   YouLearn — Keycloak login theme
+   Light-only, monochrome. Same type scale, radii, borders and grid motif as
+   the Next.js app so the hand-off from platform to IdP is invisible.
+   ========================================================================== */
+
+:root {
+  --ink: #0a0a0a;
+  --ink-soft: #404040;
+  --ink-mute: #737373;
+  --ink-faint: #a3a3a3;
+  --line: #e5e5e5;
+  --line-strong: #d4d4d4;
+  --surface: #ffffff;
+  --surface-sunk: #fafafa;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --ring: 0 0 0 3px rgba(10, 10, 10, 0.12);
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+.yl-html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+.yl-body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+.yl-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------- shell ---------------------------------- */
+
+.yl-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+
+@media (min-width: 900px) {
+  .yl-shell { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* ------------------------------- brand rail ----------------------------- */
+
+.yl-brand {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  padding: 3.5rem;
+  border-right: 1px solid var(--line);
+  background: var(--surface-sunk);
+}
+
+@media (min-width: 900px) {
+  .yl-brand { display: flex; align-items: center; }
+}
+
+/* Faint square grid — the same motif the app's stats section uses. */
+.yl-brand__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(10, 10, 10, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(10, 10, 10, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+  pointer-events: none;
+}
+
+.yl-brand__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 26rem;
+}
+
+.yl-brand__mark {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.yl-brand__glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+}
+
+.yl-brand__word {
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.yl-brand__tagline {
+  margin: 2.5rem 0 0;
+  font-size: 2.25rem;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
+.yl-brand__rule {
+  width: 3rem;
+  height: 1px;
+  margin: 2rem 0;
+  background: var(--line-strong);
+}
+
+.yl-brand__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+  color: var(--ink-mute);
+  font-size: 0.9rem;
+}
+
+.yl-brand__list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.yl-brand__list li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+/* ------------------------------- form rail ------------------------------ */
+
+.yl-login {
+  display: grid;
+  place-items: center;
+  padding: 2.5rem 1.25rem;
+}
+
+.yl-content {
+  width: 100%;
+  max-width: 25rem;
+}
+
+.yl-mobile-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+@media (min-width: 900px) {
+  .yl-mobile-brand { display: none; }
+}
+
+.yl-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 1.75rem;
+}
+
+@media (min-width: 900px) {
+  /* Beside the brand rail the card would be a box inside a box; drop the chrome. */
+  .yl-card { border: 0; padding: 0; }
+}
+
+.yl-card__header { margin-bottom: 1.5rem; }
+
+#kc-page-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.yl-required-note {
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ink-mute);
+}
+
+.yl-required { color: var(--ink); }
+
+.yl-known-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunk);
+  font-size: 0.85rem;
+}
+
+.yl-known-user a {
+  color: var(--ink-mute);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.yl-known-user a:hover { color: var(--ink); }
+
+/* ------------------------------- fields --------------------------------- */
+
+.yl-form { display: grid; gap: 1rem; }
+
+.yl-field { display: grid; gap: 0.4rem; }
+
+.yl-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.yl-input-wrap { position: relative; }
+
+.yl-input {
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 0.85rem;
+  font: inherit;
+  font-size: 0.925rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.yl-input::placeholder { color: var(--ink-faint); }
+
+.yl-input:hover { border-color: var(--ink-faint); }
+
+.yl-input:focus,
+.yl-input:focus-visible {
+  border-color: var(--ink);
+  box-shadow: var(--ring);
+}
+
+.yl-input[aria-invalid="true"],
+.yl-field--error .yl-input {
+  border-color: var(--ink);
+  background: var(--surface-sunk);
+}
+
+.yl-error {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.yl-error::before {
+  content: "— ";
+  color: var(--ink-mute);
+}
+
+.yl-help {
+  font-size: 0.78rem;
+  color: var(--ink-mute);
+}
+
+/* Password field: Keycloak injects a show/hide button inside the wrapper. */
+.yl-input-group { position: relative; display: block; }
+
+.yl-eye {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-mute);
+  cursor: pointer;
+}
+
+.yl-eye:hover { background: var(--surface-sunk); color: var(--ink); }
+.yl-eye:focus-visible { outline: none; box-shadow: var(--ring); }
+
+/* Keycloak toggles between these two icon classes. */
+.yl-eye__show::before { content: "Show"; font-size: 0.7rem; font-weight: 500; }
+.yl-eye__hide::before { content: "Hide"; font-size: 0.7rem; font-weight: 500; }
+
+.yl-input-group .yl-input { padding-right: 3rem; }
+
+/* ------------------------------- options row ---------------------------- */
+
+/* The base login template wraps "remember me" and "forgot password" in a
+   kcFormSettingClass block whose children carry Keycloak's own class names,
+   so both our wrapper and those children are styled here. */
+.yl-form__options,
+.yl-form__setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.82rem;
+}
+
+.yl-form__setting #kc-form-options,
+.yl-form__setting > div { margin: 0; }
+
+.yl-form__setting .checkbox { margin: 0; }
+
+.yl-form__setting .checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.yl-form__setting input[type="checkbox"] {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.yl-checkbox {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0 0.45rem 0 0;
+  accent-color: var(--ink);
+  vertical-align: -2px;
+}
+
+.yl-checkbox-label,
+#kc-form-options label {
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+#kc-registration a,
+#kc-registration-container a,
+#kc-form-options a,
+.yl-form__setting a,
+.yl-form__options a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line-strong);
+}
+
+#kc-form-options a:hover,
+.yl-form__setting a:hover,
+.yl-form__options a:hover { text-decoration-color: var(--ink); }
+
+/* The submit block is a plain field wrapper; give it the same top gap the
+   dedicated buttons wrapper gets. */
+#kc-form-buttons { margin-top: 0.5rem; }
+
+/* ------------------------------- buttons -------------------------------- */
+
+.yl-form__buttons { margin-top: 0.5rem; }
+
+.yl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 1.1rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.yl-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+
+.yl-btn--primary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.yl-btn--primary:hover { background: #262626; }
+
+.yl-btn--default,
+.yl-btn--secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.yl-btn--default:hover,
+.yl-btn--secondary:hover { background: var(--surface-sunk); }
+
+.yl-btn--block { width: 100%; }
+.yl-btn--lg { height: 2.85rem; }
+
+.yl-linkbtn {
+  margin-top: 1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--ink-mute);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.yl-linkbtn:hover { color: var(--ink); }
+
+/* ------------------------------- alerts --------------------------------- */
+
+.yl-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-left-width: 3px;
+  border-left-color: var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunk);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.yl-alert__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 0.5rem;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+/* Severity is carried by weight and rule, never by hue — the palette is
+   monochrome, so colour cannot be the only signal. */
+.yl-alert--error { border-left-color: var(--ink); font-weight: 500; }
+.yl-alert--warning { border-left-color: var(--ink-soft); }
+.yl-alert--success { border-left-color: var(--ink-soft); }
+.yl-alert--info { border-left-color: var(--line-strong); }
+.yl-alert--info .yl-alert__dot { background: var(--ink-mute); }
+
+/* ------------------------------- info / signup -------------------------- */
+
+.yl-info,
+.yl-signup {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--ink-mute);
+  text-align: center;
+}
+
+.yl-info a,
+.yl-signup a,
+.yl-reset-info a {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line-strong);
+}
+
+.yl-info a:hover,
+.yl-signup a:hover { text-decoration-color: var(--ink); }
+
+.yl-reset-info {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--ink-mute);
+}
+
+.yl-legal {
+  margin: 2rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* ------------------------------- social --------------------------------- */
+
+.yl-social { margin-top: 1.5rem; }
+
+.yl-social__list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yl-social__list--grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.yl-social__link { text-decoration: none; }
+
+/* ------------------------- choose-authenticator list --------------------- */
+
+.yl-authlist {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yl-authlist__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--ink);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.yl-authlist__item:hover { background: var(--surface-sunk); border-color: var(--ink-faint); }
+.yl-authlist__fill { flex: 1; }
+.yl-authlist__heading { font-weight: 500; font-size: 0.9rem; }
+.yl-authlist__desc { font-size: 0.8rem; color: var(--ink-mute); }
+.yl-authlist__arrow { color: var(--ink-faint); }
+
+/* ------------------------------- misc ----------------------------------- */
+
+.yl-recovery-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 1.5rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunk);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  list-style: none;
+}
+
+.yl-terms {
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.yl-locale { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
+
+.yl-locale__dropdown {
+  height: 2rem;
+  padding: 0 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+
+/* Keycloak's password-strength / progress widgets inherit the mono palette. */
+progress { accent-color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}

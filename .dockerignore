@@ -1,0 +1,30 @@
+# Keep the build context small and, more importantly, keep secrets and local
+# state out of any image built from this repository.
+
+.git
+.gitignore
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Never copied into an image; restored or installed by the build itself.
+**/node_modules
+**/vendor
+backend/var
+web/.next
+client/build
+client/node_modules
+
+# The Next.js app is built and deployed separately from the two images here.
+web/
+client/
+
+# Development-only data and docs.
+backend/Database/seed.sql
+backend/Diagrames
+**/*.md
+scripts/
+
+# The development realm carries seeded passwords and client secrets. Only the
+# sanitised keycloak/realm-prod/ output belongs in an image.
+keycloak/realm/

@@ -15,3 +15,6 @@ nginx.conf
 swagger-ui
 
 documentation
+# Runtime cache: the realm's JWKS, fetched from Keycloak and refreshed on a TTL.
+# Regenerated on demand; never belongs in the repository.
+var/

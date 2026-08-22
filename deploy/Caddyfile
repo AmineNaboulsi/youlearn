@@ -1,0 +1,28 @@
+# TLS termination for both hostnames.
+#
+# Caddy obtains and renews Let's Encrypt certificates on its own. The only
+# prerequisites are that each name already resolves to this instance and that
+# ports 80 and 443 are open in BOTH the OCI security list and the instance's
+# iptables — the second one catches almost everybody.
+
+{$KEYCLOAK_PUBLIC_URL} {
+	reverse_proxy keycloak:8080 {
+		# Keycloak builds its redirect URLs from these. Without them it emits
+		# http:// links behind an https:// proxy and the login loops forever.
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+{$WEB_ORIGIN} {
+	# The Next.js app — the `web` service in docker-compose.prod.yml.
+	reverse_proxy web:3000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	# The API is reached server-side by Next.js over the internal network, so it
+	# deliberately has no public route. Nothing outside this host can call it
+	# directly, which is what keeps every request permission-checked in one place.
+}

@@ -1,0 +1,304 @@
+{
+  "realm": "youlearn",
+  "displayName": "YouLearn",
+  "displayNameHtml": "<span style=\"font-weight:600;letter-spacing:-0.02em\">YouLearn</span>",
+  "enabled": true,
+  "loginTheme": "youlearn",
+  "accountTheme": "keycloak.v3",
+  "adminTheme": "keycloak.v2",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "sslRequired": "external",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "ssoSessionIdleTimeoutRememberMe": 172800,
+  "ssoSessionMaxLifespanRememberMe": 604800,
+  "offlineSessionIdleTimeout": 2592000,
+  "clientSessionIdleTimeout": 0,
+  "clientSessionMaxLifespan": 0,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "passwordPolicy": "length(10) and notUsername(undefined) and notEmail(undefined) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and passwordHistory(3)",
+  "eventsEnabled": true,
+  "eventsExpiration": 604800,
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "REGISTER",
+    "REGISTER_ERROR",
+    "REFRESH_TOKEN",
+    "REFRESH_TOKEN_ERROR",
+    "CODE_TO_TOKEN",
+    "CODE_TO_TOKEN_ERROR",
+    "UPDATE_PASSWORD",
+    "REMOVE_TOTP",
+    "UPDATE_TOTP",
+    "REVOKE_GRANT",
+    "DELETE_ACCOUNT"
+  ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Platform administrator. Full access to every course, user and export.",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "enseignant",
+        "description": "Instructor. Authors and manages their own courses, exports their own enrolments.",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "etudiant",
+        "description": "Student. Browses and enrols in courses.",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "defaultRoles": [
+    "offline_access",
+    "uma_authorization",
+    "etudiant"
+  ],
+  "requiredCredentials": [
+    "password"
+  ],
+  "clients": [
+    {
+      "clientId": "youlearn-web",
+      "name": "YouLearn Web (Next.js)",
+      "description": "Server-side rendered Next.js front end. Authorization Code + PKCE, confidential.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "secret": "youlearn-web-secret-change-me",
+      "rootUrl": "http://localhost:3100",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:3100/api/auth/callback",
+        "http://localhost:3100/api/auth/callback/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3100"
+      ],
+      "adminUrl": "http://localhost:3100",
+      "frontchannelLogout": true,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3100/*",
+        "access.token.lifespan": "300",
+        "client.session.idle.timeout": "1800",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "true",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "use.refresh.tokens": "true",
+        "require.pushed.authorization.requests": "false",
+        "tls.client.certificate.bound.access.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "organization"
+      ],
+      "protocolMappers": [
+        {
+          "name": "youlearn-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "youlearn-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "realm-roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "youlearn-api",
+      "name": "YouLearn API (PHP resource server)",
+      "description": "Bearer-only resource server. Never initiates a login; only validates access tokens.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "secret": "youlearn-api-secret-change-me",
+      "attributes": {
+        "backchannel.logout.session.required": "true"
+      }
+    },
+    {
+      "clientId": "youlearn-admin",
+      "name": "YouLearn Admin (backend service account)",
+      "description": "Client-credentials only. Used by the PHP backend to reach the Keycloak Admin REST API for user and session administration. Never exposed to a browser.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "youlearn-admin-secret-change-me",
+      "attributes": {
+        "access.token.lifespan": "300",
+        "use.refresh.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "basic"
+      ],
+      "optionalClientScopes": []
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@youlearn.local",
+      "email": "admin@youlearn.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Amine",
+      "lastName": "Naboulsi",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin#2026pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "offline_access",
+        "uma_authorization"
+      ],
+      "id": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "username": "teacher@youlearn.local",
+      "email": "teacher@youlearn.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Nora",
+      "lastName": "Benali",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Teacher#2026pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "enseignant",
+        "offline_access",
+        "uma_authorization"
+      ],
+      "id": "22222222-2222-4222-8222-222222222222"
+    },
+    {
+      "username": "student@youlearn.local",
+      "email": "student@youlearn.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Yassine",
+      "lastName": "Rahmani",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Student#2026pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "etudiant",
+        "offline_access",
+        "uma_authorization"
+      ],
+      "id": "33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "username": "service-account-youlearn-admin",
+      "enabled": true,
+      "serviceAccountClientId": "youlearn-admin",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "query-groups",
+          "manage-users",
+          "view-events"
+        ]
+      }
+    }
+  ],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xFrameOptions": "SAMEORIGIN",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains",
+    "xRobotsTag": "none"
+  },
+  "internationalizationEnabled": false,
+  "supportedLocales": [
+    "en"
+  ],
+  "defaultLocale": "en"
+}
