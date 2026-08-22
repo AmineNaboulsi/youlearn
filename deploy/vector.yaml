@@ -1,0 +1,56 @@
+# What the `logs-collector` service runs.
+#
+# One source, one sink, no transforms. Every field docker already knows about —
+# container name, image, stream, compose labels — is forwarded as-is, because a
+# field that was dropped here cannot be searched for later, and VictoriaLogs
+# stores sparse fields for free.
+#
+# Copied to the instance by deploy/update.sh, like the Caddyfile. Editing it
+# here and merging is the only way it changes on the server.
+
+data_dir: /var/lib/vector
+
+sources:
+  containers:
+    type: docker_logs
+
+    # Vector reporting on Vector: its own errors would be shipped, and a sink
+    # that is failing would describe each failure in a line it then tries to
+    # ship. Compose names containers <project>-<service>-N, and the project is
+    # the directory the stack runs from — /opt/youlearn. Rename that directory
+    # and this prefix stops matching, which costs a little noise and nothing
+    # else.
+    exclude_containers:
+      - youlearn-logs-collector
+
+sinks:
+  victorialogs:
+    type: elasticsearch
+    inputs: [containers]
+
+    # VictoriaLogs accepts the Elasticsearch bulk protocol, which is why there
+    # is no VictoriaLogs-specific sink here and no plugin to keep current.
+    endpoints: ["http://logs:9428/insert/elasticsearch/"]
+    mode: bulk
+    api_version: v8
+    compression: gzip
+
+    # The query string is how VictoriaLogs is told which fields carry the
+    # message and the timestamp, and which ones identify a stream.
+    #
+    # _stream_fields must stay low-cardinality: it defines the streams data is
+    # partitioned into, and putting something per-request in here (a request
+    # id, a path) is the one reliable way to make this slow.
+    query:
+      _msg_field: message
+      _time_field: timestamp
+      _stream_fields: container_name,stream
+
+    # The sink starts before `logs` is necessarily listening, and a failed
+    # health check at boot would take the collector down with it. Delivery
+    # retries below are what actually protect the data.
+    healthcheck:
+      enabled: false
+
+    request:
+      retry_attempts: 10

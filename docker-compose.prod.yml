@@ -12,10 +12,24 @@
 # Everything secret comes from a .env file next to this one. Nothing in this
 # file, and nothing in either image, contains a credential.
 #
-# TLS terminates at the bundled Caddy service. Only it publishes ports; Keycloak
-# and the API speak plain HTTP on the internal network and are unreachable from
-# outside the host.
+# TLS terminates at the bundled Caddy service. It is the only service that
+# publishes a port to the world; Keycloak and the API speak plain HTTP on the
+# internal network and are unreachable from outside the host. The log UI
+# publishes one too, but to 127.0.0.1, which is reachable only through an SSH
+# tunnel — see the logging block at the bottom.
 # =============================================================================
+
+# Local log rotation, applied to every service below.
+#
+# Without it the json-file driver keeps every line a container has ever written
+# until the boot volume is full. Three files of 10 MB is enough to read a crash
+# that just happened; anything older is the `logs` service's job — see the
+# logging block at the bottom of this file.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   # TLS termination. Caddy obtains and renews Let's Encrypt certificates on its
@@ -40,6 +54,7 @@ services:
       - keycloak
       - api
       - web
+    logging: *logging
     networks: [youlearn]
 
   keycloak-db:
@@ -56,6 +71,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+    logging: *logging
     networks: [youlearn]
 
   keycloak:
@@ -91,6 +107,7 @@ services:
       timeout: 5s
       retries: 40
       start_period: 60s
+    logging: *logging
     networks: [youlearn]
 
   mysql:
@@ -111,6 +128,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
+    logging: *logging
     networks: [youlearn]
 
   # Malware scanning for uploads.
@@ -145,6 +163,7 @@ services:
     #
     # The image knows which tools it has. Leaving the check there keeps the
     # two from drifting apart again.
+    logging: *logging
     networks: [youlearn]
 
   api:
@@ -202,6 +221,7 @@ services:
         condition: service_healthy
       clamav:
         condition: service_healthy
+    logging: *logging
     networks: [youlearn]
 
   # The Next.js front end. This is the only thing users' browsers talk to
@@ -238,6 +258,66 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+    logging: *logging
+    networks: [youlearn]
+
+  # ---------------------------------------------------------------- logging --
+  #
+  # Every service above writes to stdout, docker keeps three 10 MB files per
+  # container, and `docker compose up` discards those the moment it recreates
+  # one — which the update timer does on every release. That is enough to read
+  # a crash that just happened and useless for "show me every upload the
+  # scanner refused in July".
+  #
+  # VictoriaLogs is the durable copy: one Go binary, one volume, and a query
+  # language whose first-class filter is a time range.
+  logs:
+    image: ${VICTORIALOGS_IMAGE:-victoriametrics/victoria-logs:v1.52.0}
+    restart: unless-stopped
+    command:
+      - -storageDataPath=/victoria-logs-data
+      # Old logs are deleted on this schedule. Raise it and the boot volume
+      # pays for it; this is a 50 GB disk that also holds every uploaded video.
+      - -retentionPeriod=${LOGS_RETENTION:-90d}
+      - -loggerFormat=json
+    ports:
+      # Loopback only, deliberately. vmui has no authentication of its own, so
+      # the way in is an SSH tunnel — port 22 already admits only the
+      # operator's address:
+      #
+      #   ssh -L 9428:127.0.0.1:9428 <instance>
+      #   open http://127.0.0.1:9428/select/vmui
+      #
+      # Setting LOGS_BIND=0.0.0.0 publishes an unauthenticated reader of every
+      # log this platform produces. If you want it in a browser without a
+      # tunnel, give it a hostname in deploy/Caddyfile behind basic_auth
+      # instead of changing this.
+      - "${LOGS_BIND:-127.0.0.1}:9428:9428"
+    volumes:
+      - logs-data:/victoria-logs-data
+    logging: *logging
+    networks: [youlearn]
+
+  # Reads what docker already collected and forwards it to `logs`.
+  #
+  # It needs the docker socket, which is root on this host — that is the price
+  # of the docker_logs source, and it is the same price Promtail, Alloy and
+  # Dozzle charge. Nothing else in this stack gets the socket, and this
+  # container runs no code of ours. If that trade stops being acceptable, put
+  # tecnativa/docker-socket-proxy in front of it and allow GET only.
+  logs-collector:
+    image: ${VECTOR_IMAGE:-timberio/vector:0.57.0-alpine}
+    restart: unless-stopped
+    command: ["--config", "/etc/vector/vector.yaml"]
+    volumes:
+      - ./deploy/vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Checkpoints: where each container's log was last read from. Without a
+      # volume, a restart re-ships everything docker still has on disk.
+      - logs-collector-state:/var/lib/vector
+    depends_on:
+      - logs
+    logging: *logging
     networks: [youlearn]
 
 volumes:
@@ -247,6 +327,8 @@ volumes:
   storage-data:
   caddy-data:
   caddy-config:
+  logs-data:
+  logs-collector-state:
 
 networks:
   youlearn:

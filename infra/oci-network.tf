@@ -60,13 +60,25 @@ resource "oci_core_security_list" "public" {
     protocol         = "all"
   }
 
-  # SSH, restricted to one address by variable validation.
-  ingress_security_rules {
-    protocol = "6" # TCP
-    source   = var.ssh_allowed_cidr
-    tcp_options {
-      min = 22
-      max = 22
+  # SSH, one rule per allowed address rather than one rule covering a range
+  # wide enough to hold all of them. A rule is free; a /16 that exists because
+  # two of your addresses happened to be far apart is not.
+  #
+  # Changing this list is an in-place update to the security list. The instance
+  # is not touched and nothing restarts, so locking yourself back in costs a
+  # few seconds — see scripts/allow-my-ip.sh.
+  dynamic "ingress_security_rules" {
+    for_each = var.ssh_allowed_cidrs
+
+    content {
+      protocol    = "6" # TCP
+      source      = ingress_security_rules.value
+      description = "SSH"
+
+      tcp_options {
+        min = 22
+        max = 22
+      }
     }
   }
 
