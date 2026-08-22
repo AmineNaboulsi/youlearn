@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Storage;
 
 use App\Http\HttpException;
+use App\Security\VirusScanner;
 use App\Support\Env;
 
 /**
@@ -59,13 +60,18 @@ final class FileStore
         ],
     ];
 
-    public function __construct(private readonly string $root)
-    {
+    public function __construct(
+        private readonly string $root,
+        private readonly ?VirusScanner $scanner = null,
+    ) {
     }
 
     public static function fromEnv(): self
     {
-        return new self(rtrim(Env::get('STORAGE_ROOT', '/var/www/storage') ?? '', '/'));
+        return new self(
+            rtrim(Env::get('STORAGE_ROOT', '/var/www/storage') ?? '', '/'),
+            VirusScanner::fromEnv(),
+        );
     }
 
     public function root(): string
@@ -164,6 +170,19 @@ final class FileStore
                     implode(', ', self::acceptedTypes($kind))
                 )
             );
+        }
+
+        // Malware scan, after the type is known and before the file is moved
+        // anywhere it could be served from. A refusal here discards the upload
+        // exactly like an unsupported type does — there is never a window in
+        // which an infected file exists under a servable path.
+        if ($this->scanner !== null) {
+            try {
+                $this->scanner->assertClean($temp);
+            } catch (HttpException $exception) {
+                $this->discardTemp($uploadId);
+                throw $exception;
+            }
         }
 
         $publicId = bin2hex(random_bytes(16));

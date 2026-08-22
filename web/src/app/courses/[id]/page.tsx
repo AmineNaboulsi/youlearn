@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -41,10 +42,11 @@ export default async function CoursePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; notice_tone?: string }>;
 }) {
   const { id } = await params;
-  const { notice } = await searchParams;
+  const { notice, notice_tone } = await searchParams;
+  const flash = readNotice({ notice, notice_tone });
 
   const response = await apiOrNull<CourseDetail>(`/courses/${id}`);
   if (!response) notFound();
@@ -74,9 +76,9 @@ export default async function CoursePage({
           <span className="text-ink-soft">{course.category_name ?? "Uncategorised"}</span>
         </nav>
 
-        {notice ? (
-          <Alert emphasis="strong" className="mb-8">
-            {notice}
+        {flash ? (
+          <Alert tone={flash.tone} className="mb-8">
+            {flash.message}
           </Alert>
         ) : null}
 
@@ -120,9 +122,11 @@ export default async function CoursePage({
 
             <CourseThumb
               src={course.img}
+              coverPublicId={course.cover_public_id}
               title={course.title}
               contentType={course.content_type}
               className="mt-8 aspect-[21/9] rounded-card border"
+              sizes="(min-width: 1024px) 720px, 94vw"
             />
 
             {course.description ? (

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 import Link from "next/link";
 
 import { api } from "@/lib/api/client";
@@ -27,9 +28,10 @@ export const metadata: Metadata = { title: "Courses" };
 export default async function DashboardCoursesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; page?: string; notice?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; page?: string; notice?: string; notice_tone?: string }>;
 }) {
   const params = await searchParams;
+  const flash = readNotice(params);
   const session = await requireRole(["admin", "enseignant"], "/dashboard/courses");
   const isAdmin = primaryRole(session.user.roles) === "admin";
 
@@ -59,7 +61,7 @@ export default async function DashboardCoursesPage({
         actions={<ButtonLink href="/dashboard/courses/new" size="sm">New course</ButtonLink>}
       />
 
-      {params.notice ? <Alert emphasis="strong">{params.notice}</Alert> : null}
+      {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
 
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div className="min-w-48 flex-1">
@@ -167,7 +169,7 @@ export default async function DashboardCoursesPage({
                   <Td>{formatDate(course.updated_at)}</Td>
 
                   <Td>
-                    <Badge tone={course.is_published ? "muted" : "outline"}>
+                    <Badge tone={course.is_published ? "success" : "outline"}>
                       <StatusDot on={Boolean(course.is_published)} />
                       {course.is_published ? "Published" : "Draft"}
                     </Badge>

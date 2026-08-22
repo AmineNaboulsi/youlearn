@@ -35,9 +35,11 @@ export function CourseCard({
       <Link href={href ?? `/courses/${course.id}`} className="block">
         <CourseThumb
           src={course.img}
+          coverPublicId={course.cover_public_id}
           title={course.title}
           contentType={course.content_type}
           className="aspect-[16/9]"
+          sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 92vw"
         />
 
         <div className="p-5">
@@ -47,8 +49,8 @@ export function CourseCard({
             ) : null}
 
             {showState ? (
-              <Badge tone={course.is_published ? "solid" : "outline"}>
-                <StatusDot on={Boolean(course.is_published)} className={course.is_published ? "bg-white" : ""} />
+              <Badge tone={course.is_published ? "success" : "outline"}>
+                <StatusDot on={Boolean(course.is_published)} />
                 {course.is_published ? "Published" : "Draft"}
               </Badge>
             ) : null}

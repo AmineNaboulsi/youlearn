@@ -59,6 +59,13 @@ resource "random_password" "keycloak_db" {
   override_special = "!#%*_-+"
 }
 
+# base64url-safe alphabet: this value is read straight out of an env file, so a
+# character that needs shell quoting is a footgun rather than extra entropy.
+resource "random_password" "session_secret" {
+  length  = 48
+  special = false
+}
+
 resource "random_password" "rate_limit_pepper" {
   length  = 40
   special = false
@@ -84,6 +91,7 @@ output "env_file" {
     OCI_NAMESPACE=${data.oci_objectstorage_namespace.this.namespace}
     KEYCLOAK_REPO=youlearnkeycloak
     API_REPO=youlearnapi
+    WEB_REPO=youlearnweb
     IMAGE_TAG=latest
 
     WEB_ORIGIN=${var.app_domain == null ? "SET_app_domain_IN_TFVARS_THEN_RERUN_APPLY" : "https://${var.app_domain}"}
@@ -101,6 +109,12 @@ output "env_file" {
     # Keycloak generates this on first realm import. Read it back with
     # scripts/read-client-secrets.sh, then set it here and restart the api.
     KEYCLOAK_ADMIN_CLIENT_SECRET=TODO_after_first_boot
+    # The youlearn-web secret, from the same script.
+    KEYCLOAK_CLIENT_SECRET=TODO_after_first_boot
+
+    # --- web ---
+    # Encrypts the session cookie. Rotating it signs everybody out.
+    SESSION_SECRET=${random_password.session_secret.result}
 
     # --- api ---
     RATE_LIMIT_PEPPER=${random_password.rate_limit_pepper.result}

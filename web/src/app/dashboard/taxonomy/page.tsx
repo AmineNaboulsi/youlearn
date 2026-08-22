@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 
 import { api } from "@/lib/api/client";
 import type { Category, Envelope, Tag } from "@/lib/api/types";
@@ -36,9 +37,10 @@ export const metadata: Metadata = { title: "Categories & tags" };
 export default async function TaxonomyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; notice_tone?: string }>;
 }) {
-  const { notice } = await searchParams;
+  const { notice, notice_tone } = await searchParams;
+  const flash = readNotice({ notice, notice_tone });
   await requireRole(["admin"], "/dashboard/taxonomy");
 
   const [categories, tags] = await Promise.all([
@@ -53,7 +55,7 @@ export default async function TaxonomyPage({
         description="The vocabulary every course is filed under. Renaming an entry updates it everywhere; deleting one is only possible once nothing uses it."
       />
 
-      {notice ? <Alert emphasis="strong">{notice}</Alert> : null}
+      {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* ------------------------------ categories -------------------- */}

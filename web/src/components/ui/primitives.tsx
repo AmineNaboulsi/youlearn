@@ -91,13 +91,20 @@ export function PageHeading({
  * Badges
  * -------------------------------------------------------------------------- */
 
-type BadgeTone = "default" | "solid" | "outline" | "muted";
+type BadgeTone = "default" | "solid" | "outline" | "muted" | "success" | "danger" | "warning";
 
 const badgeTones: Record<BadgeTone, string> = {
   default: "bg-surface-sunk text-ink-soft border-line",
   solid: "bg-ink text-white border-ink",
   outline: "bg-transparent text-ink border-ink",
   muted: "bg-transparent text-ink-muted border-line",
+
+  // State tones. Every one of these is paired with a word ("Published",
+  // "Failed") rather than standing alone, so the hue is reinforcement and
+  // never the only thing carrying the meaning.
+  success: "bg-positive-soft text-positive-strong border-positive/30",
+  danger: "bg-danger-soft text-danger-strong border-danger/30",
+  warning: "bg-warning-soft text-warning-strong border-warning/30",
 };
 
 export function Badge({
@@ -123,10 +130,13 @@ export function Badge({
 }
 
 /**
- * A state indicator that does not rely on colour.
+ * A state indicator that reads without colour, and faster with it.
  *
- * The dot is filled for the "on" state and hollow for the "off" one, so the
- * distinction survives both a monochrome palette and a colour-blind reader.
+ * Filled for "on" and hollow for "off", so the distinction survives greyscale
+ * printing and colour blindness on its own. Green is layered on top of that
+ * shape difference rather than replacing it — it is what makes a column of
+ * twenty rows scannable at a glance, which is the one job the monochrome
+ * palette was genuinely bad at.
  */
 export function StatusDot({ on, className }: { on: boolean; className?: string }) {
   return (
@@ -134,7 +144,7 @@ export function StatusDot({ on, className }: { on: boolean; className?: string }
       aria-hidden
       className={cn(
         "inline-block size-1.5 rounded-full",
-        on ? "bg-ink" : "border border-ink-faint bg-transparent",
+        on ? "bg-positive" : "border border-ink-faint bg-transparent",
         className,
       )}
     />
@@ -145,28 +155,70 @@ export function StatusDot({ on, className }: { on: boolean; className?: string }
  * Messages
  * -------------------------------------------------------------------------- */
 
+type AlertTone = "neutral" | "success" | "danger" | "warning";
+
+const alertTones: Record<AlertTone, { box: string; rule: string; title: string }> = {
+  neutral: {
+    box: "border-line bg-surface-sunk text-ink-soft",
+    rule: "border-l-ink",
+    title: "text-ink",
+  },
+  success: {
+    box: "border-positive/25 bg-positive-soft text-positive-strong",
+    rule: "border-l-positive",
+    title: "text-positive-strong",
+  },
+  danger: {
+    box: "border-danger/25 bg-danger-soft text-danger-strong",
+    rule: "border-l-danger",
+    title: "text-danger-strong",
+  },
+  warning: {
+    box: "border-warning/25 bg-warning-soft text-warning-strong",
+    rule: "border-l-warning",
+    title: "text-warning-strong",
+  },
+};
+
+/**
+ * A message about what just happened.
+ *
+ * `tone` carries severity; `emphasis` adds the left rule that was the only
+ * severity signal before there was a palette to spend. Both still work, because
+ * most call sites show a notice whose success or failure is not known here —
+ * those stay neutral rather than guessing and colouring a success message red.
+ *
+ * role="alert" for problems, so a screen reader announces them immediately
+ * rather than waiting for the user to reach the text; role="status" otherwise,
+ * which is polite and does not interrupt.
+ */
 export function Alert({
   title,
   children,
+  tone = "neutral",
   emphasis = "normal",
   className,
 }: {
   title?: string;
   children?: ReactNode;
+  tone?: AlertTone;
   emphasis?: "normal" | "strong";
   className?: string;
 }) {
+  const palette = alertTones[tone];
+  const urgent = tone === "danger" || tone === "warning";
+
   return (
     <div
-      role="status"
+      role={urgent ? "alert" : "status"}
       className={cn(
-        "rounded-lg border border-line bg-surface-sunk px-4 py-3 text-[13px] leading-relaxed text-ink-soft",
-        // A left rule carries severity, since the palette has no red to spend.
-        emphasis === "strong" && "border-l-[3px] border-l-ink",
+        "rounded-lg border px-4 py-3 text-[13px] leading-relaxed",
+        palette.box,
+        (emphasis === "strong" || tone !== "neutral") && cn("border-l-[3px]", palette.rule),
         className,
       )}
     >
-      {title ? <p className="mb-0.5 font-medium text-ink">{title}</p> : null}
+      {title ? <p className={cn("mb-0.5 font-medium", palette.title)}>{title}</p> : null}
       {children}
     </div>
   );

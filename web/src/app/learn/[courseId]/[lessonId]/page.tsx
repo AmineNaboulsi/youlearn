@@ -51,7 +51,7 @@ export default async function LessonPage({
   } catch (error) {
     if (error instanceof ApiError && error.isForbidden) {
       // Not enrolled. Send them where they can do something about it.
-      redirect(`/courses/${courseId}?notice=${encodeURIComponent(error.message)}`);
+      redirect(`/courses/${courseId}?notice=${encodeURIComponent(error.message)}&notice_tone=danger`);
     }
     if (error instanceof ApiError && error.isNotFound) notFound();
     throw error;
@@ -99,7 +99,7 @@ export default async function LessonPage({
                 title={lesson.title}
               />
             ) : lesson.kind === "video" ? (
-              <Alert emphasis="strong">
+              <Alert tone="warning">
                 This lesson does not have a video yet. The instructor may still be uploading it.
               </Alert>
             ) : null}

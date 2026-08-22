@@ -31,7 +31,7 @@ export default async function SignInFailedPage({
 
           {/* The reason comes from our own callback handler, not from the
               identity provider, so it never carries a raw protocol error. */}
-          <Alert emphasis="strong" className="mt-6 w-full text-left">
+          <Alert tone="danger" className="mt-6 w-full text-left">
             {reason && reason.length < 200
               ? reason
               : "Something interrupted the sign-in. Please try again."}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 import { notFound } from "next/navigation";
 
 import { api, apiOrNull } from "@/lib/api/client";
@@ -38,10 +39,11 @@ export default async function UserSessionsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; notice_tone?: string }>;
 }) {
   const { id } = await params;
-  const { notice } = await searchParams;
+  const { notice, notice_tone } = await searchParams;
+  const flash = readNotice({ notice, notice_tone });
 
   await requireRole(["admin"], `/dashboard/people/${id}/sessions`);
 
@@ -65,7 +67,7 @@ export default async function UserSessionsPage({
         description={`${user.email} · ${sessions.data.length} active session${sessions.data.length === 1 ? "" : "s"}`}
         actions={
           <>
-            <Badge tone={user.is_active ? "muted" : "outline"}>
+            <Badge tone={user.is_active ? "success" : "danger"}>
               <StatusDot on={Boolean(user.is_active)} />
               {user.is_active ? "Active" : "Suspended"}
             </Badge>
@@ -76,7 +78,7 @@ export default async function UserSessionsPage({
         }
       />
 
-      {notice ? <Alert emphasis="strong">{notice}</Alert> : null}
+      {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
 
       {sessions.data.length === 0 ? (
         <EmptyState

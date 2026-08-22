@@ -43,7 +43,10 @@ export interface Course {
   title: string;
   slug: string;
   subtitle: string | null;
+  /** A remote http(s) cover URL, when the instructor supplied one. */
   img: string | null;
+  /** Set instead of `img` when the cover was uploaded here. Serve via /api/media. */
+  cover_public_id: string | null;
   description: string | null;
   content_type: ContentType;
   /** Only present on the single-course endpoint. */
@@ -77,6 +80,7 @@ export interface EnrolledCourse {
   slug: string;
   subtitle: string | null;
   img: string | null;
+  cover_public_id: string | null;
   content_type: ContentType;
   is_published: 0 | 1;
   category_name: string | null;

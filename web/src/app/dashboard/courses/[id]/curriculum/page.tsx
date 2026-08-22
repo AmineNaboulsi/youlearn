@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 import { notFound } from "next/navigation";
 
 import { api, apiOrNull } from "@/lib/api/client";
@@ -49,10 +50,11 @@ export default async function CurriculumPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; notice_tone?: string }>;
 }) {
   const { id } = await params;
-  const { notice } = await searchParams;
+  const { notice, notice_tone } = await searchParams;
+  const flash = readNotice({ notice, notice_tone });
 
   await requireRole(["admin", "enseignant"], `/dashboard/courses/${id}/curriculum`);
 
@@ -92,7 +94,7 @@ export default async function CurriculumPage({
         }
       />
 
-      {notice ? <Alert emphasis="strong">{notice}</Alert> : null}
+      {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
 
       {curriculum.sections.length === 0 ? (
         <EmptyState

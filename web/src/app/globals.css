@@ -29,6 +29,36 @@
   --color-line: #e5e5e5;
   --color-line-strong: #d4d4d4;
 
+  /* ---------------------------------------------------------------------------
+     State colour.
+
+     The platform stays black and white: surfaces, type, borders, artwork and
+     every decorative element are monochrome, and nothing below is used for
+     branding, emphasis or decoration. These three hues exist only to answer
+     "is this thing live, broken, or waiting" at a glance — the questions where
+     scanning a dashboard by shape alone genuinely costs time.
+
+     Every one of them is paired with a shape or a word as well as a hue
+     (StatusDot stays filled-vs-hollow, Alert keeps its title), so nothing here
+     is the sole carrier of meaning for a colour-blind reader. The -strong
+     variants are the text tones and clear WCAG AA on their -soft background.
+     --------------------------------------------------------------------------- */
+
+  /* Published, active, healthy. */
+  --color-positive: #16a34a;
+  --color-positive-strong: #15803d;
+  --color-positive-soft: #f0fdf4;
+
+  /* Errors and destructive actions. */
+  --color-danger: #dc2626;
+  --color-danger-strong: #b91c1c;
+  --color-danger-soft: #fef2f2;
+
+  /* Draft, pending, needs attention. */
+  --color-warning: #d97706;
+  --color-warning-strong: #b45309;
+  --color-warning-soft: #fffbeb;
+
   --radius-card: 0.875rem;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,

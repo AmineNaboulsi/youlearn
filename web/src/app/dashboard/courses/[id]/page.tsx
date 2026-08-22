@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 import { notFound } from "next/navigation";
 
 import { api, apiOrNull } from "@/lib/api/client";
@@ -47,10 +48,11 @@ export default async function EditCoursePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; notice_tone?: string }>;
 }) {
   const { id } = await params;
-  const { notice } = await searchParams;
+  const { notice, notice_tone } = await searchParams;
+  const flash = readNotice({ notice, notice_tone });
 
   await requireRole(["admin", "enseignant"], `/dashboard/courses/${id}`);
 
@@ -72,7 +74,7 @@ export default async function EditCoursePage({
         description={`Created ${formatDate(course.created_at)} · last updated ${formatDate(course.updated_at)} · ${course.enrollment_count} enrolled`}
         actions={
           <>
-            <Badge tone={course.is_published ? "muted" : "outline"}>
+            <Badge tone={course.is_published ? "success" : "outline"}>
               <StatusDot on={Boolean(course.is_published)} />
               {course.is_published ? "Published" : "Draft"}
             </Badge>
@@ -89,7 +91,7 @@ export default async function EditCoursePage({
         }
       />
 
-      {notice ? <Alert emphasis="strong">{notice}</Alert> : null}
+      {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
 
       <CourseForm
         action={updateCourseAction}

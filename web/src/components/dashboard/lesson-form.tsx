@@ -58,7 +58,7 @@ export function LessonForm({
       <input type="hidden" name="duration_seconds" value={duration} />
 
       {state.message ? (
-        <Alert emphasis="strong" title="Could not save">
+        <Alert tone="danger" title="Could not save">
           {state.message}
         </Alert>
       ) : null}

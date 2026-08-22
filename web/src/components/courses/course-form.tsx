@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field";
+import { CoverUpload } from "@/components/courses/cover-upload";
 import { Alert, Card, CardBody, CardHeader, CardTitle, CardDescription } from "@/components/ui/primitives";
 
 /**
@@ -53,7 +54,7 @@ export function CourseForm({
       {course ? <input type="hidden" name="id" value={course.id} /> : null}
 
       {state.message ? (
-        <Alert emphasis="strong" title={state.ok ? undefined : "Could not save"}>
+        <Alert tone={state.ok ? "success" : "danger"} title={state.ok ? undefined : "Could not save"}>
           {state.message}
         </Alert>
       ) : null}
@@ -131,22 +132,11 @@ export function CourseForm({
             </Field>
           </div>
 
-          <Field
-            label="Cover image URL"
-            htmlFor="img"
-            error={state.fields.img}
-            hint="An absolute https:// link. Images are shown in greyscale to match the platform."
-          >
-            <Input
-              id="img"
-              name="img"
-              type="url"
-              inputMode="url"
-              defaultValue={course?.img ?? ""}
-              placeholder="https://…"
-              error={Boolean(state.fields.img)}
-            />
-          </Field>
+          <CoverUpload
+            currentUrl={course?.img}
+            currentPublicId={course?.cover_public_id}
+            error={state.fields.cover_public_id ?? state.fields.img}
+          />
 
           <Field
             label="Description"

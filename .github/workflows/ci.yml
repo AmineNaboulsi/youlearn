@@ -1,0 +1,161 @@
+# Checks that run on every pull request.
+#
+# Nothing here publishes anything or touches the server: this workflow answers
+# "would main still be deployable with these changes merged?" and nothing else.
+# The images are built but discarded, which is what catches a Dockerfile that
+# only breaks in a clean checkout — the failure mode a local `docker build` with
+# a warm cache reliably hides.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  # So main is still verified after a merge, even though deploy.yml also runs.
+  push:
+    branches: [main]
+
+# A second push to the same PR makes the first run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: web · lint, types, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # `npm ci` rather than `npm install`, deliberately: it fails when the
+      # lockfile and package.json disagree instead of quietly resolving new
+      # versions, which is the whole point of committing a lockfile. Note that
+      # the lockfile must be resolved on Linux — see infra/README.md.
+      - run: npm ci
+        working-directory: web
+
+      - run: npx tsc --noEmit
+        working-directory: web
+
+      - run: npx eslint .
+        working-directory: web
+
+      - run: npm run build
+        working-directory: web
+
+  api:
+    name: api · php syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+
+      - name: Validate composer.json against the lockfile
+        run: composer validate --strict --no-check-publish
+        working-directory: backend
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+        working-directory: backend
+
+      # No test suite yet, so this is the floor rather than the ceiling: it
+      # catches parse errors in every file that ships, which is worth having
+      # even though it proves nothing about behaviour.
+      - name: Lint every PHP file
+        run: find src index.php -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
+        working-directory: backend
+
+      - name: Audit dependencies for known advisories
+        run: composer audit --no-interaction
+        working-directory: backend
+
+  images:
+    name: images · build (no push)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Native arm64 runner, so no QEMU: these build at the same speed they
+      # will on the Ampere instance they are destined for.
+      - name: Build web
+        uses: docker/build-push-action@v6
+        with:
+          context: web
+          file: docker/web/Dockerfile
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/php/Dockerfile
+          target: prod
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  config:
+    name: config · compose and terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Compose interpolates before it validates, and the required-variable
+      # syntax (${VAR:?}) rejects an empty value as well as a missing one. The
+      # example file ships every key blank, so fill them with a throwaway value:
+      # this step checks the file's shape, and the values are irrelevant to that.
+      - name: Validate docker-compose.prod.yml
+        run: |
+          awk -F= '/^[A-Z_][A-Z0-9_]*=$/ { print $1 "=ci-placeholder"; next } { print }' .env.prod.example > /tmp/ci.env
+          docker compose -f docker-compose.prod.yml --env-file /tmp/ci.env config --quiet
+
+      - name: Validate docker-compose.yml
+        run: docker compose -f docker-compose.yml config --quiet
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform formatting
+        run: terraform fmt -check -recursive
+        working-directory: infra
+
+      # -backend=false so this needs no OCI credentials: it checks that the
+      # configuration is internally consistent, not that it can reach Oracle.
+      - name: Terraform validate
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+        working-directory: infra
+
+  secrets:
+    name: secrets · nothing committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks needs history to scan the commits a PR introduces.
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
