@@ -1,4 +1,4 @@
-# Build the three images and publish them. The instance deploys itself.
+# Build the four images and publish them. The instance deploys itself.
 #
 # Runs on every push to main — which, with pull requests as the way changes
 # arrive, means on every merged PR. CI has already run on the branch; this
@@ -151,6 +151,21 @@ jobs:
             ${{ vars.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/youlearnapi:${{ steps.meta.outputs.tag }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
+
+      # Built rather than mirrored: the official clamav/clamav image publishes
+      # linux/amd64 only, so there is no arm64 artefact to copy.
+      - name: Push clamav
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/clamav/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ vars.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/youlearnclamav:latest
+            ${{ vars.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/youlearnclamav:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=clamav
+          cache-to: type=gha,mode=max,scope=clamav
 
       - name: Push web
         uses: docker/build-push-action@v6

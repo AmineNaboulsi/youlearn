@@ -7,18 +7,22 @@
 # OCIR, in the same region, pulls all three application images in about a
 # second.
 #
-# So the four public images are mirrored into OCIR and the stack points at the
+# So the public images are mirrored into OCIR and the stack points at the
 # copies, which takes Docker Hub out of the runtime path entirely. A registry
 # being unreachable then stops being a deploy failure.
 #
+# ClamAV is deliberately absent from this list: it publishes linux/amd64 only,
+# so there is nothing to mirror that this host could run. It is built from
+# docker/clamav/Dockerfile instead.
+#
 # This is deliberately NOT part of the deploy workflow. These images change on
-# their own schedule, not ours, and re-copying four multi-arch manifests on
+# their own schedule, not ours, and re-copying three multi-arch manifests on
 # every merge would be waste. It runs monthly, and on demand when a version here
 # changes.
 #
-# One repository, one tag per image, rather than four repositories: OCIR does
+# One repository, one tag per image, rather than three repositories: OCIR does
 # not always create a repository on first push, and having to create one by hand
-# in the console is friction enough without doing it four times.
+# in the console is friction enough without doing it three times.
 #
 # ## Prerequisites
 #
@@ -88,7 +92,6 @@ jobs:
           copy caddy:2-alpine     caddy-2-alpine
           copy postgres:16-alpine postgres-16-alpine
           copy mysql:8.4          mysql-8.4
-          copy clamav/clamav:1.4  clamav-1.4
 
       - name: What to put in .env on the instance
         env:
@@ -101,6 +104,5 @@ jobs:
             echo "CADDY_IMAGE=$DEST:caddy-2-alpine"
             echo "POSTGRES_IMAGE=$DEST:postgres-16-alpine"
             echo "MYSQL_IMAGE=$DEST:mysql-8.4"
-            echo "CLAMAV_IMAGE=$DEST:clamav-1.4"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

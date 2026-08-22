@@ -137,7 +137,11 @@ services:
 
   # Optional in development — see CLAMAV_ENABLED above.
   clamav:
-    image: clamav/clamav:1.4
+    # The official image is amd64-only, so it is built here. On an amd64 dev
+    # machine that build is the same one production runs, minus the platform.
+    build:
+      context: .
+      dockerfile: docker/clamav/Dockerfile
     profiles: [scan]
     restart: unless-stopped
     environment:

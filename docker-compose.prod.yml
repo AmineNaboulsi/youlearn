@@ -124,7 +124,9 @@ services:
   # The image runs freshclam alongside clamd, so signatures update themselves.
   # First boot downloads roughly 250 MB of definitions before it reports healthy.
   clamav:
-    image: ${CLAMAV_IMAGE:-clamav/clamav:1.4}
+    # Built here, not pulled: the official clamav/clamav image publishes
+    # linux/amd64 only, every tag, so it cannot run on this arm64 host.
+    image: ${CLAMAV_IMAGE:-${OCI_REGISTRY}/${OCI_NAMESPACE}/${CLAMAV_REPO:-youlearnclamav}:${IMAGE_TAG:-latest}}
     restart: unless-stopped
     environment:
       CLAMAV_NO_MILTERD: "true"
