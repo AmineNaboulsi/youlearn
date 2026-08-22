@@ -175,7 +175,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # The instance checks every two minutes and then pulls three images, so
-      # the first several polls are expected to report the old SHA. Fifteen
+      # the first several polls are expected to report the old build. Fifteen
       # minutes is slack, not an estimate.
       - name: Poll /api/health for the new build
         env:
@@ -184,21 +184,42 @@ jobs:
         run: |
           echo "waiting for $WANT at $APP_URL/api/health"
           got=""
+          code=""
 
           for attempt in $(seq 1 45); do
-            body=$(curl -fsS --max-time 20 "$APP_URL/api/health" 2>/dev/null || true)
-            got=$(printf '%s' "$body" | sed -n 's/.*"sha":"\([^"]*\)".*/\1/p')
+            # Status and body captured separately. A 404 here is a specific,
+            # recoverable situation — the previous build is still serving, and
+            # it has no /api/health — so reporting it as "no response" would
+            # send you looking at DNS and TLS instead of at the updater.
+            code=$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 20 "$APP_URL/api/health" || echo 000)
+
+            # Strip quotes and spaces, split on commas, take the sha field.
+            got=$(tr -d ' "' < /tmp/health.json 2>/dev/null | tr ',' '\n' | sed -n 's/^sha://p')
 
             if [ "$got" = "$WANT" ]; then
               echo "live after roughly $((attempt * 20))s"
               exit 0
             fi
 
-            printf '  %2d/45  serving %s\n' "$attempt" "${got:-<no response>}"
+            case "$code" in
+              200) note="serving ${got:-<no sha in response>}" ;;
+              404) note="404 - the previous build is still running" ;;
+              000) note="unreachable" ;;
+              *) note="HTTP $code" ;;
+            esac
+            echo "  $attempt/45  $note"
+
             sleep 20
           done
 
-          echo "::error::$WANT did not go live within 15 minutes (still serving '${got:-nothing}')"
-          echo "The images published fine — it is the rollout that stalled."
+          echo "::error::$WANT did not go live within 15 minutes"
+          if [ "$code" = "404" ]; then
+            echo "The site is up but still serving a build with no /api/health,"
+            echo "so nothing rolled out. The usual cause is that the updater is"
+            echo "not installed yet:"
+            echo "  ssh ubuntu@<host> 'sudo bash /tmp/install-updater.sh'"
+          else
+            echo "The images published fine - it is the rollout that stalled."
+          fi
           echo "On the instance:  journalctl -u youlearn-update -n 50"
           exit 1
