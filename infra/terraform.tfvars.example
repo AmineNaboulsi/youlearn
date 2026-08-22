@@ -10,8 +10,12 @@ oci_tenancy_ocid     = "ocid1.tenancy.oc1..xxxxx"
 # ssh-keygen -t ed25519 -C youlearn -f ~/.ssh/youlearn
 ssh_public_key = "ssh-ed25519 AAAA... youlearn"
 
-# Your own address. Deliberately has no default — curl -s ifconfig.me
-ssh_allowed_cidr = "203.0.113.7/32"
+# Who may reach port 22. One rule per entry, so home / office / hotspot can
+# each be a /32. Deliberately has no default — curl -s ifconfig.me
+#
+# Home addresses change. When yours does, ./scripts/allow-my-ip.sh rewrites
+# this line and applies just the security list.
+ssh_allowed_cidrs = ["203.0.113.7/32"]
 
 # Always Free totals: 4 OCPUs and 24 GB across all A1 instances.
 instance_ocpus     = 2

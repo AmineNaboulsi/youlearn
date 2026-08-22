@@ -113,17 +113,34 @@ variable "instance_memory_gb" {
   }
 }
 
-variable "ssh_allowed_cidr" {
+variable "ssh_allowed_cidrs" {
   description = <<-EOT
-    Who may reach port 22. Defaulting this to 0.0.0.0/0 would expose SSH to
-    every scanner on the internet from the moment the instance boots, so it has
-    no default — set it to your own address, e.g. "203.0.113.7/32".
-    Find it with: curl -s ifconfig.me
+    Who may reach port 22. One security-list rule is created per entry, so a
+    laptop at home, an office and a phone hotspot can each have their own
+    without any of them being a wide range.
+
+    Defaulting this to 0.0.0.0/0 would expose SSH to every scanner on the
+    internet from the moment the instance boots, so it has no default — set it
+    to your own address, e.g. ["203.0.113.7/32"].
+
+    Home connections are handed a new address every few days. When yours
+    changes, SSH stops answering and nothing else breaks; run
+    scripts/allow-my-ip.sh to point this at wherever you are now.
   EOT
-  type        = string
+  type        = list(string)
 
   validation {
-    condition     = var.ssh_allowed_cidr != "0.0.0.0/0"
+    condition     = length(var.ssh_allowed_cidrs) > 0
+    error_message = "At least one address, or nothing can ever reach port 22 — including you."
+  }
+
+  validation {
+    condition     = alltrue([for c in var.ssh_allowed_cidrs : can(cidrhost(c, 0))])
+    error_message = "Every entry must be a CIDR block, mask included: 203.0.113.7/32, not 203.0.113.7."
+  }
+
+  validation {
+    condition     = alltrue([for c in var.ssh_allowed_cidrs : !contains(["0.0.0.0/0", "::/0"], c)])
     error_message = "Refusing to open SSH to the whole internet. Use your own address with /32."
   }
 }
