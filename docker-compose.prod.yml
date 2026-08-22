@@ -134,14 +134,17 @@ services:
     volumes:
       - storage-data:/var/www/storage:ro
       - clamav-db:/var/lib/clamav
-    healthcheck:
-      test: ["CMD-SHELL", "clamdcheck.sh"]
-      interval: 30s
-      timeout: 10s
-      # Signature download on a cold volume is slow; this is the wait, not a
-      # symptom of anything wrong.
-      retries: 20
-      start_period: 180s
+    # No healthcheck here on purpose — the image defines its own, and a
+    # healthcheck in compose silently overrides it.
+    #
+    # This block used to run `clamdcheck.sh`, which ships with the official
+    # clamav/clamav image and does not exist in the Debian-based one that
+    # replaced it. Every probe exited 127, the container never became healthy,
+    # and api and web — which wait on it — never started, so the site served
+    # 502 while clamd itself was running perfectly and answering PING.
+    #
+    # The image knows which tools it has. Leaving the check there keeps the
+    # two from drifting apart again.
     networks: [youlearn]
 
   api:
