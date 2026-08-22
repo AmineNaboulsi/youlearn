@@ -1,8 +1,21 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/cn";
 
-/** The wordmark. A glyph tile plus the name — no image asset to load. */
+import mark from "../../../public/logo-mark.png";
+
+/**
+ * The wordmark: the brand mark plus the name.
+ *
+ * The mark is imported rather than referenced by path, so its intrinsic size is
+ * known at build time and the row cannot reflow once the image decodes. It is
+ * also `priority`: this sits in the header of every page, which makes it the
+ * one image on the site that is always above the fold.
+ *
+ * Only the glyph is used here, never the full logo file — that one includes the
+ * wordmark, which is unreadable at 28px and would repeat the text beside it.
+ */
 export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
   return (
     <Link
@@ -10,9 +23,16 @@ export function Logo({ className, href = "/" }: { className?: string; href?: str
       className={cn("inline-flex items-center gap-2 text-ink", className)}
       aria-label="YouLearn home"
     >
-      <span className="grid size-7 place-items-center rounded-md bg-ink text-[13px] font-bold tracking-[-0.02em] text-white">
-        Y
-      </span>
+      <Image
+        src={mark}
+        alt=""
+        width={28}
+        height={28}
+        priority
+        // The source is already white-on-black, so the tile needs no background
+        // of its own — only the corner radius.
+        className="size-7 flex-none rounded-md"
+      />
       <span className="text-[15px] font-semibold tracking-[-0.02em]">YouLearn</span>
     </Link>
   );
