@@ -1,0 +1,108 @@
+# Copy the public base images into OCIR.
+#
+# The instance runs in af-casablanca-1, which routes badly to Docker Hub: pulls
+# fail with `TLS handshake timeout` reaching auth.docker.io often enough to
+# break deploys. It has done so three times — on mysql, postgres and caddy
+# during the first bring-up, and on clamav during the first automated deploy.
+# OCIR, in the same region, pulls all three application images in about a
+# second.
+#
+# So the public images are mirrored into OCIR and the stack points at the
+# copies, which takes Docker Hub out of the runtime path entirely. A registry
+# being unreachable then stops being a deploy failure.
+#
+# ClamAV is deliberately absent from this list: it publishes linux/amd64 only,
+# so there is nothing to mirror that this host could run. It is built from
+# docker/clamav/Dockerfile instead.
+#
+# This is deliberately NOT part of the deploy workflow. These images change on
+# their own schedule, not ours, and re-copying three multi-arch manifests on
+# every merge would be waste. It runs monthly, and on demand when a version here
+# changes.
+#
+# One repository, one tag per image, rather than three repositories: OCIR does
+# not always create a repository on first push, and having to create one by hand
+# in the console is friction enough without doing it three times.
+#
+# ## Prerequisites
+#
+# Create the `youlearnbase` repository in OCIR once, and make it public if the
+# instance should keep pulling anonymously.
+
+name: Mirror base images
+
+on:
+  schedule:
+    # Monthly. These are pinned to minor versions, so this picks up patch
+    # releases without ever changing a major.
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-base-images
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    name: copy to OCIR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required configuration
+        env:
+          OCI_REGISTRY: ${{ vars.OCI_REGISTRY }}
+          OCI_USERNAME: ${{ secrets.OCI_USERNAME }}
+          OCI_AUTH_TOKEN: ${{ secrets.OCI_AUTH_TOKEN }}
+          OCI_NAMESPACE: ${{ secrets.OCI_NAMESPACE }}
+        run: |
+          missing=()
+          for name in OCI_REGISTRY OCI_USERNAME OCI_AUTH_TOKEN OCI_NAMESPACE; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Not configured: ${missing[*]}"
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.OCI_REGISTRY }}
+          username: ${{ secrets.OCI_USERNAME }}
+          password: ${{ secrets.OCI_AUTH_TOKEN }}
+
+      # `imagetools create` copies the manifest between registries without
+      # pulling any layer into the runner, and it preserves every platform in
+      # the index rather than flattening to the runner's own architecture.
+      - name: Copy
+        env:
+          DEST: ${{ vars.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/youlearnbase
+        run: |
+          set -euo pipefail
+
+          # source image                tag in youlearnbase
+          copy() {
+            echo "==> $1  ->  $DEST:$2"
+            docker buildx imagetools create --tag "$DEST:$2" "$1"
+          }
+
+          copy caddy:2-alpine     caddy-2-alpine
+          copy postgres:16-alpine postgres-16-alpine
+          copy mysql:8.4          mysql-8.4
+
+      - name: What to put in .env on the instance
+        env:
+          DEST: ${{ vars.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/youlearnbase
+        run: |
+          {
+            echo "Set these on the instance so nothing is pulled from Docker Hub:"
+            echo
+            echo '```'
+            echo "CADDY_IMAGE=$DEST:caddy-2-alpine"
+            echo "POSTGRES_IMAGE=$DEST:postgres-16-alpine"
+            echo "MYSQL_IMAGE=$DEST:mysql-8.4"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

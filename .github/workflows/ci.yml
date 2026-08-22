@@ -106,6 +106,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build clamav
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/clamav/Dockerfile
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha,scope=clamav
+          cache-to: type=gha,mode=max,scope=clamav
+
       - name: Build api
         uses: docker/build-push-action@v6
         with:

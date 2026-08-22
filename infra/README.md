@@ -208,6 +208,25 @@ cp /tmp/relock/package-lock.json web/
 Seeding it with the existing lockfile keeps resolved versions put; a bare
 `package.json` would let every caret range float.
 
+**Docker Hub is not reliably reachable from this region.** Pulls from
+af-casablanca-1 fail with `TLS handshake timeout` contacting `auth.docker.io`
+often enough to break a deploy — it has done so on mysql, postgres, caddy and
+clamav. OCIR, in the same region, serves all three application images in about
+a second.
+
+Run the **Mirror base images** workflow once, then set `CADDY_IMAGE`,
+`POSTGRES_IMAGE`, `MYSQL_IMAGE` and `CLAMAV_IMAGE` in the instance's `.env` to
+the OCIR copies it prints. That takes Docker Hub out of the runtime path
+entirely. Until then, a base image that is not already on the host will
+intermittently fail to arrive, and `docker compose up -d` fails with it.
+
+To load one by hand in the meantime:
+
+```bash
+docker pull --platform linux/arm64 <image>
+docker save --platform linux/arm64 <image> | gzip | ssh ubuntu@<ip> 'gunzip | docker load'
+```
+
 **ClamAV needs the same path the API uses.** clamd is handed an absolute path
 and resolves it in its own filesystem, so the storage volume is mounted into the
 clamav container read-only at the identical mount point. Get that wrong and

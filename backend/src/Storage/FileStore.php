@@ -113,10 +113,25 @@ final class FileStore
 
     public function openTemp(string $uploadId, bool $append): mixed
     {
-        $handle = fopen($this->tempPath($uploadId), $append ? 'ab' : 'wb');
+        $path = $this->tempPath($uploadId);
+        $handle = fopen($path, $append ? 'ab' : 'wb');
 
         if ($handle === false) {
             throw new HttpException(500, 'storage_unavailable', 'Upload storage is not writable.');
+        }
+
+        if (!$append) {
+            // World-readable, unlike the 0640 a finished asset gets.
+            //
+            // clamd scans this file by path from its own container, running as
+            // the clamav user, while this process writes it as www-data. Whether
+            // it can read it would otherwise depend on the umask the API happens
+            // to have — and the failure is a refused upload with "could not be
+            // scanned", which points nowhere near a permission bit.
+            //
+            // The exposure is a partial upload inside a volume that only these
+            // two containers mount, for as long as the upload is in flight.
+            @chmod($path, 0o644);
         }
 
         return $handle;
