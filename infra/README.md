@@ -208,6 +208,30 @@ cp /tmp/relock/package-lock.json web/
 Seeding it with the existing lockfile keeps resolved versions put; a bare
 `package.json` would let every caret range float.
 
+**OCIR repositories are created private.** Every repository the deploy pushes
+to is created on first push and defaults to private, while the instance pulls
+anonymously — so a newly added image fails with `Anonymous users are only
+allowed read access on public repos` on the first tick after it is introduced.
+
+Either make the repository public in the console, or give the instance
+credentials once:
+
+```bash
+sudo install -d -o ubuntu -g ubuntu -m 0700 /opt/youlearn/.docker
+DOCKER_CONFIG=/opt/youlearn/.docker docker login ocir.<region>.oci.oraclecloud.com   -u '<namespace>/Default/<email>'
+```
+
+`DOCKER_CONFIG` is not optional there. The updater runs under systemd with
+`ProtectHome=true`, so `~/.docker` is invisible to it and the unit points
+`DOCKER_CONFIG` at `/opt/youlearn/.docker`. A plain `docker login` writes
+somewhere the service will never look, and the pull keeps failing with no sign
+that a login happened at all.
+
+Authenticating is the better end state: `youlearnapi` contains the entire
+application source, and being public means anyone can read it. The token is
+stored base64-encoded rather than encrypted, so treat it as a credential at
+rest on that disk.
+
 **Docker Hub is not reliably reachable from this region.** Pulls from
 af-casablanca-1 fail with `TLS handshake timeout` contacting `auth.docker.io`
 often enough to break a deploy — it has done so on mysql, postgres, caddy and
