@@ -134,4 +134,11 @@ ENV STORAGE_ROOT=/var/www/storage
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD php -r 'exit(@file_get_contents("http://127.0.0.1/health") ? 0 : 1);'
 
+COPY docker/php/prod-entrypoint.sh /usr/local/bin/prod-entrypoint.sh
+RUN chmod 0755 /usr/local/bin/prod-entrypoint.sh
+
+# Fixes the storage volume's modes on every boot. The Dockerfile's own chmod
+# above only applies when the volume is empty, so on any host that has already
+# accepted an upload it is the entrypoint or nothing.
+ENTRYPOINT ["/usr/local/bin/prod-entrypoint.sh"]
 CMD ["apache2-foreground"]
