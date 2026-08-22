@@ -88,9 +88,39 @@ final class VirusScanner
             throw new HttpException(500, 'scan_failed', 'The file could not be scanned.');
         }
 
-        $verdict = $this->scan($absolutePath);
+        try {
+            $verdict = $this->scan($absolutePath);
+        } catch (HttpException $exception) {
+            // A scanner that cannot be reached refuses every upload on the
+            // platform, and the instructor's report of it will be "the site is
+            // broken". This is the line that says which of the four failures
+            // it was, and when it started.
+            error_log(sprintf(
+                '[youlearn] scan_unavailable reason=%s host=%s:%d path=%s',
+                $exception->errorCode,
+                $this->host,
+                $this->port,
+                $absolutePath,
+            ));
+
+            throw $exception;
+        }
 
         if ($verdict['infected']) {
+            // Withheld from the response, recorded here. A 422 is an ordinary
+            // client error, so nothing else in the request path logs it — and
+            // without this line the only party that knows a rejection happened
+            // is clamd, whose log dies with its container.
+            //
+            // The path ends in the upload id, which is the join back to the
+            // upload_sessions row and therefore to the account that sent it.
+            error_log(sprintf(
+                '[youlearn] malware_rejected signature=%s size_bytes=%d path=%s',
+                $verdict['signature'] ?? 'unknown',
+                (int) @filesize($absolutePath),
+                $absolutePath,
+            ));
+
             throw new HttpException(
                 422,
                 'infected_file',

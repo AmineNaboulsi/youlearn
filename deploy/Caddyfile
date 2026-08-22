@@ -5,7 +5,14 @@
 # ports 80 and 443 are open in BOTH the OCI security list and the instance's
 # iptables — the second one catches almost everybody.
 
+# Access logs are off in Caddy unless a site asks for them, and this stack ran
+# without any: the first hop a request makes recorded nothing about it, so the
+# caller's address for an upload the scanner refused was simply not written
+# down anywhere. `log` with no body means JSON to stdout, which is where the
+# collector picks it up — see "Reading the logs" in infra/README.md.
 {$KEYCLOAK_PUBLIC_URL} {
+	log
+
 	reverse_proxy {
 		# Re-resolve rather than trusting the address found at startup.
 		#
@@ -32,6 +39,8 @@
 }
 
 {$WEB_ORIGIN} {
+	log
+
 	# The Next.js app — the `web` service in docker-compose.prod.yml.
 	reverse_proxy {
 		# See the note above: `web` is recreated on every deploy, and Caddy

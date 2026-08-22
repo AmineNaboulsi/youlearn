@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1972" width="1240" height="1972" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<title>YouLearn — lifecycle of a malicious upload, and where it is logged</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f8fafc; --panel2:#f1f5f9; --line:#e2e8f0; --line2:#cbd5e1;
+    --ink:#0f172a; --muted:#64748b; --dim:#94a3b8;
+    --blue:#2563eb; --violet:#7c3aed; --amber:#b45309; --red:#dc2626; --green:#16a34a;
+    --red-bg:#fef2f2; --amber-bg:#fffbeb; --green-bg:#f0fdf4; --code:#0f172a; --code-bg:#eef2f7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b1120; --panel:#111827; --panel2:#0f172a; --line:#1f2937; --line2:#334155;
+      --ink:#e5e7eb; --muted:#94a3b8; --dim:#64748b;
+      --blue:#60a5fa; --violet:#a78bfa; --amber:#fbbf24; --red:#f87171; --green:#4ade80;
+      --red-bg:#2a1416; --amber-bg:#2a2010; --green-bg:#0f2418; --code:#e5e7eb; --code-bg:#111827;
+    }
+  }
+  .t{font-size:14.5px;font-weight:600;fill:var(--ink)}
+  .s{font-size:12.2px;fill:var(--muted)}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .lbl{font-size:11px;font-weight:600;letter-spacing:.09em;fill:var(--dim)}
+</style>
+<defs>
+<marker id="tri" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--line2)"/></marker>
+<marker id="tri-d" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--line2)"/></marker>
+</defs>
+<rect width="1240" height="1972" fill="var(--bg)"/>
+<text x="48" y="44" font-size="27" font-weight="700" fill="var(--ink)">Lifecycle of a malicious upload</text>
+<text x="48" y="70" class="s" font-size="13.5">YouLearn in production — one OCI VM, docker compose, pull-based deploy. What each hop does with an infected file, and where that lands in the log store.</text>
+<line x1="48" y1="92" x2="1192" y2="92" stroke="var(--line)" stroke-width="1"/>
+<rect x="48" y="110" width="151" height="62" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+<text x="62" y="136" class="m" font-size="13" font-weight="600" fill="var(--ink)">browser</text>
+<text x="62" y="155" class="s" font-size="11.5">instructor</text>
+<path d="M 201 141 l 5 0" stroke="var(--line2)" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="213" y="110" width="151" height="62" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+<text x="227" y="136" class="m" font-size="13" font-weight="600" fill="var(--ink)">proxy</text>
+<text x="227" y="155" class="s" font-size="11.5">Caddy · TLS</text>
+<path d="M 366 141 l 5 0" stroke="var(--line2)" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="378" y="110" width="151" height="62" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+<text x="392" y="136" class="m" font-size="13" font-weight="600" fill="var(--ink)">web</text>
+<text x="392" y="155" class="s" font-size="11.5">Next.js SSR</text>
+<path d="M 531 141 l 5 0" stroke="var(--line2)" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="543" y="110" width="151" height="62" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+<text x="557" y="136" class="m" font-size="13" font-weight="600" fill="var(--ink)">api</text>
+<text x="557" y="155" class="s" font-size="11.5">PHP 8.3</text>
+<path d="M 696 141 l 5 0" stroke="var(--line2)" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="708" y="110" width="151" height="62" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+<text x="722" y="136" class="m" font-size="13" font-weight="600" fill="var(--ink)">clamav</text>
+<text x="722" y="155" class="s" font-size="11.5">clamd :3310</text>
+<path d="M 861 141 l 5 0" stroke="var(--line2)" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="873" y="110" width="151" height="62" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+<text x="887" y="136" class="m" font-size="13" font-weight="600" fill="var(--ink)">mysql</text>
+<text x="887" y="155" class="s" font-size="11.5">sessions</text>
+<path d="M 1026 141 l 5 0" stroke="var(--line2)" stroke-width="2" marker-end="url(#tri)"/>
+<rect x="1038" y="110" width="151" height="62" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+<text x="1052" y="136" class="m" font-size="13" font-weight="600" fill="var(--ink)">logs</text>
+<text x="1052" y="155" class="s" font-size="11.5">VictoriaLogs</text>
+<text x="48" y="212" class="lbl">THE REQUEST, STEP BY STEP</text>
+<text x="686" y="212" class="lbl">WHAT IT LOGS — ALL OF IT SEARCHABLE BY DATE</text>
+<rect x="48" y="238" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 244 L 49 316" stroke="var(--dim)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="263" r="13" fill="var(--dim)" opacity="0.15"/>
+<text x="82" y="268" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--dim)">1</text>
+<text x="106" y="261" class="t">Instructor picks scanner-test.jpg and starts the upload</text>
+<text x="630" y="261" text-anchor="end" class="m" font-size="10.5" fill="var(--dim)">browser</text>
+<text x="106" y="281" class="s">POST /api/uploads declares kind, filename and size_bytes. The size is checked against</text>
+<text x="106" y="296" class="s">the ceiling (8 MiB image / 4 GiB video) before a single byte is accepted.</text>
+<rect x="686" y="238" width="506" height="84" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+<circle cx="706" cy="260" r="4.5" fill="var(--dim)"/>
+<text x="720" y="264" font-size="12" fill="var(--muted)">client only — nothing reaches a server log yet</text>
+<line x1="644" y1="280" x2="686" y2="280" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 320 L 82 335" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="338" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 344 L 49 416" stroke="var(--blue)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="363" r="13" fill="var(--blue)" opacity="0.15"/>
+<text x="82" y="368" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--blue)">2</text>
+<text x="106" y="361" class="t">Caddy terminates TLS and re-resolves the web upstream</text>
+<text x="630" y="361" text-anchor="end" class="m" font-size="10.5" fill="var(--blue)">proxy</text>
+<text x="106" y="381" class="s">dynamic a → web:3000, refresh 10s. It sets X-Forwarded-For, which is what makes the</text>
+<text x="106" y="396" class="s">caller’s real address available downstream at all.</text>
+<rect x="686" y="338" width="506" height="84" rx="10" fill="var(--green-bg)" stroke="var(--green)" stroke-opacity="0.45"/>
+<circle cx="706" cy="360" r="4.5" fill="var(--green)"/>
+<text x="720" y="364" font-size="12" fill="var(--ink)">JSON access log per request — status, path, duration, caller</text>
+<text x="720" y="379" font-size="12" fill="var(--ink)">IP. The `log` directive had to be added; Caddy writes none</text>
+<text x="720" y="394" font-size="12" fill="var(--ink)">by default.</text>
+<line x1="644" y1="380" x2="686" y2="380" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 420 L 82 435" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="438" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 444 L 49 516" stroke="var(--blue)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="463" r="13" fill="var(--blue)" opacity="0.15"/>
+<text x="82" y="468" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--blue)">3</text>
+<text x="106" y="461" class="t">The Next.js route authorises and attaches the bearer server-side</text>
+<text x="630" y="461" text-anchor="end" class="m" font-size="10.5" fill="var(--blue)">web</text>
+<text x="106" y="481" class="s">web/src/app/api/uploads/route.ts checks the session and the admin/enseignant role. The</text>
+<text x="106" y="496" class="s">access token never reaches client JavaScript.</text>
+<rect x="686" y="438" width="506" height="84" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+<circle cx="706" cy="460" r="4.5" fill="var(--dim)"/>
+<text x="720" y="464" font-size="12" fill="var(--muted)">thin · Next logs to stdout on a throw; a plain 403 here</text>
+<text x="720" y="479" font-size="12" fill="var(--muted)">leaves no line at all.</text>
+<line x1="644" y1="480" x2="686" y2="480" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 520 L 82 535" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="538" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 544 L 49 616" stroke="var(--violet)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="563" r="13" fill="var(--violet)" opacity="0.15"/>
+<text x="82" y="568" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--violet)">4</text>
+<text x="106" y="561" class="t">UploadController::begin opens a session row</text>
+<text x="630" y="561" text-anchor="end" class="m" font-size="10.5" fill="var(--violet)">api</text>
+<text x="106" y="581" class="s">A row in upload_sessions (user, kind, original_name, declared_size, 24 h TTL) plus an</text>
+<text x="106" y="596" class="s">empty .part file under /var/www/storage/tmp.</text>
+<rect x="686" y="538" width="506" height="84" rx="10" fill="var(--green-bg)" stroke="var(--green)" stroke-opacity="0.45"/>
+<circle cx="706" cy="560" r="4.5" fill="var(--green)"/>
+<text x="720" y="564" font-size="12" fill="var(--ink)">durable · the MySQL row is the real trace of this step — it</text>
+<text x="720" y="579" font-size="12" fill="var(--ink)">survives a redeploy, unlike any container log.</text>
+<line x1="644" y1="580" x2="686" y2="580" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 620 L 82 635" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="638" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 644 L 49 716" stroke="var(--violet)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="663" r="13" fill="var(--violet)" opacity="0.15"/>
+<text x="82" y="668" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--violet)">5</text>
+<text x="106" y="661" class="t">Chunks stream to disk — PATCH /uploads/{id}?offset=</text>
+<text x="630" y="661" text-anchor="end" class="m" font-size="10.5" fill="var(--violet)">api</text>
+<text x="106" y="681" class="s">5 MiB at a time, streamed straight to the .part file. An offset that disagrees with</text>
+<text x="106" y="696" class="s">received_bytes is a 409, never a silent append.</text>
+<rect x="686" y="638" width="506" height="84" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+<circle cx="706" cy="660" r="4.5" fill="var(--dim)"/>
+<text x="720" y="664" font-size="12" fill="var(--muted)">received_bytes is updated per chunk in MySQL; stdout stays</text>
+<text x="720" y="679" font-size="12" fill="var(--muted)">silent.</text>
+<line x1="644" y1="680" x2="686" y2="680" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 720 L 82 735" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="738" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 744 L 49 816" stroke="var(--violet)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="763" r="13" fill="var(--violet)" opacity="0.15"/>
+<text x="82" y="768" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--violet)">6</text>
+<text x="106" y="761" class="t">complete → FileStore::finalise sniffs the real content type</text>
+<text x="630" y="761" text-anchor="end" class="m" font-size="10.5" fill="var(--violet)">api</text>
+<text x="106" y="781" class="s">finfo says image/jpeg, so the type check passes. This is the step a bare EICAR file</text>
+<text x="106" y="796" class="s">could never survive — text/plain is refused here, before clamd is ever consulted.</text>
+<rect x="686" y="738" width="506" height="84" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+<circle cx="706" cy="760" r="4.5" fill="var(--dim)"/>
+<text x="720" y="764" font-size="12" fill="var(--muted)">nothing written — a refusal on type is a 422 like any other.</text>
+<line x1="644" y1="780" x2="686" y2="780" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 820 L 82 835" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="838" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 844 L 49 916" stroke="var(--amber)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="863" r="13" fill="var(--amber)" opacity="0.15"/>
+<text x="82" y="868" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--amber)">7</text>
+<text x="106" y="861" class="t">VirusScanner::assertClean hands clamd a path, not bytes</text>
+<text x="630" y="861" text-anchor="end" class="m" font-size="10.5" fill="var(--amber)">api → clamav</text>
+<text x="106" y="881" class="s">zSCAN /var/www/storage/tmp/{id}.part over TCP 3310. A path rather than INSTREAM, because</text>
+<text x="106" y="896" class="s">INSTREAM is capped by StreamMaxLength (25 MB) and a lecture may be four gigabytes.</text>
+<rect x="686" y="838" width="506" height="84" rx="10" fill="var(--green-bg)" stroke="var(--green)" stroke-opacity="0.45"/>
+<circle cx="706" cy="860" r="4.5" fill="var(--green)"/>
+<text x="720" y="864" font-size="12" fill="var(--ink)">On failure, api stdout: "[youlearn] scan_unavailable</text>
+<text x="720" y="879" font-size="12" fill="var(--ink)">reason=… host=clamav:3310". A scan that completes stays</text>
+<text x="720" y="894" font-size="12" fill="var(--ink)">quiet.</text>
+<line x1="644" y1="880" x2="686" y2="880" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 920 L 82 935" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="938" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 944 L 49 1016" stroke="var(--amber)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="963" r="13" fill="var(--amber)" opacity="0.15"/>
+<text x="82" y="968" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--amber)">8</text>
+<text x="106" y="961" class="t">clamd matches the signature over the shared read-only volume</text>
+<text x="630" y="961" text-anchor="end" class="m" font-size="10.5" fill="var(--amber)">clamav</text>
+<text x="106" y="981" class="s">storage-data is mounted at the identical path in both containers, so the path means the</text>
+<text x="106" y="996" class="s">same thing on each side. YouLearn.SelfTest.Marker matches.</text>
+<rect x="686" y="938" width="506" height="84" rx="10" fill="var(--amber-bg)" stroke="var(--amber)" stroke-opacity="0.45"/>
+<circle cx="706" cy="960" r="4.5" fill="var(--amber)"/>
+<text x="720" y="964" font-size="12" fill="var(--ink)">clamd stdout: "…/tmp/{id}.part: YouLearn.SelfTest.Marker</text>
+<text x="720" y="979" font-size="12" fill="var(--ink)">FOUND". LogClean is false, so a clean scan stays silent —</text>
+<text x="720" y="994" font-size="12" fill="var(--ink)">absence of a line is not evidence.</text>
+<line x1="644" y1="980" x2="686" y2="980" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 1020 L 82 1035" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="1038" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 1044 L 49 1116" stroke="var(--red)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="1063" r="13" fill="var(--red)" opacity="0.15"/>
+<text x="82" y="1068" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--red)">9</text>
+<text x="106" y="1061" class="t">The bytes are deleted, then the request is refused 422</text>
+<text x="630" y="1061" text-anchor="end" class="m" font-size="10.5" fill="var(--red)">api</text>
+<text x="106" y="1081" class="s">discardTemp() unlinks the .part file first — there is never a window in which an</text>
+<text x="106" y="1096" class="s">infected file exists under a servable path. The signature name is withheld from the</text>
+<text x="106" y="1111" class="s">response so it cannot be used as a tuning oracle.</text>
+<rect x="686" y="1038" width="506" height="84" rx="10" fill="var(--green-bg)" stroke="var(--green)" stroke-opacity="0.45"/>
+<circle cx="706" cy="1060" r="4.5" fill="var(--green)"/>
+<text x="720" y="1064" font-size="12" fill="var(--ink)">api stdout: "[youlearn] malware_rejected signature=…</text>
+<text x="720" y="1079" font-size="12" fill="var(--ink)">size_bytes=… path=…". The path ends in the upload id, which</text>
+<text x="720" y="1094" font-size="12" fill="var(--ink)">joins to upload_sessions and therefore to the account.</text>
+<line x1="644" y1="1080" x2="686" y2="1080" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<path d="M 82 1120 L 82 1135" stroke="var(--line2)" stroke-width="1.6" marker-end="url(#tri-d)"/>
+<rect x="48" y="1138" width="596" height="84" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 1144 L 49 1216" stroke="var(--red)" stroke-width="3" stroke-linecap="round"/>
+<circle cx="82" cy="1163" r="13" fill="var(--red)" opacity="0.15"/>
+<text x="82" y="1168" text-anchor="middle" class="m" font-size="12" font-weight="700" fill="var(--red)">10</text>
+<text x="106" y="1161" class="t">The upload UI shows "Malware scan failed."</text>
+<text x="630" y="1161" text-anchor="end" class="m" font-size="10.5" fill="var(--red)">web → browser</text>
+<text x="106" y="1181" class="s">cover-upload.tsx / video-upload.tsx switch on errorCode === "infected_file". The</text>
+<text x="106" y="1196" class="s">scan-stripes state is what the user watched while steps 7–8 ran.</text>
+<rect x="686" y="1138" width="506" height="84" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+<circle cx="706" cy="1160" r="4.5" fill="var(--dim)"/>
+<text x="720" y="1164" font-size="12" fill="var(--muted)">client only</text>
+<line x1="644" y1="1180" x2="686" y2="1180" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<rect x="48" y="1266" width="1144" height="196" rx="12" fill="var(--panel2)" stroke="var(--line2)"/>
+<text x="70" y="1296" font-size="15" font-weight="700" fill="var(--ink)">Where you read it — vmui, over an SSH tunnel</text>
+<text x="70" y="1318" class="s">Vector reads every container&#8217;s stdout and ships it to VictoriaLogs, which keeps 90 days on its own volume. vmui has no login, so it binds to 127.0.0.1 and the way in is the tunnel:</text>
+<rect x="70" y="1334" width="1100" height="20" rx="5" fill="var(--code-bg)" stroke="var(--line)"/>
+<text x="80" y="1348.5" class="m" font-size="11.5" fill="var(--code)">ssh -L 9428:127.0.0.1:9428 ubuntu@&lt;instance&gt;     then open  http://127.0.0.1:9428/select/vmui</text>
+<rect x="70" y="1360" width="1100" height="20" rx="5" fill="var(--code-bg)" stroke="var(--line)"/>
+<text x="80" y="1374.5" class="m" font-size="11.5" fill="var(--code)">_time:[2026-07-01, 2026-08-01] malware_rejected            every refusal in July</text>
+<rect x="70" y="1386" width="1100" height="20" rx="5" fill="var(--code-bg)" stroke="var(--line)"/>
+<text x="80" y="1400.5" class="m" font-size="11.5" fill="var(--code)">_time:30d malware_rejected | stats count()                 how often it happens</text>
+<text x="70" y="1420" font-size="12" fill="var(--muted)">`docker compose logs --since … --until …` still works and needs no tunnel, but it only sees what is still on the host: three 10 MB files per container, thrown away</text>
+<text x="70" y="1437" font-size="12" fill="var(--muted)">every time the update timer recreates one. That is the reason the durable copy exists — not because grep is slow, but because the lines are gone.</text>
+<text x="48" y="1506" class="lbl">THE TWO TIERS — ONE SHIPPED, ONE STILL TO BUILD</text>
+<rect x="48" y="1532" width="560" height="352" rx="12" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 49 1538 L 49 1878" stroke="var(--green)" stroke-width="3" stroke-linecap="round"/>
+<text x="70" y="1562" font-size="15.5" font-weight="700" fill="var(--ink)">Tier 1 — record the event  ·  NEXT</text>
+<text x="70" y="1582" font-size="12" fill="var(--green)">app-owned · permanent · already the house pattern</text>
+<circle cx="74" cy="1608" r="3" fill="var(--green)"/>
+<text x="86" y="1612" font-size="12.8" font-weight="600" fill="var(--ink)">A security_events table</text>
+<text x="86" y="1629" class="s" font-size="11.8">Mirror export_audit, which already stores actor, role, outcome,</text>
+<text x="86" y="1643.5" class="s" font-size="11.8">reason, packed IP and user agent. ExportAuditRepository copies</text>
+<text x="86" y="1658" class="s" font-size="11.8">almost verbatim.</text>
+<circle cx="74" cy="1681.5" r="3" fill="var(--green)"/>
+<text x="86" y="1685.5" font-size="12.8" font-weight="600" fill="var(--ink)">Written from the scan path</text>
+<text x="86" y="1702.5" class="s" font-size="11.8">outcome ∈ infected | scanner_unavailable | scan_timeout, plus</text>
+<text x="86" y="1717" class="s" font-size="11.8">signature, sha256, byte size, declared filename, user_id, ip,</text>
+<text x="86" y="1731.5" class="s" font-size="11.8">created_at.</text>
+<circle cx="74" cy="1755" r="3" fill="var(--green)"/>
+<text x="86" y="1759" font-size="12.8" font-weight="600" fill="var(--ink)">A date-ranged admin page</text>
+<text x="86" y="1776" class="s" font-size="11.8">/dashboard/security?from=&amp;to= — an ordinary SSR page over an</text>
+<text x="86" y="1790.5" class="s" font-size="11.8">indexed created_at, in the dashboard people already use. No SSH</text>
+<text x="86" y="1805" class="s" font-size="11.8">client required.</text>
+<circle cx="74" cy="1828.5" r="3" fill="var(--green)"/>
+<text x="86" y="1832.5" font-size="12.8" font-weight="600" fill="var(--ink)">What it adds over a log line</text>
+<text x="86" y="1849.5" class="s" font-size="11.8">The identity. A log says which upload id was refused; the row says</text>
+<text x="86" y="1864" class="s" font-size="11.8">which account, and turns "who keeps tripping the scanner" into a</text>
+<text x="86" y="1878.5" class="s" font-size="11.8">GROUP BY.</text>
+<rect x="632" y="1532" width="560" height="352" rx="12" fill="var(--panel)" stroke="var(--line)"/>
+<path d="M 633 1538 L 633 1878" stroke="var(--blue)" stroke-width="3" stroke-linecap="round"/>
+<text x="654" y="1562" font-size="15.5" font-weight="700" fill="var(--ink)">Tier 2 — ship the container logs  ·  SHIPPED</text>
+<text x="654" y="1582" font-size="12" fill="var(--blue)">logs + logs-collector in docker-compose.prod.yml</text>
+<circle cx="658" cy="1608" r="3" fill="var(--blue)"/>
+<text x="670" y="1612" font-size="12.8" font-weight="600" fill="var(--ink)">VictoriaLogs v1.52 — the store</text>
+<text x="670" y="1629" class="s" font-size="11.8">One Go binary, one volume, LogsQL, and vmui at /select/vmui.</text>
+<text x="670" y="1643.5" class="s" font-size="11.8">Retention is LOGS_RETENTION, 90 days by default; the box is a 50</text>
+<text x="670" y="1658" class="s" font-size="11.8">GB disk.</text>
+<circle cx="658" cy="1681.5" r="3" fill="var(--blue)"/>
+<text x="670" y="1685.5" font-size="12.8" font-weight="600" fill="var(--ink)">Vector 0.57 — the collector</text>
+<text x="670" y="1702.5" class="s" font-size="11.8">Reads the docker socket, forwards over the Elasticsearch bulk</text>
+<text x="670" y="1717" class="s" font-size="11.8">protocol. No plugin to keep current, and the socket goes to</text>
+<text x="670" y="1731.5" class="s" font-size="11.8">nothing else.</text>
+<circle cx="658" cy="1755" r="3" fill="var(--blue)"/>
+<text x="670" y="1759" font-size="12.8" font-weight="600" fill="var(--ink)">Why not Loki, Dozzle, ELK</text>
+<text x="670" y="1776" class="s" font-size="11.8">Loki + Grafana is the same idea one container heavier — take it if</text>
+<text x="670" y="1790.5" class="s" font-size="11.8">you want alerting. Dozzle tails but keeps no history. ELK/Graylog</text>
+<text x="670" y="1805" class="s" font-size="11.8">do not fit this VM.</text>
+<circle cx="658" cy="1828.5" r="3" fill="var(--blue)"/>
+<text x="670" y="1832.5" font-size="12.8" font-weight="600" fill="var(--ink)">Pinned and mirrored</text>
+<text x="670" y="1849.5" class="s" font-size="11.8">Both images are copied into OCIR by the mirror workflow: Docker</text>
+<text x="670" y="1864" class="s" font-size="11.8">Hub times out from af-casablanca-1 often enough to break a deploy.</text>
+<rect x="48" y="1916" width="1144" height="34" rx="8" fill="var(--green-bg)" stroke="var(--green)" stroke-opacity="0.4"/>
+<text x="64" y="1938" font-size="12.5" fill="var(--ink)">One caveat worth keeping in view: a scan that finds nothing writes nothing. Absence of a line means the upload was clean OR the scanner was never asked — CLAMAV_ENABLED=false looks identical from here.</text>
+</svg>
