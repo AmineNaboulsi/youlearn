@@ -12,7 +12,22 @@ Type=oneshot
 User=ubuntu
 Group=docker
 WorkingDirectory=/opt/youlearn
-ExecStart=/opt/youlearn/repo/deploy/update.sh
+
+# Invoked through bash rather than executed directly. update.sh runs
+# `git reset --hard`, which restores the mode recorded in the repository — so a
+# chmod applied at install time survives exactly one run, and the next tick
+# fails with status 203/EXEC. The mode is committed as 0755 now as well; this is
+# the belt to that braces, and it costs nothing.
+ExecStart=/bin/bash /opt/youlearn/repo/deploy/update.sh
+
+# ProtectHome hides /home, which is where both git and the Docker CLI look by
+# default. Docker's failure is the surprising one: unable to read
+# ~/.docker/config.json it abandons plugin discovery entirely, so `docker
+# compose` stops being a command and the arguments fall through to the base CLI
+# as "unknown shorthand flag: 'f' in -f". Pointing both at the application
+# directory keeps the isolation and gives them somewhere readable to look.
+Environment=HOME=/opt/youlearn
+Environment=DOCKER_CONFIG=/opt/youlearn/.docker
 
 # An image pull over a slow link can legitimately take minutes; anything past
 # this is stuck rather than slow, and the next tick should get a clean start.

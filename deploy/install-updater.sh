@@ -46,6 +46,11 @@ else
 fi
 chmod +x "$REPO_DIR/deploy/update.sh"
 
+# The service runs with ProtectHome, so the Docker CLI cannot reach
+# ~/.docker. Give it a directory it can read, or it abandons plugin discovery
+# and `docker compose` stops being a command.
+install -d -o ubuntu -g ubuntu -m 0700 "$APP_DIR/.docker"
+
 echo "==> systemd"
 install -m 0644 "$REPO_DIR/deploy/youlearn-update.service" /etc/systemd/system/
 install -m 0644 "$REPO_DIR/deploy/youlearn-update.timer"   /etc/systemd/system/
