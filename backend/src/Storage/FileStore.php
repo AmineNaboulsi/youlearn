@@ -305,7 +305,9 @@ final class FileStore
             return;
         }
 
-        if (!@mkdir($dir, 0o750, true) && !is_dir($dir)) {
+        // 0755, not 0750: clamd scans by path as the clamav user and needs the
+        // execute bit to traverse into these. Files inside keep 0640.
+        if (!@mkdir($dir, 0o755, true) && !is_dir($dir)) {
             throw new HttpException(500, 'storage_unavailable', 'Upload storage could not be created.');
         }
     }

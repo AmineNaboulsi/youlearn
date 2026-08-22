@@ -210,6 +210,13 @@ export function VideoUpload({
         )}
       />
 
+      {status === "idle" ? (
+        <p className="text-[11px] leading-relaxed text-ink-muted">
+          MP4, WebM or MOV. Every upload is checked for malware before it is stored, so a
+          large file takes a moment to finish after the transfer completes.
+        </p>
+      ) : null}
+
       {busy || status === "done" ? (
         <div className="rounded-lg border border-line bg-surface-sunk px-3 py-2.5">
           <div className="flex items-baseline justify-between gap-3">
