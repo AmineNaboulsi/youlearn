@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { withNotice, type NoticeTone } from "@/lib/notice";
 import { redirect } from "next/navigation";
 
 import { api, ApiError } from "@/lib/api/client";
@@ -76,6 +77,7 @@ export async function setPublicationAction(formData: FormData): Promise<void> {
   const returnTo = safePath(formData.get("returnTo"), "/dashboard/courses");
 
   let notice = publish ? "Course published." : "Course unpublished.";
+  let tone: NoticeTone = "success";
 
   try {
     await api(`/courses/${id}/publication`, {
@@ -84,13 +86,14 @@ export async function setPublicationAction(formData: FormData): Promise<void> {
     });
   } catch (error) {
     notice = describeError(error, "The course state could not be changed.");
+    tone = "danger";
   }
 
   revalidatePath("/dashboard/courses");
   revalidatePath(`/courses/${id}`);
   revalidatePath("/courses");
 
-  redirect(withNotice(returnTo, notice));
+  redirect(withNotice(returnTo, notice, tone));
 }
 
 export async function deleteCourseAction(formData: FormData): Promise<void> {
@@ -106,6 +109,7 @@ export async function deleteCourseAction(formData: FormData): Promise<void> {
       withNotice(
         `/dashboard/courses/${id}`,
         'Type "delete" in the confirmation box to remove a course.',
+        "danger",
       ),
     );
   }
@@ -116,13 +120,13 @@ export async function deleteCourseAction(formData: FormData): Promise<void> {
     await api(`/courses/${id}`, { method: "DELETE" });
   } catch (error) {
     const message = describeError(error, "The course could not be deleted.");
-    redirect(withNotice(`/dashboard/courses/${id}`, message));
+    redirect(withNotice(`/dashboard/courses/${id}`, message, "danger"));
   }
 
   revalidatePath("/dashboard/courses");
   revalidatePath("/courses");
 
-  redirect(withNotice("/dashboard/courses", notice));
+  redirect(withNotice("/dashboard/courses", notice));  // deletion succeeded
 }
 
 // -----------------------------------------------------------------------------
@@ -137,6 +141,9 @@ function toPayload(formData: FormData) {
     content: String(formData.get("content") ?? ""),
     content_type: String(formData.get("content_type") ?? "text"),
     img: String(formData.get("img") ?? "").trim(),
+    // Empty unless a file was uploaded through the form. The API prefers it
+    // over `img` and refuses an id the caller does not own.
+    cover_public_id: String(formData.get("cover_public_id") ?? "").trim(),
     category_id: categoryId === "" ? null : Number(categoryId),
     is_published: formData.get("is_published") === "on",
     tags: formData
@@ -167,9 +174,3 @@ function safePath(value: FormDataEntryValue | null, fallback: string): string {
   return path.startsWith("/") && !path.startsWith("//") ? path : fallback;
 }
 
-function withNotice(path: string, notice: string): string {
-  const [base, existing] = path.split("?");
-  const search = new URLSearchParams(existing);
-  search.set("notice", notice);
-  return `${base}?${search.toString()}`;
-}

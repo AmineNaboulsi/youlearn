@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 import Link from "next/link";
 
 import { api } from "@/lib/api/client";
@@ -39,9 +40,10 @@ const ROLE_LABELS: Record<Role, string> = {
 export default async function PeoplePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; role?: string; page?: string; notice?: string }>;
+  searchParams: Promise<{ q?: string; role?: string; page?: string; notice?: string; notice_tone?: string }>;
 }) {
   const params = await searchParams;
+  const flash = readNotice(params);
   const session = await requireRole(["admin"], "/dashboard/people");
 
   const users = await api<Paginated<PlatformUser>>("/users", {
@@ -60,7 +62,7 @@ export default async function PeoplePage({
         description="Every account on the platform. Changes here are applied in Keycloak first, so they take effect on the identity provider and not only in this database."
       />
 
-      {params.notice ? <Alert emphasis="strong">{params.notice}</Alert> : null}
+      {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
 
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div className="min-w-48 flex-1">
@@ -167,7 +169,7 @@ export default async function PeoplePage({
                     <Td className="whitespace-nowrap">{formatRelative(user.last_seen_at)}</Td>
 
                     <Td>
-                      <Badge tone={user.is_active ? "muted" : "outline"}>
+                      <Badge tone={user.is_active ? "success" : "danger"}>
                         <StatusDot on={Boolean(user.is_active)} />
                         {user.is_active ? "Active" : "Suspended"}
                       </Badge>

@@ -99,7 +99,7 @@ export default async function AccountPage() {
                   label="Account status"
                   value={profile.is_active ? "Active" : "Suspended"}
                   badge={
-                    <Badge tone={profile.is_active ? "muted" : "outline"}>
+                    <Badge tone={profile.is_active ? "success" : "danger"}>
                       <StatusDot on={profile.is_active} />
                       {profile.is_active ? "Active" : "Suspended"}
                     </Badge>

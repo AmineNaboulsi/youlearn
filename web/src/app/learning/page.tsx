@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 import Link from "next/link";
 
 import { api } from "@/lib/api/client";
@@ -28,9 +29,10 @@ export const metadata: Metadata = { title: "My learning" };
 export default async function LearningPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; notice?: string }>;
+  searchParams: Promise<{ page?: string; notice?: string; notice_tone?: string }>;
 }) {
   const params = await searchParams;
+  const flash = readNotice(params);
   await requireSession("/learning");
 
   const enrollments = await api<Paginated<EnrolledCourse>>("/me/enrollments", {
@@ -53,9 +55,9 @@ export default async function LearningPage({
           }
         />
 
-        {params.notice ? (
-          <Alert emphasis="strong" className="mt-6">
-            {params.notice}
+        {flash ? (
+          <Alert tone={flash.tone} className="mt-6">
+            {flash.message}
           </Alert>
         ) : null}
 
@@ -81,9 +83,11 @@ export default async function LearningPage({
                   >
                     <CourseThumb
                       src={course.img}
+                      coverPublicId={course.cover_public_id}
                       title={course.title}
                       contentType={course.content_type}
                       className="hidden size-16 flex-none rounded-lg border sm:block"
+                      sizes="64px"
                     />
 
                     <div className="min-w-0">

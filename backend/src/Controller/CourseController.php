@@ -8,9 +8,11 @@ use App\Http\HttpException;
 use App\Http\Pagination;
 use App\Http\Request;
 use App\Http\Response;
+use App\Repository\AssetRepository;
 use App\Repository\CourseRepository;
 use App\Repository\EnrollmentRepository;
 use App\Security\Permission;
+use App\Storage\FileStore;
 use App\Security\Principal;
 use App\Support\Validator;
 
@@ -18,11 +20,13 @@ final class CourseController
 {
     private CourseRepository $courses;
     private EnrollmentRepository $enrollments;
+    private AssetRepository $assets;
 
     public function __construct()
     {
         $this->courses     = new CourseRepository();
         $this->enrollments = new EnrollmentRepository();
+        $this->assets      = new AssetRepository();
     }
 
     /**
@@ -106,7 +110,7 @@ final class CourseController
     {
         $principal = $this->require($principal);
 
-        [$data, $tagIds] = $this->validated($request);
+        [$data, $tagIds] = $this->validated($request, $principal);
 
         $id = $this->courses->create($data, $tagIds, $principal->userId);
 
@@ -125,7 +129,7 @@ final class CourseController
 
         $this->mayManage($principal, $id);
 
-        [$data, $tagIds] = $this->validated($request);
+        [$data, $tagIds] = $this->validated($request, $principal);
 
         $this->courses->update($id, $data, $tagIds);
 
@@ -175,7 +179,7 @@ final class CourseController
     /**
      * @return array{0: array<string, mixed>, 1: list<int>}
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, Principal $principal): array
     {
         $body      = $request->json();
         $validator = Validator::for($body);
@@ -187,9 +191,33 @@ final class CourseController
             'content'      => $validator->optionalString('content', 200_000),
             'content_type' => $validator->enum('content_type', ['text', 'video', 'document'], 'text'),
             'img'          => $validator->optionalUrl('img'),
+            'cover_asset_id' => null,
             'category_id'  => $validator->optionalInt('category_id', null),
             'is_published' => $validator->bool('is_published') ? 1 : 0,
         ];
+
+        // A cover can arrive two ways: a remote https:// URL, or the public id
+        // of a file uploaded through /uploads. The upload is preferred when both
+        // are present — it is the more deliberate act, and it is the one this
+        // platform can guarantee stays reachable.
+        $coverPublicId = $validator->optionalString('cover_public_id', 32);
+
+        if ($coverPublicId !== '') {
+            $asset = $this->assets->findByPublicId($coverPublicId);
+
+            if ($asset === null || $asset['kind'] !== FileStore::KIND_IMAGE) {
+                $validator->addError('cover_public_id', 'That image could not be found.');
+            } elseif ((int) $asset['owner_id'] !== $principal->userId
+                && !$principal->can(Permission::COURSE_MANAGE_ANY)) {
+                // Attaching someone else's upload would let an instructor
+                // reference a file they were never allowed to see.
+                $validator->addError('cover_public_id', 'That image belongs to another account.');
+            } else {
+                $data['cover_asset_id'] = (int) $asset['id'];
+                // Two covers would be ambiguous on read. The uploaded one wins.
+                $data['img'] = '';
+            }
+        }
 
         // Three tags was the rule in the original app and it is a good one —
         // it is what makes tag filtering worth having at all.

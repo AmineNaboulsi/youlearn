@@ -147,7 +147,7 @@ export default async function LearnersPage({
                   </Td>
                   <Td>{formatDate(row.enrolled_at)}</Td>
                   <Td>
-                    <Badge tone={row.learner_active ? "muted" : "outline"}>
+                    <Badge tone={row.learner_active ? "success" : "danger"}>
                       <StatusDot on={Boolean(row.learner_active)} />
                       {row.learner_active ? "Active" : "Suspended"}
                     </Badge>

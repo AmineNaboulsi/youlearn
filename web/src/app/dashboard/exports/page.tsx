@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 
 import { api } from "@/lib/api/client";
 import type { Course, Envelope, ExportCatalogue, Paginated } from "@/lib/api/types";
@@ -32,9 +33,10 @@ export const metadata: Metadata = { title: "Data exports" };
 export default async function ExportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; notice_tone?: string }>;
 }) {
-  const { notice } = await searchParams;
+  const { notice, notice_tone } = await searchParams;
+  const flash = readNotice({ notice, notice_tone });
   await requireRole(["admin", "enseignant"], "/dashboard/exports");
 
   const [catalogue, courses] = await Promise.all([
@@ -51,7 +53,7 @@ export default async function ExportsPage({
         description="Download platform data as CSV. Every export is capped, rate-limited and recorded — including the ones that are refused."
       />
 
-      {notice ? <Alert emphasis="strong">{notice}</Alert> : null}
+      {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
 
       <Card>
         <CardHeader>

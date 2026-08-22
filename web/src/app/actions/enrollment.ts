@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { withNotice, type NoticeTone } from "@/lib/notice";
 import { redirect } from "next/navigation";
 
 import { api } from "@/lib/api/client";
@@ -27,11 +28,13 @@ export async function enrollAction(formData: FormData): Promise<void> {
   const returnTo = safePath(formData.get("returnTo"), `/courses/${courseId}`);
 
   let notice = "You are enrolled. It is now in your learning list.";
+  let tone: NoticeTone = "success";
 
   try {
     await api(`/courses/${courseId}/enroll`, { method: "POST" });
   } catch (error) {
     notice = describeError(error, "You could not be enrolled in this course.");
+    tone = "danger";
   }
 
   // Nothing is cached on the server, but the client router keeps its own copy
@@ -39,7 +42,7 @@ export async function enrollAction(formData: FormData): Promise<void> {
   revalidatePath(`/courses/${courseId}`);
   revalidatePath("/learning");
 
-  redirect(withNotice(returnTo, notice));
+  redirect(withNotice(returnTo, notice, tone));
 }
 
 export async function leaveCourseAction(formData: FormData): Promise<void> {
@@ -49,17 +52,19 @@ export async function leaveCourseAction(formData: FormData): Promise<void> {
   const returnTo = safePath(formData.get("returnTo"), `/courses/${courseId}`);
 
   let notice = "You have left the course.";
+  let tone: NoticeTone = "success";
 
   try {
     await api(`/courses/${courseId}/enroll`, { method: "DELETE" });
   } catch (error) {
     notice = describeError(error, "You could not be removed from this course.");
+    tone = "danger";
   }
 
   revalidatePath(`/courses/${courseId}`);
   revalidatePath("/learning");
 
-  redirect(withNotice(returnTo, notice));
+  redirect(withNotice(returnTo, notice, tone));
 }
 
 // -----------------------------------------------------------------------------
@@ -81,9 +86,3 @@ function safePath(value: FormDataEntryValue | null, fallback: string): string {
   return path.startsWith("/") && !path.startsWith("//") ? path : fallback;
 }
 
-function withNotice(path: string, notice: string): string {
-  const [base, existing] = path.split("?");
-  const search = new URLSearchParams(existing);
-  search.set("notice", notice);
-  return `${base}?${search.toString()}`;
-}

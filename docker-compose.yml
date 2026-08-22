@@ -111,6 +111,14 @@ services:
       # Apache serves the web root, so nothing here has a URL of its own and
       # every byte is handed out by a permission-checked controller.
       STORAGE_ROOT: /var/www/storage
+
+      # Malware scanning. Off by default in development only because the first
+      # start downloads ~250 MB of signatures; run
+      #   docker compose --profile scan up -d
+      # to bring clamav up and set CLAMAV_ENABLED=true to exercise the real path.
+      CLAMAV_ENABLED: ${CLAMAV_ENABLED:-false}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
       ALLOWED_ORIGINS: http://localhost:3100
       APP_ENV: local
     ports:
@@ -127,7 +135,28 @@ services:
         condition: service_healthy
     networks: [youlearn]
 
+  # Optional in development — see CLAMAV_ENABLED above.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: [scan]
+    restart: unless-stopped
+    environment:
+      CLAMAV_NO_MILTERD: "true"
+    volumes:
+      # Read-only, and mounted at the identical path the API uses: clamd is
+      # given a path to scan and resolves it in its own filesystem.
+      - storage-data:/var/www/storage:ro
+      - clamav-db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+    networks: [youlearn]
+
 volumes:
+  clamav-db:
   keycloak-db-data:
   mysql-data:
   storage-data:

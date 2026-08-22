@@ -118,6 +118,52 @@ Put `KEYCLOAK_ADMIN_CLIENT_SECRET` into `.env` and restart the api service.
 
 ---
 
+## Continuous deployment
+
+`.github/workflows/ci.yml` runs on every pull request: types, lint and a
+production build of the web app, PHP syntax and a dependency audit, an arm64
+image build of each Dockerfile, compose and Terraform validation, and a secret
+scan over the commits the PR introduces. Nothing in it touches the server.
+
+`.github/workflows/deploy.yml` runs on push to `main` — with pull requests as
+the way changes arrive, that means on every merge. It builds all three images
+on a native arm64 runner, pushes them to OCIR as both `latest` and the short
+commit SHA, syncs the compose file and Caddyfile, pulls, restarts, waits for
+every container to report healthy, and finally requests the site over HTTPS.
+
+Before the first merge, set these in **Settings → Secrets and variables →
+Actions**:
+
+| Kind | Name | Value |
+| ---- | ---- | ----- |
+| Secret | `OCI_USERNAME` | `<namespace>/Default/<email>` |
+| Secret | `OCI_AUTH_TOKEN` | an OCI auth token, not your console password |
+| Secret | `OCI_NAMESPACE` | the tenancy's object-storage namespace |
+| Secret | `SSH_HOST` | the instance's public IP |
+| Secret | `SSH_PRIVATE_KEY` | a deploy key whose public half is on the instance |
+| Secret | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan -H <ip>` |
+| Variable | `OCI_REGISTRY` | `ocir.<region>.oci.oraclecloud.com` |
+| Variable | `APP_URL` | `https://<app_domain>` |
+
+`SSH_KNOWN_HOSTS` is not a formality. The alternatives are disabling host key
+checking or trusting whatever key answers first, and both hand anyone who can
+respond on that address a session that can restart your containers.
+
+The server's `.env` is deliberately **not** synced. It holds secrets generated
+on the host, and shipping it from CI would mean CI had to hold them too.
+
+**Rolling back** is retagging: every deploy also publishes `:<sha>`, so
+
+```bash
+docker pull  $REG/$NS/youlearnweb:<good-sha>
+docker tag   $REG/$NS/youlearnweb:<good-sha> $REG/$NS/youlearnweb:latest
+docker push  $REG/$NS/youlearnweb:latest
+```
+
+then re-run the deploy job.
+
+---
+
 ## Things that will bite
 
 **The lockfile must be resolved on Linux.** `npm ci` refuses to run when
@@ -136,6 +182,14 @@ cp /tmp/relock/package-lock.json web/
 
 Seeding it with the existing lockfile keeps resolved versions put; a bare
 `package.json` would let every caret range float.
+
+**ClamAV needs the same path the API uses.** clamd is handed an absolute path
+and resolves it in its own filesystem, so the storage volume is mounted into the
+clamav container read-only at the identical mount point. Get that wrong and
+every upload fails with "could not be scanned" rather than silently passing —
+an unreachable or misconfigured scanner refuses uploads by design, because an
+unavailable scanner is exactly when malware gets through. First start downloads
+roughly 250 MB of signatures before the container reports healthy.
 
 **A missing bind-mount source is not an error.** If `./backend/Database/schema.sql`
 does not exist next to `docker-compose.prod.yml`, Docker creates an empty

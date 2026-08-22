@@ -113,6 +113,35 @@ services:
       retries: 30
     networks: [youlearn]
 
+  # Malware scanning for uploads.
+  #
+  # Shares the storage volume READ-ONLY and scans by path rather than over the
+  # socket: clamd's StreamMaxLength caps INSTREAM at 25 MB by default, and a
+  # lecture recording here can be four gigabytes. The mount point must match the
+  # API's exactly — the API sends clamd an absolute path, and clamd resolves it
+  # in its own filesystem.
+  #
+  # The image runs freshclam alongside clamd, so signatures update themselves.
+  # First boot downloads roughly 250 MB of definitions before it reports healthy.
+  clamav:
+    image: ${CLAMAV_IMAGE:-clamav/clamav:1.4}
+    restart: unless-stopped
+    environment:
+      CLAMAV_NO_MILTERD: "true"
+      FRESHCLAM_CHECKS: "2"
+    volumes:
+      - storage-data:/var/www/storage:ro
+      - clamav-db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      # Signature download on a cold volume is slow; this is the wait, not a
+      # symptom of anything wrong.
+      retries: 20
+      start_period: 180s
+    networks: [youlearn]
+
   api:
     image: ${OCI_REGISTRY}/${OCI_NAMESPACE}/${API_REPO:-youlearnapi}:${IMAGE_TAG:-latest}
     restart: unless-stopped
@@ -149,6 +178,14 @@ services:
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
 
       STORAGE_ROOT: /var/www/storage
+
+      # Every upload is scanned before it is moved into permanent storage.
+      # Setting CLAMAV_ENABLED=false disables that; there is no good reason to
+      # on a site that redistributes user-supplied files.
+      CLAMAV_ENABLED: ${CLAMAV_ENABLED:-true}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      CLAMAV_TIMEOUT: ${CLAMAV_TIMEOUT:-600}
     volumes:
       # Uploaded covers and lesson videos. Losing this volume loses every video
       # on the platform — back it up like a database.
@@ -157,6 +194,8 @@ services:
       mysql:
         condition: service_healthy
       keycloak:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
     networks: [youlearn]
 
@@ -197,6 +236,7 @@ services:
     networks: [youlearn]
 
 volumes:
+  clamav-db:
   keycloak-db-data:
   mysql-data:
   storage-data:

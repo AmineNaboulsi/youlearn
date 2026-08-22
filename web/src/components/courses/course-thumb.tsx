@@ -11,22 +11,33 @@ import { cn } from "@/lib/cn";
  *    typed — turning a content field into a request-forgery primitive. A plain
  *    tag makes the browser fetch it instead, under the page's own CSP.
  *
+ *  - An uploaded cover wins over a remote URL. It is served through
+ *    /api/media/<id>, which proxies the API rather than handing the browser a
+ *    token, and it cannot rot the way a third-party link can.
+ *
  *  - Rendered in greyscale. The platform is monochrome, and photography is the
  *    one place colour would otherwise leak in. It also means a badly-chosen
  *    image cannot clash with anything.
  */
 export function CourseThumb({
   src,
+  coverPublicId,
   title,
   contentType,
   className,
+  sizes = "(min-width: 1024px) 320px, (min-width: 640px) 50vw, 100vw",
 }: {
   src: string | null;
+  coverPublicId?: string | null;
   title: string;
   contentType?: ContentType;
   className?: string;
+  /** Passed through so the browser can pick a sensible decode size. */
+  sizes?: string;
 }) {
-  if (!src) {
+  const url = coverPublicId ? `/api/media/${coverPublicId}` : src;
+
+  if (!url) {
     return (
       <div
         className={cn(
@@ -46,10 +57,11 @@ export function CourseThumb({
     <div className={cn("relative overflow-hidden border-b border-line bg-surface-sunk", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src={url}
         alt=""
         loading="lazy"
         decoding="async"
+        sizes={sizes}
         referrerPolicy="no-referrer"
         className="size-full object-cover grayscale contrast-[1.05] transition-transform duration-500 group-hover:scale-[1.03]"
       />

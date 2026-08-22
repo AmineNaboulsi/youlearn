@@ -100,7 +100,8 @@ final class CourseRepository
         $sql = 'SELECT ' . $this->columns() . '
                   FROM courses c
                   JOIN users u      ON u.id = c.instructor_id
-             LEFT JOIN categories cat ON cat.id = c.category_id' . $clause . '
+             LEFT JOIN categories cat ON cat.id = c.category_id
+             LEFT JOIN assets cover   ON cover.id = c.cover_asset_id' . $clause . '
                  ORDER BY c.created_at DESC, c.id DESC
                  LIMIT :limit OFFSET :offset';
 
@@ -125,6 +126,7 @@ final class CourseRepository
                   FROM courses c
                   JOIN users u        ON u.id = c.instructor_id
              LEFT JOIN categories cat ON cat.id = c.category_id
+             LEFT JOIN assets cover   ON cover.id = c.cover_asset_id
                  WHERE c.id = :id'
              . ($includeUnpublished ? '' : ' AND c.is_published = 1')
              . ' LIMIT 1';
@@ -168,9 +170,9 @@ final class CourseRepository
         return Database::transaction(function (PDO $pdo) use ($data, $tagIds, $instructorId): int {
             $stmt = $pdo->prepare(
                 'INSERT INTO courses
-                    (instructor_id, category_id, title, slug, subtitle, img, description, content_type, content, is_published)
+                    (instructor_id, category_id, title, slug, subtitle, img, cover_asset_id, description, content_type, content, is_published)
                  VALUES
-                    (:instructor, :category, :title, :slug, :subtitle, :img, :description, :content_type, :content, :published)'
+                    (:instructor, :category, :title, :slug, :subtitle, :img, :cover_asset, :description, :content_type, :content, :published)'
             );
 
             $stmt->bindValue(':instructor', $instructorId, PDO::PARAM_INT);
@@ -179,6 +181,11 @@ final class CourseRepository
             $stmt->bindValue(':slug', $this->uniqueSlug($pdo, (string) $data['title'], null));
             $stmt->bindValue(':subtitle', $data['subtitle'] ?: null);
             $stmt->bindValue(':img', $data['img'] ?: null);
+            $stmt->bindValue(
+                ':cover_asset',
+                $data['cover_asset_id'] ?? null,
+                ($data['cover_asset_id'] ?? null) === null ? PDO::PARAM_NULL : PDO::PARAM_INT
+            );
             $stmt->bindValue(':description', $data['description'] ?: null);
             $stmt->bindValue(':content_type', $data['content_type']);
             $stmt->bindValue(':content', $data['content'] ?: null);
@@ -210,7 +217,8 @@ final class CourseRepository
                     title        = :title,
                     slug         = :slug,
                     subtitle     = :subtitle,
-                    img          = :img,
+                    img            = :img,
+                    cover_asset_id = :cover_asset,
                     description  = :description,
                     content_type = :content_type,
                     content      = :content
@@ -223,6 +231,11 @@ final class CourseRepository
             $stmt->bindValue(':slug', $this->uniqueSlug($pdo, (string) $data['title'], $id));
             $stmt->bindValue(':subtitle', $data['subtitle'] ?: null);
             $stmt->bindValue(':img', $data['img'] ?: null);
+            $stmt->bindValue(
+                ':cover_asset',
+                $data['cover_asset_id'] ?? null,
+                ($data['cover_asset_id'] ?? null) === null ? PDO::PARAM_NULL : PDO::PARAM_INT
+            );
             $stmt->bindValue(':description', $data['description'] ?: null);
             $stmt->bindValue(':content_type', $data['content_type']);
             $stmt->bindValue(':content', $data['content'] ?: null);
@@ -258,6 +271,11 @@ final class CourseRepository
     {
         return 'c.id, c.title, c.slug, c.subtitle, c.img, c.description, c.content_type, c.price,
                 c.is_published, c.created_at, c.updated_at, c.category_id, c.instructor_id,
+                -- The public id of an uploaded cover, when there is one. Kept
+                -- separate from c.img rather than merged into it: one is a path
+                -- this API serves and the other is a third-party URL the browser
+                -- fetches directly, and the front end treats them differently.
+                cover.public_id AS cover_public_id,
                 u.name AS instructor_name,
                 cat.name AS category_name, cat.slug AS category_slug,
                 (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS enrollment_count';

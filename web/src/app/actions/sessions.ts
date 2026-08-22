@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { withNotice, type NoticeTone } from "@/lib/notice";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -32,10 +33,11 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
   const returnTo = safePath(formData.get("returnTo"), "/account/sessions");
 
   if (!/^[A-Za-z0-9-]{8,64}$/.test(sessionId)) {
-    redirect(withNotice(returnTo, "That session could not be identified."));
+    redirect(withNotice(returnTo, "That session could not be identified.", "danger"));
   }
 
   let notice = "Session signed out.";
+  let tone: NoticeTone = "success";
   let endedOwn = false;
 
   try {
@@ -44,6 +46,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
     endedOwn = Boolean(result.was_current_session);
   } catch (error) {
     notice = describeError(error, "That session could not be signed out.");
+    tone = "danger";
   }
 
   if (endedOwn) {
@@ -55,7 +58,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath(returnTo);
-  redirect(withNotice(returnTo, notice));
+  redirect(withNotice(returnTo, notice, tone));
 }
 
 export async function revokeOtherSessionsAction(formData: FormData): Promise<void> {
@@ -63,6 +66,7 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
 
   const returnTo = safePath(formData.get("returnTo"), "/account/sessions");
   let notice = "Other sessions signed out.";
+  let tone: NoticeTone = "success";
 
   try {
     const result = await api<RevokeResponse>("/me/sessions", {
@@ -72,10 +76,11 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
     notice = result.message;
   } catch (error) {
     notice = describeError(error, "Those sessions could not be signed out.");
+    tone = "danger";
   }
 
   revalidatePath(returnTo);
-  redirect(withNotice(returnTo, notice));
+  redirect(withNotice(returnTo, notice, tone));
 }
 
 /** Sign out everywhere, this device included. */
@@ -101,20 +106,22 @@ export async function revokeUserSessionsAction(formData: FormData): Promise<void
   const returnTo = safePath(formData.get("returnTo"), "/dashboard/people");
 
   if (!Number.isInteger(userId) || userId <= 0) {
-    redirect(withNotice(returnTo, "That account could not be identified."));
+    redirect(withNotice(returnTo, "That account could not be identified.", "danger"));
   }
 
   let notice = "That account has been signed out everywhere.";
+  let tone: NoticeTone = "success";
 
   try {
     const result = await api<RevokeResponse>(`/users/${userId}/sessions`, { method: "DELETE" });
     notice = result.message;
   } catch (error) {
     notice = describeError(error, "Those sessions could not be signed out.");
+    tone = "danger";
   }
 
   revalidatePath(returnTo);
-  redirect(withNotice(returnTo, notice));
+  redirect(withNotice(returnTo, notice, tone));
 }
 
 // -----------------------------------------------------------------------------
@@ -129,9 +136,3 @@ function safePath(value: FormDataEntryValue | null, fallback: string): string {
   return path.startsWith("/") && !path.startsWith("//") ? path : fallback;
 }
 
-function withNotice(path: string, notice: string): string {
-  const [base, existing] = path.split("?");
-  const search = new URLSearchParams(existing);
-  search.set("notice", notice);
-  return `${base}?${search.toString()}`;
-}

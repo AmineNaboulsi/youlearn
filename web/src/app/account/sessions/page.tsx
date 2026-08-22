@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { readNotice } from "@/lib/notice";
 
 import { api } from "@/lib/api/client";
 import type { Envelope, UserSession } from "@/lib/api/types";
@@ -40,9 +41,10 @@ export const metadata: Metadata = { title: "Active sessions" };
 export default async function SessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; notice_tone?: string }>;
 }) {
-  const { notice } = await searchParams;
+  const { notice, notice_tone } = await searchParams;
+  const flash = readNotice({ notice, notice_tone });
   await requireSession("/account/sessions");
 
   const response = await api<Envelope<UserSession[]>>("/me/sessions");
@@ -62,9 +64,9 @@ export default async function SessionsPage({
 
         <AccountTabs current="sessions" className="mt-6" />
 
-        {notice ? (
-          <Alert emphasis="strong" className="mt-6">
-            {notice}
+        {flash ? (
+          <Alert tone={flash.tone} className="mt-6">
+            {flash.message}
           </Alert>
         ) : null}
 
