@@ -252,7 +252,7 @@ To exercise the scanner without going through the UI, against a file clamd is
 known to detect:
 
 ```bash
-docker exec youlearn-clamav-1 bash -c 'exec 3<>/dev/tcp/127.0.0.1/3310; printf "zPING " >&3; head -c 4 <&3'
+docker exec youlearn-clamav-1 bash -c 'exec 3<>/dev/tcp/127.0.0.1/3310; printf "zPING\0" >&3; head -c 4 <&3'
 ```
 
 **ClamAV needs the same path the API uses.** clamd is handed an absolute path
