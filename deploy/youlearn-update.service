@@ -1,0 +1,34 @@
+[Unit]
+Description=Reconcile the YouLearn stack with the current release
+Documentation=https://github.com/AmineNaboulsi/youlearn
+# Docker owns the containers this touches; starting before it is up just fails
+# the first tick after a reboot.
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=docker
+WorkingDirectory=/opt/youlearn
+ExecStart=/opt/youlearn/repo/deploy/update.sh
+
+# An image pull over a slow link can legitimately take minutes; anything past
+# this is stuck rather than slow, and the next tick should get a clean start.
+TimeoutStartSec=900
+
+# Journal only. The script prints one line per meaningful step, so
+# `journalctl -u youlearn-update` is the deploy history.
+StandardOutput=journal
+StandardError=journal
+
+# The script writes only inside /opt/youlearn and talks to the Docker socket.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/youlearn
+
+[Install]
+WantedBy=multi-user.target

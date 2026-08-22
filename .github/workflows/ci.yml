@@ -43,7 +43,11 @@ jobs:
       - run: npm ci
         working-directory: web
 
-      - run: npx tsc --noEmit
+      # `npm run typecheck`, not a bare tsc: next-env.d.ts and .next/types are
+      # generated and git-ignored, so a fresh checkout has no declarations for
+      # image imports or typed routes. The script runs `next typegen` first,
+      # which writes them without paying for a full build.
+      - run: npm run typecheck
         working-directory: web
 
       - run: npx eslint .

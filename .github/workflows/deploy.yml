@@ -1,32 +1,40 @@
-# Build the three images, push them to OCIR, and roll the running stack.
+# Build the three images and publish them. The instance deploys itself.
 #
 # Runs on every push to main — which, with pull requests as the way changes
-# arrive, means "on every merged PR". CI has already run on the branch; this
-# workflow re-runs the build because the artefact it publishes must come from
-# the merge commit, not from the branch as it looked before merging.
+# arrive, means on every merged PR. CI has already run on the branch; this
+# rebuilds because the artefact published must come from the merge commit, not
+# from the branch as it looked before merging.
+#
+# ## Why this workflow never connects to the server
+#
+# Port 22 is open only to the operator's own address. Letting a GitHub runner
+# through would mean either opening sshd to the internet or putting a VPN in the
+# deploy path, and both are worse than the alternative: the instance polls. A
+# systemd timer there runs deploy/update.sh every two minutes, which pulls this
+# repository for configuration and OCIR for images, then reconciles.
+#
+# So this workflow publishes, then watches. It holds no SSH key, no host
+# address, and nothing that grants access to the machine — the worst a stolen
+# token here can do is push an image, not run a command.
+#
+# `verify` is what closes the loop: /api/health reports the SHA its image was
+# built from, and the job polls until that matches what it just built. Without
+# it, green would only mean the images uploaded.
 #
 # Every image is tagged twice: `latest`, which the compose file references, and
-# the commit SHA, which is what makes a rollback possible. Retagging a SHA to
-# latest and re-running the deploy job is the whole procedure.
+# the commit SHA. Rolling back is retagging a known-good SHA to latest — the
+# instance picks it up on its next tick, with no pipeline run at all.
 #
 # ## Required repository secrets
 #
-#   OCI_USERNAME      <namespace>/<identity-provider>/<email>, e.g.
-#                     axogvxgfpmnk/Default/you@example.com
+#   OCI_USERNAME      <namespace>/<identity-provider>/<email>
 #   OCI_AUTH_TOKEN    an OCI auth token — NOT your console password
 #   OCI_NAMESPACE     the tenancy's object-storage namespace
-#   SSH_HOST          the instance's public IP
-#   SSH_PRIVATE_KEY   a private key whose public half is on the instance
-#   SSH_KNOWN_HOSTS   output of: ssh-keyscan -H <ip>
 #
 # ## Required repository variables
 #
 #   OCI_REGISTRY      e.g. ocir.af-casablanca-1.oci.oraclecloud.com
 #   APP_URL           e.g. https://learn.naboulsiamine.com
-#
-# SSH_KNOWN_HOSTS is not optional theatre. Without it the only alternatives are
-# disabling host key checking or trusting the first key offered, both of which
-# hand anyone who can answer on that address a root-capable session.
 
 name: Deploy
 
@@ -35,13 +43,13 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      skip_deploy:
-        description: "Build and push images, but do not touch the server"
+      skip_verify:
+        description: "Publish the images but do not wait for the rollout"
         type: boolean
         default: false
 
-# Never let two deploys interleave on one host. Not cancel-in-progress: a
-# half-finished deploy is worse than a queued one.
+# Never let two publishes interleave. Not cancel-in-progress: whichever finished
+# last would otherwise decide what `latest` points at.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -69,14 +77,9 @@ jobs:
           OCI_USERNAME: ${{ secrets.OCI_USERNAME }}
           OCI_AUTH_TOKEN: ${{ secrets.OCI_AUTH_TOKEN }}
           OCI_NAMESPACE: ${{ secrets.OCI_NAMESPACE }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
           missing=()
-          required="OCI_REGISTRY APP_URL OCI_USERNAME OCI_AUTH_TOKEN OCI_NAMESPACE"
-          required="$required SSH_HOST SSH_PRIVATE_KEY SSH_KNOWN_HOSTS"
-          for name in $required; do
+          for name in OCI_REGISTRY APP_URL OCI_USERNAME OCI_AUTH_TOKEN OCI_NAMESPACE; do
             [ -n "${!name}" ] || missing+=("$name")
           done
 
@@ -84,8 +87,7 @@ jobs:
             echo "::error::Not configured: ${missing[*]}"
             echo "Set these under Settings -> Secrets and variables -> Actions:"
             echo "  Variables: OCI_REGISTRY, APP_URL"
-            echo "  Secrets:   OCI_USERNAME, OCI_AUTH_TOKEN, OCI_NAMESPACE,"
-            echo "             SSH_HOST, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS"
+            echo "  Secrets:   OCI_USERNAME, OCI_AUTH_TOKEN, OCI_NAMESPACE"
             echo "The table in infra/README.md says what each one holds."
             exit 1
           fi
@@ -157,83 +159,46 @@ jobs:
           file: docker/web/Dockerfile
           platforms: linux/arm64
           push: true
+          # What /api/health reports, and therefore what `verify` waits for.
+          build-args: |
+            BUILD_SHA=${{ steps.meta.outputs.tag }}
           tags: |
             ${{ vars.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/youlearnweb:latest
             ${{ vars.OCI_REGISTRY }}/${{ secrets.OCI_NAMESPACE }}/youlearnweb:${{ steps.meta.outputs.tag }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-  deploy:
-    name: roll the stack
+  verify:
+    name: wait for the rollout
     needs: push
-    if: ${{ !inputs.skip_deploy }}
+    if: ${{ !inputs.skip_verify }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure SSH
+      # The instance checks every two minutes and then pulls three images, so
+      # the first several polls are expected to report the old SHA. Fifteen
+      # minutes is slack, not an estimate.
+      - name: Poll /api/health for the new build
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          WANT: ${{ needs.push.outputs.tag }}
         run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          echo "waiting for $WANT at $APP_URL/api/health"
+          got=""
 
-      # Configuration travels with the code. The .env on the server is NOT
-      # touched: it holds generated secrets that exist only there, and
-      # overwriting it from CI would mean CI had to hold them too.
-      - name: Sync configuration
-        run: |
-          scp -i ~/.ssh/id_deploy docker-compose.prod.yml \
-            ubuntu@${{ secrets.SSH_HOST }}:/opt/youlearn/
-          scp -i ~/.ssh/id_deploy deploy/Caddyfile \
-            ubuntu@${{ secrets.SSH_HOST }}:/opt/youlearn/deploy/
-          ssh -i ~/.ssh/id_deploy ubuntu@${{ secrets.SSH_HOST }} \
-            'mkdir -p /opt/youlearn/backend'
-          scp -i ~/.ssh/id_deploy -r backend/Database \
-            ubuntu@${{ secrets.SSH_HOST }}:/opt/youlearn/backend/
+          for attempt in $(seq 1 45); do
+            body=$(curl -fsS --max-time 20 "$APP_URL/api/health" 2>/dev/null || true)
+            got=$(printf '%s' "$body" | sed -n 's/.*"sha":"\([^"]*\)".*/\1/p')
 
-      - name: Pull and restart
-        run: |
-          ssh -i ~/.ssh/id_deploy ubuntu@${{ secrets.SSH_HOST }} bash -euo pipefail <<'REMOTE'
-            cd /opt/youlearn
-            echo "${{ secrets.OCI_AUTH_TOKEN }}" \
-              | docker login "${{ vars.OCI_REGISTRY }}" \
-                  -u "${{ secrets.OCI_USERNAME }}" --password-stdin
+            if [ "$got" = "$WANT" ]; then
+              echo "live after roughly $((attempt * 20))s"
+              exit 0
+            fi
 
-            docker compose -f docker-compose.prod.yml pull keycloak api web
-            # --no-deps on nothing: compose restarts only what changed, and the
-            # databases and clamav keep running untouched.
-            docker compose -f docker-compose.prod.yml up -d
+            printf '  %2d/45  serving %s\n' "$attempt" "${got:-<no response>}"
+            sleep 20
+          done
 
-            docker logout "${{ vars.OCI_REGISTRY }}" || true
-            # Images accumulate a layer set per deploy; without this the 50 GB
-            # boot volume fills in a couple of months.
-            docker image prune -f --filter 'until=168h'
-          REMOTE
-
-      # A deploy that leaves a container unhealthy should fail loudly rather
-      # than report success because `up -d` returned zero.
-      - name: Verify
-        run: |
-          ssh -i ~/.ssh/id_deploy ubuntu@${{ secrets.SSH_HOST }} bash -euo pipefail <<'REMOTE'
-            cd /opt/youlearn
-            for attempt in $(seq 1 30); do
-              unhealthy=$(docker compose -f docker-compose.prod.yml ps \
-                --format '{{.Name}} {{.State}} {{.Health}}' \
-                | awk '$2 != "running" || ($3 != "" && $3 != "healthy")' || true)
-              [ -z "$unhealthy" ] && { echo "all services healthy"; exit 0; }
-              echo "waiting ($attempt/30):"; echo "$unhealthy"
-              sleep 10
-            done
-            echo "services did not become healthy:"; echo "$unhealthy"
-            docker compose -f docker-compose.prod.yml ps
-            exit 1
-          REMOTE
-
-      - name: Public smoke test
-        run: |
-          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "${{ vars.APP_URL }}/")
-          echo "GET ${{ vars.APP_URL }}/ -> $code"
-          # 2xx or a redirect to Keycloak both mean the app is serving.
-          case "$code" in 2??|3??) exit 0 ;; *) exit 1 ;; esac
+          echo "::error::$WANT did not go live within 15 minutes (still serving '${got:-nothing}')"
+          echo "The images published fine — it is the rollout that stalled."
+          echo "On the instance:  journalctl -u youlearn-update -n 50"
+          exit 1

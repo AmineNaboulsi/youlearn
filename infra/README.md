@@ -126,41 +126,66 @@ image build of each Dockerfile, compose and Terraform validation, and a secret
 scan over the commits the PR introduces. Nothing in it touches the server.
 
 `.github/workflows/deploy.yml` runs on push to `main` — with pull requests as
-the way changes arrive, that means on every merge. It builds all three images
-on a native arm64 runner, pushes them to OCIR as both `latest` and the short
-commit SHA, syncs the compose file and Caddyfile, pulls, restarts, waits for
-every container to report healthy, and finally requests the site over HTTPS.
+the way changes arrive, that means on every merge. It builds all three images on
+a native arm64 runner and pushes them to OCIR as both `latest` and the short
+commit SHA.
 
-Before the first merge, set these in **Settings → Secrets and variables →
-Actions**:
+**It never connects to the instance.** Port 22 is open only to
+`ssh_allowed_cidr`, and letting a GitHub runner through would mean opening sshd
+to the internet or putting a VPN in the deploy path. Instead the instance polls:
+a systemd timer runs `deploy/update.sh` every two minutes, which pulls this
+repository for configuration and OCIR for images, then runs `docker compose up
+-d`. That is idempotent — it recreates only containers whose image digest or
+configuration actually changed — so a tick that finds nothing new does nothing.
+
+The consequence worth knowing: the workflow holds no SSH key and no host
+address. The worst a stolen token there can do is push an image, not run a
+command.
+
+### One-time setup on the instance
+
+```bash
+scp -i ~/.ssh/youlearn deploy/install-updater.sh ubuntu@<ip>:/tmp/
+ssh -i ~/.ssh/youlearn ubuntu@<ip> 'sudo bash /tmp/install-updater.sh'
+```
+
+It refuses to run if `/opt/youlearn/.env` is missing, since that file holds
+generated secrets and is not in the repository.
+
+### Actions configuration
 
 | Kind | Name | Value |
 | ---- | ---- | ----- |
 | Secret | `OCI_USERNAME` | `<namespace>/Default/<email>` |
 | Secret | `OCI_AUTH_TOKEN` | an OCI auth token, not your console password |
 | Secret | `OCI_NAMESPACE` | the tenancy's object-storage namespace |
-| Secret | `SSH_HOST` | the instance's public IP |
-| Secret | `SSH_PRIVATE_KEY` | a deploy key whose public half is on the instance |
-| Secret | `SSH_KNOWN_HOSTS` | output of `ssh-keyscan -H <ip>` |
 | Variable | `OCI_REGISTRY` | `ocir.<region>.oci.oraclecloud.com` |
 | Variable | `APP_URL` | `https://<app_domain>` |
 
-`SSH_KNOWN_HOSTS` is not a formality. The alternatives are disabling host key
-checking or trusting whatever key answers first, and both hand anyone who can
-respond on that address a session that can restart your containers.
+### Watching a deploy
 
-The server's `.env` is deliberately **not** synced. It holds secrets generated
-on the host, and shipping it from CI would mean CI had to hold them too.
+`/api/health` reports the commit its image was built from, and the workflow's
+`verify` job polls it until that matches what it just built. Green therefore
+means the change is live, not merely that the upload succeeded.
 
-**Rolling back** is retagging: every deploy also publishes `:<sha>`, so
+```bash
+journalctl -u youlearn-update -f          # the deploy log
+sudo systemctl start youlearn-update      # force a tick
+sudo systemctl stop youlearn-update.timer # pause deploys
+cat /opt/youlearn/.deployed               # what is live
+```
+
+Migrations are copied to the instance but **never applied automatically** — a
+schema change that runs itself during an unattended restart is how a bad
+migration takes the database with it. Apply them by hand, as above.
+
+**Rolling back** is retagging; the instance picks it up on its next tick.
 
 ```bash
 docker pull  $REG/$NS/youlearnweb:<good-sha>
 docker tag   $REG/$NS/youlearnweb:<good-sha> $REG/$NS/youlearnweb:latest
 docker push  $REG/$NS/youlearnweb:latest
 ```
-
-then re-run the deploy job.
 
 ---
 
