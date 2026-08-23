@@ -8,20 +8,35 @@
 # Global options. Must be the first block in the file.
 {
 	# Caddy's admin API — the thing that can rewrite this proxy's entire
-	# configuration at runtime — defaults to listening on localhost:2019. That
-	# is inside this container's own network namespace, and the container
-	# publishes only 80 and 443, so it was never reachable from the internet or
-	# from a sibling container. It was not exposed; this makes it not exist.
+	# configuration at runtime, including which upstream each hostname points
+	# at. It defaults to localhost:2019, which is the *container's* loopback:
+	# unreachable from the internet, from a sibling container, and from the
+	# host, which is why an SSH tunnel to the host's 127.0.0.1:2019 arrives at
+	# nothing. It was never exposed.
 	#
-	# Off rather than allowlisted to one address: the config is a file that
-	# ships with the deploy, so there is nothing this API would be used for
-	# that `docker compose up -d` does not already do. An endpoint that cannot
-	# be reached from anywhere beats one that can be reached from somewhere.
+	# Bound to 0.0.0.0 here so that Docker can forward a port to it, and then
+	# published as 127.0.0.1:2019 on the host only — see the proxy service in
+	# docker-compose.prod.yml. The reachable surface is therefore the host's
+	# loopback and nothing else: no security-list rule, no iptables change, no
+	# port open to any network. The way in is
 	#
-	# The cost is `caddy reload`. Changing this file now needs the container
-	# restarted, which is exactly what the update timer does when the file
-	# changes, so nothing in the deploy path notices.
-	admin off
+	#   ssh -L 2019:127.0.0.1:2019 ubuntu@<instance>
+	#
+	# which works from whatever address you happen to be on, and needs no
+	# allow-list to follow you around.
+	#
+	# `origins` is not optional once the listener is off loopback: Caddy
+	# refuses requests whose Host header is not in this list, and the tunnel
+	# presents 127.0.0.1:2019. Listing it explicitly also means that publishing
+	# this port more widely takes two deliberate changes rather than one.
+	#
+	# This API has no authentication and no UI. It is a JSON REST endpoint —
+	# GET /config/ returns the running configuration — and anything that can
+	# reach it can repoint both hostnames, so the loopback bind is the whole
+	# of the access control.
+	admin 0.0.0.0:2019 {
+		origins 127.0.0.1:2019 localhost:2019
+	}
 }
 
 # Access logs are off in Caddy unless a site asks for them, and this stack ran

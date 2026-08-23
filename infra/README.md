@@ -290,6 +290,18 @@ curl -s http://127.0.0.1:9428/select/logsql/query   --data-urlencode 'query=malw
 If you would rather have it in a browser without a tunnel, give it a hostname
 in `deploy/Caddyfile` behind `basic_auth` — do not set `LOGS_BIND=0.0.0.0`.
 
+The proxy's admin API is reached the same way, on 2019:
+
+```bash
+ssh -L 2019:127.0.0.1:2019 ubuntu@<instance>
+curl -s http://127.0.0.1:2019/config/ | head -c 400
+```
+
+It is a JSON API with no UI and no authentication — `GET /config/` returns what
+Caddy is running — so it is published on the host's loopback only. Anything
+that can reach it can repoint both hostnames, which is why it is not on a port
+of its own with an allow-list in front.
+
 ### What a refused upload looks like
 
 Three containers describe the same event, and searching for either marker finds

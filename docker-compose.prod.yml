@@ -43,6 +43,13 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # Caddy's admin API, on the host's loopback and nowhere else. Reaching it
+      # means an SSH tunnel — the same way in as the log UI — so it needs no
+      # security-list rule and is not open to any network. Widening this to
+      # 0.0.0.0 would publish an unauthenticated endpoint that can repoint both
+      # hostnames; the `origins` list in deploy/Caddyfile would also have to
+      # change, which is the friction that keeps it from happening by accident.
+      - "127.0.0.1:2019:2019"
     environment:
       WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN}
       KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:?set KEYCLOAK_PUBLIC_URL}
