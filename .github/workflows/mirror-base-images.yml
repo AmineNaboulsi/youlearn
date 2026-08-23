@@ -18,7 +18,7 @@
 # docker/clamav/Dockerfile instead.
 #
 # This is deliberately NOT part of the deploy workflow. These images change on
-# their own schedule, not ours, and re-copying five multi-arch manifests on
+# their own schedule, not ours, and re-copying six multi-arch manifests on
 # every merge would be waste. It runs monthly, and on demand when a version here
 # changes.
 #
@@ -100,6 +100,7 @@ jobs:
           # is one more thing that can be the reason a deploy broke.
           copy victoriametrics/victoria-logs:v1.52.0 victoria-logs-1.52.0
           copy timberio/vector:0.57.0-alpine         vector-0.57.0-alpine
+          copy portainer/portainer-ce:2.39.6         portainer-ce-2.39.6
 
       - name: What to put in .env on the instance
         env:
@@ -114,5 +115,6 @@ jobs:
             echo "MYSQL_IMAGE=$DEST:mysql-8.4"
             echo "VICTORIALOGS_IMAGE=$DEST:victoria-logs-1.52.0"
             echo "VECTOR_IMAGE=$DEST:vector-0.57.0-alpine"
+            echo "PORTAINER_IMAGE=$DEST:portainer-ce-2.39.6"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

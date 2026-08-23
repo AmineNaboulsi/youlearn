@@ -327,6 +327,38 @@ services:
     logging: *logging
     networks: [youlearn]
 
+  # A web interface for the stack itself: what is running, what it is logging,
+  # restart it, open a shell in it, see what a volume holds.
+  #
+  # Worth saying plainly, because it is the reason this exists: Caddy has no
+  # UI. Its admin API is JSON over :2019 and there is no page to look at.
+  # Routing belongs in deploy/Caddyfile and in git, where it survives the next
+  # deploy. What a browser is genuinely better at is "which container is
+  # unhealthy, and what did it say before it died" — and that is this.
+  portainer:
+    image: ${PORTAINER_IMAGE:-portainer/portainer-ce:2.39.6}
+    restart: unless-stopped
+    ports:
+      # Loopback, like vmui and the admin API — reached with
+      #
+      #   ssh -L 9000:127.0.0.1:9000 ubuntu@<instance>
+      #
+      # rather than a hostname with an address allow-list. That is a deliberate
+      # choice: this operator's home address changes every few days, and an
+      # allow-list that has to be updated when the ISP renews a lease is
+      # exactly what locked SSH out for an evening. A tunnel follows you to
+      # whatever network you are on and opens nothing to anybody else.
+      - "127.0.0.1:9000:9000"
+    volumes:
+      # The docker socket is root on this host, and handing it over is the
+      # entire point of Portainer: it can start, stop and shell into every
+      # container here. Behind the tunnel it is also behind Portainer's own
+      # login, which vmui and the admin API do not have.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    logging: *logging
+    networks: [youlearn]
+
 volumes:
   clamav-db:
   keycloak-db-data:
@@ -336,6 +368,7 @@ volumes:
   caddy-config:
   logs-data:
   logs-collector-state:
+  portainer-data:
 
 networks:
   youlearn:
