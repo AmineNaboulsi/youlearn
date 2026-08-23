@@ -290,6 +290,43 @@ curl -s http://127.0.0.1:9428/select/logsql/query   --data-urlencode 'query=malw
 If you would rather have it in a browser without a tunnel, give it a hostname
 in `deploy/Caddyfile` behind `basic_auth` — do not set `LOGS_BIND=0.0.0.0`.
 
+### Portainer — the interface for the stack itself
+
+Caddy has no UI, and never has: its admin API is JSON on 2019 and there is no
+page behind it. Routing lives in `deploy/Caddyfile`, in git, because anything
+changed through an API is overwritten by the next deploy anyway. What a browser
+*is* better at is looking at the containers — and that is Portainer.
+
+```bash
+ssh -L 9000:127.0.0.1:9000 ubuntu@<instance>
+# then open http://127.0.0.1:9000
+```
+
+**Set the admin password within five minutes of the container's first start.**
+Portainer disables initialisation after that, and the only way back is
+`docker restart youlearn-portainer-1` to open a fresh window. After that first
+setup it has its own login, which is one more than vmui and the admin API have
+between them.
+
+It holds the docker socket, so it can start, stop, restart and shell into every
+container on the host — that is what it is for, and why it is on loopback
+behind a tunnel rather than on a hostname with an address allow-list. An
+allow-list would need editing every time the ISP hands you a new address, which
+is the failure mode that already cost an evening on port 22. A tunnel follows
+you to whatever network you are on.
+
+One tunnel carries all three:
+
+```bash
+ssh -L 9000:127.0.0.1:9000 -L 9428:127.0.0.1:9428 -L 2019:127.0.0.1:2019 ubuntu@<instance>
+```
+
+| Port | What |
+| ---- | ---- |
+| 9000 | Portainer — containers, logs, shells, volumes |
+| 9428 | VictoriaLogs vmui — every log, searchable by date |
+| 2019 | Caddy's admin API — JSON only, needs an `Origin` header |
+
 The proxy's admin API is reached the same way, on 2019:
 
 ```bash
