@@ -39,6 +39,15 @@ final class Permission
     public const ASSET_UPLOAD    = 'asset.upload';      // upload covers and lesson videos
     public const PROGRESS_WRITE  = 'progress.write';    // record how far through a lesson you are
 
+    // Public instructor profile
+    //
+    // Separate from COURSE_MANAGE even though the same two roles hold both. The
+    // profile is a *published, world-readable* page under this platform's
+    // domain; that is a different kind of privilege from editing a course, and
+    // a future decision to withhold it from one role should be one line here
+    // rather than a hunt for every route that happened to reuse course.manage.
+    public const PROFILE_MANAGE  = 'profile.manage';
+
     // Taxonomy
     public const TAXONOMY_READ   = 'taxonomy.read';
     public const TAXONOMY_MANAGE = 'taxonomy.manage';
@@ -77,6 +86,7 @@ final class Permission
             self::COURSE_MANAGE,
             self::COURSE_PUBLISH,
             self::ASSET_UPLOAD,
+            self::PROFILE_MANAGE,
             // Instructors watch their own material to check it, which records
             // progress exactly as a learner's would.
             self::PROGRESS_WRITE,
@@ -93,6 +103,7 @@ final class Permission
             self::COURSE_MANAGE_ANY,
             self::COURSE_PUBLISH,
             self::ASSET_UPLOAD,
+            self::PROFILE_MANAGE,
             self::PROGRESS_WRITE,
             self::ENROLLMENT_READ_OWN,
             self::TAXONOMY_READ,

@@ -89,6 +89,11 @@ export function dashboardNav(isAdmin: boolean): NavItem[] {
       description: isAdmin ? "Every enrolment" : "People enrolled on your courses",
     },
     {
+      href: "/dashboard/profile",
+      label: "Public profile",
+      description: "The page you share with the world",
+    },
+    {
       href: "/dashboard/exports",
       label: "Data exports",
       description: "Download CSV within your quota",
