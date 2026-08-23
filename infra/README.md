@@ -372,6 +372,21 @@ Run the **Mirror base images** workflow once, then set `CADDY_IMAGE`,
 entirely. Until then, a base image that is not already on the host will
 intermittently fail to arrive, and `docker compose up -d` fails with it.
 
+**OCIR repositories are created private.** The instance pulls anonymously, so
+the first deploy after pointing an image variable at a freshly mirrored
+repository fails with
+
+```
+error from registry: Anonymous users are only allowed read access on public repos
+```
+
+and `update.sh` stops there — nothing else in that release is deployed either,
+however unrelated. Fix it in the console: Developer Services → Container
+Registry → select `youlearnbase` → Actions → Change to Public. The application
+repositories are already public, which is why they pull without this. To unblock
+immediately instead, delete the `*_IMAGE` line from `/opt/youlearn/.env` and the
+image falls back to its Docker Hub default.
+
 To load one by hand in the meantime:
 
 ```bash
