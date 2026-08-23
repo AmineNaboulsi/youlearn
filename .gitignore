@@ -25,3 +25,7 @@ infra/tfplan
 **/.env.*
 !*.example
 !**/*.example
+
+# Standalone spike, kept beside the project but not part of it. It carries
+# its own Firebase service-account material, which must never reach a commit.
+firebase-sms/
