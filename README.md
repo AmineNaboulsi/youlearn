@@ -96,6 +96,22 @@ fails — revoked session, suspended account — signs the user out cleanly.
 session runs to roughly 4.8 KB and browsers silently *drop* a cookie over ~4 KB,
 which would make sign-in appear to succeed and then not.
 
+### Signing out
+
+`POST /api/auth/logout` posts the refresh token to Keycloak's logout endpoint
+server to server, which ends the SSO session with no browser hop at all. Clicking
+"Sign out" therefore lands straight back on the home page — no confirmation
+screen at the identity provider, no result page to click through.
+
+The browser flow is the fallback, used only when that call fails, and it now
+sends `client_id` alongside `id_token_hint`. That matters: Keycloak validates the
+hint with its default token checks, expiry included, so an ID token older than
+the five-minute access-token lifespan is discarded — and with no client resolved
+Keycloak also refuses the `post_logout_redirect_uri`, stranding the user on a
+terminal "You are logged out" page with no way back. Sending `client_id` means a
+stale hint costs at most an extra confirmation click, never a one-way trip off
+the platform.
+
 ### Sessions are visible and revocable
 
 `/account/sessions` lists every device signed in to the account, marks the

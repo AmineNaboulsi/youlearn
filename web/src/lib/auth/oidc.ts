@@ -71,13 +71,77 @@ export function authorizationUrl(params: {
   return url.toString();
 }
 
-export function endSessionUrl(idToken: string): string {
+/** Where Keycloak sends the browser once the SSO session has ended. */
+export function postLogoutRedirectUri(): string {
+  return `${env.appUrl}/?signed-out=1`;
+}
+
+/**
+ * Browser-facing RP-initiated logout URL.
+ *
+ * Two parameters decide whether this works, and they do different jobs:
+ *
+ *   - `id_token_hint` is what lets Keycloak skip the "Do you want to sign
+ *     out?" confirmation screen. Keycloak validates the hint with its default
+ *     token checks, *expiry included*, so a hint older than the access token
+ *     lifespan is discarded and the confirmation screen comes back.
+ *   - `client_id` is what lets Keycloak resolve the client, and therefore
+ *     decide whether `post_logout_redirect_uri` is one it is allowed to honour.
+ *     With no client resolved the redirect is dropped and the user is left
+ *     stranded on Keycloak's "You are logged out" page — which is exactly the
+ *     dead end that happens when the hint has expired and nothing replaces it.
+ *
+ * Sending both means a stale ID token costs at most an extra confirmation
+ * click, never a one-way trip off the platform.
+ */
+export function endSessionUrl(idToken?: string | null): string {
   const url = new URL(endpoints.endSession());
-  // `id_token_hint` is what makes this a real RP-initiated logout: without it
-  // Keycloak has to ask the user to confirm, and the redirect back is refused.
-  url.searchParams.set("id_token_hint", idToken);
-  url.searchParams.set("post_logout_redirect_uri", `${env.appUrl}/?signed-out=1`);
+
+  if (idToken) {
+    url.searchParams.set("id_token_hint", idToken);
+  }
+  url.searchParams.set("client_id", env.clientId);
+  url.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUri());
+
   return url.toString();
+}
+
+/**
+ * End the Keycloak SSO session server-to-server.
+ *
+ * Posting the refresh token to the logout endpoint terminates the user session
+ * without the browser going anywhere near Keycloak, which is what keeps sign-out
+ * a single hop back to the platform instead of a detour through an identity
+ * provider's confirmation and result pages.
+ *
+ * Returns false when the session could not be ended, so the caller can fall
+ * back to the browser flow rather than leaving the user signed in at the IdP
+ * while the app believes they are signed out.
+ */
+export async function revokeSession(refreshToken: string): Promise<boolean> {
+  if (!refreshToken) return false;
+
+  try {
+    const body = new URLSearchParams({ refresh_token: refreshToken });
+    body.set("client_id", env.clientId);
+    body.set("client_secret", env.clientSecret);
+
+    const response = await fetch(`${env.issuerInternal}/protocol/openid-connect/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body,
+      cache: "no-store",
+    });
+
+    // Keycloak answers 204 on success. A 400 means the refresh token was
+    // already dead, which is the same end state and just as good.
+    return response.ok || response.status === 400;
+  } catch {
+    return false;
+  }
 }
 
 interface TokenResponse {
