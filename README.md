@@ -197,11 +197,18 @@ single API call.
 
 ## The look
 
-Monochrome and light-only, by decision rather than omission. There is no dark
-palette and no `prefers-color-scheme` block, so the app looks the same
-everywhere — and the Keycloak login theme in `keycloak/themes/youlearn` uses the
-same type scale, radii, borders and grid motif, so the hand-off to the identity
-provider is invisible.
+Monochrome and light-only, by decision rather than omission. There is no
+`prefers-color-scheme` block anywhere, so the app looks the same everywhere —
+and the Keycloak login theme in `keycloak/themes/youlearn` uses the same type
+scale, radii, borders and grid motif, so the hand-off to the identity provider
+is invisible.
+
+There is exactly one dark palette, and it is scoped: a public instructor profile
+renders under `[data-profile-theme="dark"]` if its owner chose that. It works by
+re-pointing the same design tokens rather than by adding `dark:` variants, so no
+component has a second copy to keep in step — see [Public instructor
+profiles](#public-instructor-profiles). Nothing else on the platform themes, and
+that is the boundary of the exception.
 
 Emphasis comes from weight, size, border and space rather than hue. The one
 exception is course artwork, which is shown in its own colours: a cover is how
@@ -313,6 +320,65 @@ re-renders itself every 15 seconds and pauses while the tab is hidden, so
 "watching now" genuinely means people whose playback moved in the last five
 minutes.
 
+
+---
+
+## Public instructor profiles
+
+An instructor gets one page they can hand to somebody who has never used this
+platform: `/teachers/<slug>`. Portrait, headline, bio, links and their published
+courses, at an address they choose.
+
+It is the only route in the app designed to be read by an anonymous stranger,
+and everything about it follows from that:
+
+- **Opt-in and revocable.** `profile_is_public` starts at 0, so running the
+  migration publishes nothing. The public read re-checks publication, the
+  account's active flag *and* its role on every request — suspending or
+  demoting an instructor takes the page down without anyone remembering to.
+- **404, not 403.** An unpublished profile is indistinguishable from one that
+  never existed. Answering 403 would confirm the account exists, which is the
+  one thing not publishing it was meant to avoid.
+- **Assembled field by field.** The payload is never a database row handed to
+  `json_encode` — the same table holds the email address and the Keycloak
+  subject. A section switched off is omitted from the response entirely rather
+  than sent with a flag: a hidden bio that still ships in the JSON is not hidden.
+- **Indexable.** The root layout sets `robots: noindex` because every other page
+  is per-user; this one overrides it, because a shareable link that search
+  engines are told to ignore is only half a share.
+
+### The portrait
+
+New: accounts previously had a name and nothing to look at. Uploads go through
+the same chunked `/uploads` pipeline as course covers — one authorisation path,
+one content sniff, one malware scan — and land in `assets`, where images are
+already public. Without one the fallback is a monogram on an ink tile, derived
+from the name, so a profile with no photo looks deliberate rather than broken.
+
+### The phone preview
+
+`/dashboard/profile` renders the editor beside a phone frame containing the
+**real** `ProfileView` component at a real handset width, not a mock-up of one.
+
+Two things make that honest. The component reflows by *container query* rather
+than by viewport, so a 393px frame produces the genuine mobile layout with no
+`compact` prop to get wrong. And it is rendered in place rather than in an
+iframe — an iframe could only ever show saved state, and the point is to see an
+unsaved change as it is typed.
+
+The section toggles and the light/dark switch beside it are not preview-only
+controls: they are the profile's actual settings, previewed before they are
+saved. Device size is the one control that is purely local.
+
+### Applying it
+
+The profile columns live on `users`. On an existing database:
+
+```bash
+docker compose exec -T mysql mysql -uroot -proot youlearn <   backend/Database/migrations/003-instructor-profiles.sql
+```
+
+A fresh `schema.sql` already includes them.
 
 ---
 

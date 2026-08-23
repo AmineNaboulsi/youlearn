@@ -277,6 +277,12 @@ final class CourseRepository
                 -- fetches directly, and the front end treats them differently.
                 cover.public_id AS cover_public_id,
                 u.name AS instructor_name,
+                -- The public profile page of the instructor, when published.
+                -- Gated in SQL rather than in the controller: this column is
+                -- selected by the catalogue, the export and the profile listing
+                -- alike, and a slug that only exists when it is shareable
+                -- cannot be leaked by whichever of them forgets to check.
+                IF(u.profile_is_public = 1, u.profile_slug, NULL) AS instructor_profile_slug,
                 cat.name AS category_name, cat.slug AS category_slug,
                 (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS enrollment_count';
     }

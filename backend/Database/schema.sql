@@ -27,6 +27,36 @@ CREATE TABLE users (
   name          VARCHAR(255) NOT NULL,
   email         VARCHAR(320) NOT NULL,
   role          ENUM('admin', 'enseignant', 'etudiant') NOT NULL DEFAULT 'etudiant',
+
+  -- ---------------------------------------------------------------------------
+  -- Public instructor profile (migration 003).
+  --
+  -- Presentation, not identity: everything above this block is mirrored from
+  -- Keycloak on every request, everything in it is authored here. Off by
+  -- default — `profile_is_public` starts at 0, so an account gets a public page
+  -- only once its owner asks for one.
+  -- ---------------------------------------------------------------------------
+
+  -- The public URL segment: /teachers/<profile_slug>. Chosen rather than
+  -- derived from the name, so a rename does not break a shared link. NULL
+  -- repeats under a UNIQUE key, which is what lets most accounts have none.
+  profile_slug      VARCHAR(80)  NULL,
+  profile_is_public TINYINT(1)   NOT NULL DEFAULT 0,
+  -- Uploaded portrait. FK added at the bottom of this file, after `assets`.
+  avatar_asset_id   BIGINT UNSIGNED NULL,
+  headline          VARCHAR(140) NULL,
+  bio               TEXT         NULL,
+  profile_location  VARCHAR(120) NULL,
+  -- A capped list of {label, url}. Only ever read whole, alongside the profile.
+  profile_links     JSON         NULL,
+  -- Scoped exception to the light-only palette: this is the instructor's own
+  -- page, and the column is the boundary of that exception.
+  profile_theme     ENUM('light', 'dark') NOT NULL DEFAULT 'light',
+  profile_show_about   TINYINT(1) NOT NULL DEFAULT 1,
+  profile_show_courses TINYINT(1) NOT NULL DEFAULT 1,
+  profile_show_stats   TINYINT(1) NOT NULL DEFAULT 1,
+  profile_show_links   TINYINT(1) NOT NULL DEFAULT 1,
+
   is_active     TINYINT(1)   NOT NULL DEFAULT 1,
   last_seen_at  DATETIME     NULL,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -34,8 +64,11 @@ CREATE TABLE users (
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_keycloak_id (keycloak_id),
   UNIQUE KEY uq_users_email (email),
+  UNIQUE KEY uq_users_profile_slug (profile_slug),
   KEY idx_users_role (role),
-  KEY idx_users_active_role (is_active, role)
+  KEY idx_users_active_role (is_active, role),
+  -- The public lookup is "this slug, if it is published".
+  KEY idx_users_public_profile (profile_is_public, profile_slug)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -329,4 +362,11 @@ CREATE TABLE lesson_progress (
 -- -----------------------------------------------------------------------------
 ALTER TABLE courses
   ADD CONSTRAINT fk_courses_cover FOREIGN KEY (cover_asset_id)
+    REFERENCES assets (id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- Same reason: users is the first table in the file and assets is near the end.
+-- SET NULL rather than CASCADE — deleting an avatar file must not delete the
+-- account it belonged to.
+ALTER TABLE users
+  ADD CONSTRAINT fk_users_avatar FOREIGN KEY (avatar_asset_id)
     REFERENCES assets (id) ON UPDATE CASCADE ON DELETE SET NULL;
