@@ -60,6 +60,12 @@ export interface Course {
   category_slug: string | null;
   instructor_id: number;
   instructor_name: string;
+  /**
+   * Set only when the instructor has published a profile. Null covers both
+   * "no profile" and "profile unpublished" — the API does not distinguish them,
+   * so neither does this.
+   */
+  instructor_profile_slug: string | null;
   enrollment_count: number;
   tags: Tag[];
 }
@@ -126,6 +132,75 @@ export interface Me {
   is_active: boolean;
   token_expires_at: string;
   teaching?: StatsSummary;
+}
+
+/* -----------------------------------------------------------------------------
+ * Public instructor profile
+ * -------------------------------------------------------------------------- */
+
+/** Which blocks a profile renders. Off means the data is not sent at all. */
+export interface ProfileSections {
+  about: boolean;
+  courses: boolean;
+  stats: boolean;
+  links: boolean;
+}
+
+export interface ProfileLink {
+  label: string;
+  url: string;
+}
+
+export interface ProfileStats {
+  published_courses: number;
+  learners: number;
+  lessons: number;
+  duration_seconds: number;
+}
+
+/** A course as it appears on a profile: enough for a card, no more. */
+export interface ProfileCourse {
+  id: number;
+  title: string;
+  slug: string;
+  subtitle: string | null;
+  img: string | null;
+  cover_public_id: string | null;
+  content_type: ContentType;
+  category_name: string | null;
+  enrollment_count: number;
+}
+
+export type ProfileTheme = "light" | "dark";
+
+/**
+ * A profile as the world sees it.
+ *
+ * The nullable fields are not "optional data" — they are the sections their
+ * owner switched off. The API omits the content rather than flagging it, so
+ * there is nothing here for a client to accidentally reveal.
+ */
+export interface InstructorProfile {
+  slug: string | null;
+  name: string;
+  role: Role;
+  headline: string | null;
+  avatar_public_id: string | null;
+  member_since: string | null;
+  theme: ProfileTheme;
+  sections: ProfileSections;
+  bio: string | null;
+  location: string | null;
+  links: ProfileLink[];
+  stats: ProfileStats | null;
+  courses: ProfileCourse[];
+  course_total?: number;
+}
+
+/** The same profile plus the two fields only its owner is shown. */
+export interface MyProfile extends InstructorProfile {
+  is_public: boolean;
+  suggested_slug: string;
 }
 
 export interface StatsSummary {

@@ -108,7 +108,20 @@ export default async function CoursePage({
 
             <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-ink-muted">
               <span>
-                Taught by <span className="font-medium text-ink-soft">{course.instructor_name}</span>
+                Taught by{" "}
+                {/* Linked only when the instructor has published a profile.
+                    The API sends the slug as null otherwise, so there is no
+                    dead link to a page that does not resolve. */}
+                {course.instructor_profile_slug ? (
+                  <Link
+                    href={`/teachers/${course.instructor_profile_slug}`}
+                    className="font-medium text-ink-soft underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
+                  >
+                    {course.instructor_name}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-ink-soft">{course.instructor_name}</span>
+                )}
               </span>
               <span aria-hidden className="text-ink-ghost">
                 ·

@@ -66,6 +66,7 @@ export function UserMenu({
           <MenuLink href="/account">Profile</MenuLink>
           <MenuLink href="/account/sessions">Active sessions</MenuLink>
           {isStaff ? <MenuLink href="/dashboard">Dashboard</MenuLink> : null}
+          {isStaff ? <MenuLink href="/dashboard/profile">Public profile</MenuLink> : null}
           {isStaff ? <MenuLink href="/dashboard/exports">Data exports</MenuLink> : null}
         </nav>
 
