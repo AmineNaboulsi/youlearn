@@ -59,14 +59,59 @@ after=$(git -C "$REPO_DIR" rev-parse HEAD)
 
 if [ "$before" != "$after" ]; then
   log "repository ${before:0:12} -> ${after:0:12}"
+
+  # The tick that ships a change to THIS script is still running the previous
+  # version of it — bash read the file before git replaced it. So a new step
+  # takes effect one tick late, and for that one tick the rest of the release
+  # is deployed by a procedure that predates it.
+  #
+  # That is how a newly bind-mounted config file came to be mounted by a
+  # compose file that knew about it, on a tick whose script had no line to
+  # install it. Docker made a directory, vector read the directory as its
+  # configuration, and every later tick died trying to replace it.
+  #
+  # Re-exec once, so the release is deployed by its own procedure. The guard is
+  # belt and braces: the environment variable stops a loop, and the second run
+  # finds before == after anyway because the fetch is already done. exec keeps
+  # the flock on fd 9, so this does not race with the next timer tick.
+  if [ "${YOULEARN_UPDATE_REEXECED:-0}" != "1" ]; then
+    export YOULEARN_UPDATE_REEXECED=1
+    log "re-executing the deploy script this release brought with it"
+    exec /bin/bash "$REPO_DIR/deploy/update.sh"
+  fi
 fi
 
 # ------------------------------------------------------------- configuration --
 
 install -m 0644 "$REPO_DIR/docker-compose.prod.yml" "$COMPOSE_FILE"
 install -d -m 0755 "$APP_DIR/deploy" "$APP_DIR/backend"
-install -m 0644 "$REPO_DIR/deploy/Caddyfile" "$APP_DIR/deploy/Caddyfile"
-install -m 0644 "$REPO_DIR/deploy/vector.yaml" "$APP_DIR/deploy/vector.yaml"
+# Docker fabricates a root-owned DIRECTORY at any bind-mount source that does
+# not exist yet, and `install` cannot then overwrite it with a file — so every
+# later tick dies here, and the deploy stops dead for reasons that have nothing
+# to do with the change being deployed.
+#
+# That is not hypothetical. It happened the tick a new bind-mounted config file
+# was introduced: this script had already been read into memory before
+# `git reset --hard` fetched the version that installs it, so compose ran with
+# the new file mounted and the file itself still absent. One directory later,
+# vector was reading a directory as its configuration and exiting 78, and the
+# next tick could not repair it.
+#
+# `sudo` is deliberately not used: the directory belongs to root, so this
+# clears the ones it can and leaves a loud message for the one case it cannot,
+# rather than giving the deploy script a way to delete root-owned paths.
+for config in Caddyfile vector.yaml; do
+  target="$APP_DIR/deploy/$config"
+  if [ -d "$target" ]; then
+    log "removing the directory docker created at $target"
+    rm -rf "$target" || {
+      log "ERROR: $target is a directory this user cannot remove"
+      log "  sudo rm -rf $target   then start this service again"
+      exit 1
+    }
+  fi
+  install -m 0644 "$REPO_DIR/deploy/$config" "$target"
+done
 
 # Migrations are copied but never applied automatically. A schema change that
 # runs itself during an unattended restart is how a bad migration takes the
