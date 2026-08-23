@@ -100,8 +100,23 @@ install -d -m 0755 "$APP_DIR/deploy" "$APP_DIR/backend"
 # `sudo` is deliberately not used: the directory belongs to root, so this
 # clears the ones it can and leaves a loud message for the one case it cannot,
 # rather than giving the deploy script a way to delete root-owned paths.
+# Repairing the host path is only half of it. A container created while the
+# source was a directory has a DIRECTORY at that path inside its own rootfs,
+# and `up -d` starts that container rather than building a new one, because
+# nothing in the compose file changed. The mount then fails with "not a
+# directory: Are you trying to mount a directory onto a file" on every tick,
+# forever. So the container has to go as well; the next `up -d` creates it with
+# the right kind of mount point.
+repaired=""
+
 for config in Caddyfile vector.yaml; do
   target="$APP_DIR/deploy/$config"
+
+  case "$config" in
+    Caddyfile)   service=proxy ;;
+    vector.yaml) service=logs-collector ;;
+  esac
+
   if [ -d "$target" ]; then
     log "removing the directory docker created at $target"
     rm -rf "$target" || {
@@ -109,7 +124,9 @@ for config in Caddyfile vector.yaml; do
       log "  sudo rm -rf $target   then start this service again"
       exit 1
     }
+    repaired="$repaired $service"
   fi
+
   install -m 0644 "$REPO_DIR/deploy/$config" "$target"
 done
 
@@ -170,6 +187,15 @@ if [ -z "$targets" ]; then
   log "  That means OCI_REGISTRY in .env no longer matches the compose file,"
   log "  and nothing would ever be updated."
   exit 1
+fi
+
+# Containers created against a fabricated directory, removed before anything
+# tries to start them again. Not --force-recreate on the whole stack: that
+# would restart services this has nothing to do with, every time.
+if [ -n "$repaired" ]; then
+  log "recreating containers built against a bad mount:$repaired"
+  # shellcheck disable=SC2086
+  docker compose -f "$COMPOSE_FILE" rm --stop --force $repaired
 fi
 
 log "pulling images:$targets"
