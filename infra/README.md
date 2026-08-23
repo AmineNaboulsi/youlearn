@@ -431,6 +431,20 @@ first boot; if you ever rebuild the instance by hand, remember it.
 fail with `Out of host capacity`. That is not a configuration problem — retry,
 or try another availability domain.
 
+**A bind-mount source that does not exist becomes a directory.** Docker creates
+one, root-owned, rather than failing — the same trap as `schema.sql` above, and
+it caught `deploy/vector.yaml` on the tick that introduced it. The symptom is a
+container restarting with a configuration error (vector exits 78) and every
+later deploy failing, because `install` cannot replace a directory with a file.
+`update.sh` now clears such a directory before installing, and re-executes
+itself when a release changes it, so a new config file is installed by the tick
+that ships it. To repair one by hand:
+
+```bash
+sudo rm -rf /opt/youlearn/deploy/<file>
+sudo systemctl start youlearn-update
+```
+
 **Back up the volumes.** All persistent state lives in Docker volumes on this
 one instance: both databases and every uploaded video. Nothing is replicated.
 Take boot-volume backups in the console, or sync `storage-data` to Object
