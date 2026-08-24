@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/cn";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export interface NavItem {
   href: string;
@@ -21,10 +22,13 @@ export interface NavItem {
 export function DashboardSidebar({
   items,
   current,
+  label,
   className,
 }: {
   items: NavItem[];
   current: string;
+  /** Accessible name for the nav landmark, already translated. */
+  label: string;
   className?: string;
 }) {
   // Exactly one item is active: the longest href the current path matches.
@@ -35,7 +39,7 @@ export function DashboardSidebar({
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
-    <nav aria-label="Dashboard" className={cn("lg:sticky lg:top-24 lg:self-start", className)}>
+    <nav aria-label={label} className={cn("lg:sticky lg:top-24 lg:self-start", className)}>
       <ul className="flex gap-1 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
         {items.map((item) => {
           const active = item.href === activeHref;
@@ -71,27 +75,29 @@ export function DashboardSidebar({
 }
 
 /** The full menu, filtered to what a role may actually reach. */
-export function dashboardNav(isAdmin: boolean): NavItem[] {
+export function dashboardNav(t: Dictionary, isAdmin: boolean): NavItem[] {
+  const nav = t.dashboardNav;
+
   const items: NavItem[] = [
     {
       href: "/dashboard",
-      label: "Overview",
-      description: "Enrolments, reach and recent activity",
+      label: nav.overview,
+      description: nav.overviewHint,
     },
     {
       href: "/dashboard/courses",
-      label: "Courses",
-      description: isAdmin ? "Every course on the platform" : "Courses you author",
+      label: nav.courses,
+      description: isAdmin ? nav.coursesHintAdmin : nav.coursesHintOwn,
     },
     {
       href: "/dashboard/learners",
-      label: "Learners",
-      description: isAdmin ? "Every enrolment" : "People enrolled on your courses",
+      label: nav.learners,
+      description: isAdmin ? nav.learnersHintAdmin : nav.learnersHintOwn,
     },
     {
       href: "/dashboard/exports",
-      label: "Data exports",
-      description: "Download CSV within your quota",
+      label: nav.exports,
+      description: nav.exportsHint,
     },
   ];
 
@@ -99,20 +105,20 @@ export function dashboardNav(isAdmin: boolean): NavItem[] {
     items.push(
       {
         href: "/dashboard/people",
-        label: "People",
-        description: "Accounts, roles and sessions",
+        label: nav.people,
+        description: nav.peopleHint,
         adminOnly: true,
       },
       {
         href: "/dashboard/taxonomy",
-        label: "Categories & tags",
-        description: "The shared vocabulary",
+        label: nav.taxonomy,
+        description: nav.taxonomyHint,
         adminOnly: true,
       },
       {
         href: "/dashboard/audit",
-        label: "Export audit",
-        description: "Who exported what, and when",
+        label: nav.audit,
+        description: nav.auditHint,
         adminOnly: true,
       },
     );

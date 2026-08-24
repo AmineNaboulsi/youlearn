@@ -1,3 +1,7 @@
+import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { interpolate, plural } from "@/lib/i18n/plural";
+
 import { ApiError } from "./client";
 
 /**
@@ -11,8 +15,16 @@ import { ApiError } from "./client";
  * Deliberately not in a "use server" module: every export from one of those
  * becomes a callable server action, and a string formatter has no business
  * being a network endpoint.
+ *
+ * The API's messages arrive in whatever language the API speaks and are passed
+ * through untouched; only the strings we author here are localised.
  */
-export function describeError(error: unknown, fallback: string): string {
+export function describeError(
+  t: Dictionary,
+  locale: Locale,
+  error: unknown,
+  fallback: string,
+): string {
   if (!(error instanceof ApiError)) {
     return fallback;
   }
@@ -21,9 +33,11 @@ export function describeError(error: unknown, fallback: string): string {
     const seconds = error.retryAfterSeconds ?? 0;
     if (seconds > 0) {
       const minutes = Math.ceil(seconds / 60);
-      return `Too many attempts. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+      return interpolate(t.notices.rateLimited, {
+        minutes: plural(locale, minutes, t.notices.minutesCount),
+      });
     }
-    return "Too many attempts. Please wait a little and try again.";
+    return t.notices.rateLimitedGeneric;
   }
 
   if (error.fields) {

@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/describe";
 import { requireSession } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
 
 /**
  * Enrolment actions.
@@ -22,18 +23,19 @@ import { requireSession } from "@/lib/auth/current-user";
  */
 
 export async function enrollAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireSession();
 
   const courseId = readId(formData.get("courseId"));
   const returnTo = safePath(formData.get("returnTo"), `/courses/${courseId}`);
 
-  let notice = "You are enrolled. It is now in your learning list.";
+  let notice = t.notices.enrolled;
   let tone: NoticeTone = "success";
 
   try {
     await api(`/courses/${courseId}/enroll`, { method: "POST" });
   } catch (error) {
-    notice = describeError(error, "You could not be enrolled in this course.");
+    notice = describeError(t, locale, error, t.notices.enrolFailed);
     tone = "danger";
   }
 
@@ -46,18 +48,19 @@ export async function enrollAction(formData: FormData): Promise<void> {
 }
 
 export async function leaveCourseAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireSession();
 
   const courseId = readId(formData.get("courseId"));
   const returnTo = safePath(formData.get("returnTo"), `/courses/${courseId}`);
 
-  let notice = "You have left the course.";
+  let notice = t.notices.leftCourse;
   let tone: NoticeTone = "success";
 
   try {
     await api(`/courses/${courseId}/enroll`, { method: "DELETE" });
   } catch (error) {
-    notice = describeError(error, "You could not be removed from this course.");
+    notice = describeError(t, locale, error, t.notices.leaveFailed);
     tone = "danger";
   }
 

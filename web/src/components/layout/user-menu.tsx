@@ -15,11 +15,24 @@ export function UserMenu({
   email,
   role,
   isStaff,
+  labels,
 }: {
   name: string;
   email: string;
   role: string;
   isStaff: boolean;
+  /**
+   * Passed in rather than read here. This renders inside the header, which has
+   * already resolved the dictionary — handing the five strings down keeps the
+   * menu a pure component and saves a second lookup per request.
+   */
+  labels: {
+    profile: string;
+    sessions: string;
+    dashboard: string;
+    exports: string;
+    signOut: string;
+  };
 }) {
   const initials =
     name
@@ -52,7 +65,7 @@ export function UserMenu({
 
       <div
         role="menu"
-        className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-card border border-line bg-surface shadow-[0_12px_32px_-12px_rgba(10,10,10,0.18)]"
+        className="absolute end-0 z-50 mt-2 w-64 overflow-hidden rounded-card border border-line bg-surface shadow-[0_12px_32px_-12px_rgba(10,10,10,0.18)]"
       >
         <div className="border-b border-line px-4 py-3">
           <p className="truncate text-[13px] font-medium text-ink">{name}</p>
@@ -63,18 +76,18 @@ export function UserMenu({
         </div>
 
         <nav className="p-1.5">
-          <MenuLink href="/account">Profile</MenuLink>
-          <MenuLink href="/account/sessions">Active sessions</MenuLink>
-          {isStaff ? <MenuLink href="/dashboard">Dashboard</MenuLink> : null}
-          {isStaff ? <MenuLink href="/dashboard/exports">Data exports</MenuLink> : null}
+          <MenuLink href="/account">{labels.profile}</MenuLink>
+          <MenuLink href="/account/sessions">{labels.sessions}</MenuLink>
+          {isStaff ? <MenuLink href="/dashboard">{labels.dashboard}</MenuLink> : null}
+          {isStaff ? <MenuLink href="/dashboard/exports">{labels.exports}</MenuLink> : null}
         </nav>
 
         <form action="/api/auth/logout" method="post" className="border-t border-line p-1.5">
           <button
             type="submit"
-            className="w-full rounded-md px-3 py-2 text-left text-[13px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
+            className="w-full rounded-md px-3 py-2 text-start text-[13px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
           >
-            Sign out
+            {labels.signOut}
           </button>
         </form>
       </div>

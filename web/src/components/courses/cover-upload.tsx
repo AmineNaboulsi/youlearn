@@ -1,5 +1,6 @@
 "use client";
 
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { UploadedAsset, UploadTicket } from "@/lib/api/types";
@@ -33,10 +34,13 @@ export function CoverUpload({
   currentUrl,
   currentPublicId,
   error,
+  labels,
 }: {
   currentUrl?: string | null;
   currentPublicId?: string | null;
   error?: string;
+  /** Server-resolved strings; see the note on CourseForm. */
+  labels: Dictionary["upload"];
 }) {
   // What the form will actually submit. Seeded with whatever the course has.
   const [publicId, setPublicId] = useState<string | null>(currentPublicId ?? null);
@@ -75,7 +79,7 @@ export function CoverUpload({
 
     if (!beginResponse.ok || !begin.data) {
       setStatus("error");
-      setMessage(begin.fields?.size_bytes ?? begin.message ?? "The upload could not be started.");
+      setMessage(begin.fields?.size_bytes ?? begin.message ?? labels.couldNotStart);
       return;
     }
 
@@ -91,7 +95,7 @@ export function CoverUpload({
       if (!chunkResponse.ok) {
         const body: Envelope<unknown> = await chunkResponse.json().catch(() => ({}));
         setStatus("error");
-        setMessage(body.message ?? "The upload was interrupted. Try again.");
+        setMessage(body.message ?? labels.interrupted);
         return;
       }
 
@@ -114,7 +118,7 @@ export function CoverUpload({
       // Both "that is not really an image" and "that failed a malware scan"
       // surface here: the server can only tell once every byte has arrived.
       setErrorCode(complete.error ?? null);
-      setMessage(complete.message ?? "The file was rejected.");
+      setMessage(complete.message ?? labels.rejected);
       return;
     }
 
@@ -177,7 +181,7 @@ export function CoverUpload({
             }}
             className={cn(
               "block w-full cursor-pointer rounded-lg border border-line-strong bg-surface text-[13px] text-ink-soft",
-              "file:mr-3 file:cursor-pointer file:border-0 file:border-r file:border-line file:bg-surface-sunk",
+              "file:me-3 file:cursor-pointer file:border-0 file:border-e file:border-line file:bg-surface-sunk",
               "file:px-3 file:py-2 file:text-[13px] file:font-medium file:text-ink",
               "hover:border-ink-faint disabled:cursor-not-allowed disabled:opacity-60",
             )}
@@ -196,7 +200,7 @@ export function CoverUpload({
               aria-valuenow={percent}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label="Cover upload progress"
+              aria-label={labels.coverProgress}
             >
               <div
                 className={cn(
@@ -210,7 +214,7 @@ export function CoverUpload({
 
           {publicId ? (
             <p className="flex items-center justify-between gap-3 text-[11px] text-ink-muted">
-              <span>Uploaded. Save the course to attach it.</span>
+              <span>{labels.coverUploaded}</span>
               <button
                 type="button"
                 onClick={clear}

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { api } from "@/lib/api/client";
 import type { Category, Course, Envelope, Paginated } from "@/lib/api/types";
 import { getSession } from "@/lib/auth/current-user";
+import { plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ButtonLink } from "@/components/ui/button";
@@ -26,6 +28,7 @@ export default async function HomePage({
 }) {
   const params = await searchParams;
   const session = await getSession();
+  const { locale, t } = await getTranslation();
 
   const [courses, categoryList] = await Promise.all([
     api<Paginated<Course>>("/courses", { query: { per_page: 6 }, authenticated: false }),
@@ -50,38 +53,37 @@ export default async function HomePage({
           <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
             {params["signed-out"] ? (
               <Alert className="mx-auto mb-10 max-w-md text-center" emphasis="strong">
-                You have been signed out.
+                {t.home.signedOut}
               </Alert>
             ) : null}
 
             <div className="mx-auto max-w-3xl text-center">
               <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-[12px] font-medium text-ink-soft">
                 <span className="size-1.5 rounded-full bg-ink" aria-hidden />
-                {totalCourses} course{totalCourses === 1 ? "" : "s"} available now
+                {plural(locale, totalCourses, t.home.coursesAvailable)}
               </p>
 
               <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-ink sm:text-6xl">
-                All the skills you need,
+                {t.home.heroLine1}
                 <br />
-                in one place.
+                {t.home.heroLine2}
               </h1>
 
               <p className="mx-auto mt-6 max-w-xl text-pretty text-[15px] leading-relaxed text-ink-muted sm:text-base">
-                Courses written by people who do the work. Learn at your own pace, track what you
-                have finished, and keep one account across every device.
+                {t.home.heroBody}
               </p>
 
               <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
                 <ButtonLink href="/courses" size="lg">
-                  Browse courses
+                  {t.common.browseCourses}
                 </ButtonLink>
                 {session ? (
                   <ButtonLink href="/learning" variant="secondary" size="lg">
-                    Continue learning
+                    {t.home.continueLearning}
                   </ButtonLink>
                 ) : (
                   <ButtonLink href="/api/auth/login?next=%2Fcourses" variant="secondary" size="lg">
-                    Create an account
+                    {t.home.createAccount}
                   </ButtonLink>
                 )}
               </div>
@@ -93,24 +95,24 @@ export default async function HomePage({
         <StatsWithGridBackground
           stats={[
             {
-              label: "Courses published",
+              label: t.home.statCourses,
               value: totalCourses,
-              hint: "Across every category on the platform",
+              hint: t.home.statCoursesHint,
             },
             {
-              label: "Categories",
+              label: t.home.statCategories,
               value: categories.length,
-              hint: "From web development to personal growth",
+              hint: t.home.statCategoriesHint,
             },
             {
-              label: "Instructors",
+              label: t.home.statInstructors,
               value: Math.max(instructors, 1),
-              hint: "Practitioners teaching what they do",
+              hint: t.home.statInstructorsHint,
             },
             {
-              label: "Enrolments",
+              label: t.home.statEnrolments,
               value: totalEnrollments,
-              hint: "Learners currently working through a course",
+              hint: t.home.statEnrolmentsHint,
             },
           ]}
         />
@@ -120,18 +122,17 @@ export default async function HomePage({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold tracking-[-0.03em] text-ink">
-                Browse by category
+                {t.home.browseByCategory}
               </h2>
               <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-muted">
-                Every course belongs to exactly one category, so the shelf you pick is the shelf you
-                get.
+                {t.home.browseByCategoryBody}
               </p>
             </div>
             <Link
               href="/courses"
               className="text-[13px] font-medium text-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-ink"
             >
-              See all courses
+              {t.home.seeAllCourses}
             </Link>
           </div>
 
@@ -147,13 +148,12 @@ export default async function HomePage({
                       {category.name}
                     </span>
                     <span className="mt-0.5 block text-[12px] text-ink-muted">
-                      {category.course_count ?? 0} course
-                      {(category.course_count ?? 0) === 1 ? "" : "s"}
+                      {plural(locale, category.course_count ?? 0, t.home.categoryCourseCount)}
                     </span>
                   </span>
                   <svg
                     viewBox="0 0 20 20"
-                    className="size-4 flex-none text-ink-faint transition-transform group-hover:translate-x-0.5 group-hover:text-ink"
+                    className="size-4 flex-none text-ink-faint transition-transform group-hover:translate-x-0.5 group-hover:text-ink rtl:-scale-x-100"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.5"
@@ -170,9 +170,11 @@ export default async function HomePage({
         {/* ----------------------------- Featured -------------------------- */}
         {courses.data.length > 0 ? (
           <section className="mx-auto max-w-6xl px-6 pb-20">
-            <h2 className="text-2xl font-semibold tracking-[-0.03em] text-ink">Newest courses</h2>
+            <h2 className="text-2xl font-semibold tracking-[-0.03em] text-ink">
+              {t.home.newestCourses}
+            </h2>
             <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-muted">
-              The most recently published material on the platform.
+              {t.home.newestCoursesBody}
             </p>
 
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -197,11 +199,10 @@ export default async function HomePage({
             />
             <div className="relative">
               <h2 className="text-balance text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-                Ready to start learning?
+                {t.home.ctaTitle}
               </h2>
               <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-white/70">
-                One account, unlimited access to every published course, and a record of everything
-                you have taken.
+                {t.home.ctaBody}
               </p>
               <div className="mt-8">
                 <ButtonLink
@@ -210,7 +211,7 @@ export default async function HomePage({
                   size="lg"
                   className="border-white bg-white text-ink hover:bg-white/90"
                 >
-                  {session ? "Browse courses" : "Get started — it is free"}
+                  {session ? t.common.browseCourses : t.home.ctaFree}
                 </ButtonLink>
               </div>
             </div>

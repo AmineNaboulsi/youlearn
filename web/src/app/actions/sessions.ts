@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/describe";
 import { requireSession } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
 import { clearSessionCookie } from "@/lib/auth/session";
 
 /**
@@ -27,16 +28,17 @@ interface RevokeResponse {
 }
 
 export async function revokeSessionAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireSession();
 
   const sessionId = String(formData.get("sessionId") ?? "");
   const returnTo = safePath(formData.get("returnTo"), "/account/sessions");
 
   if (!/^[A-Za-z0-9-]{8,64}$/.test(sessionId)) {
-    redirect(withNotice(returnTo, "That session could not be identified.", "danger"));
+    redirect(withNotice(returnTo, t.notices.sessionUnidentified, "danger"));
   }
 
-  let notice = "Session signed out.";
+  let notice = t.notices.sessionSignedOut;
   let tone: NoticeTone = "success";
   let endedOwn = false;
 
@@ -45,7 +47,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
     notice = result.message;
     endedOwn = Boolean(result.was_current_session);
   } catch (error) {
-    notice = describeError(error, "That session could not be signed out.");
+    notice = describeError(t, locale, error, t.notices.sessionSignOutFailed);
     tone = "danger";
   }
 
@@ -62,10 +64,11 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
 }
 
 export async function revokeOtherSessionsAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireSession();
 
   const returnTo = safePath(formData.get("returnTo"), "/account/sessions");
-  let notice = "Other sessions signed out.";
+  let notice = t.notices.otherSessionsSignedOut;
   let tone: NoticeTone = "success";
 
   try {
@@ -75,7 +78,7 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
     });
     notice = result.message;
   } catch (error) {
-    notice = describeError(error, "Those sessions could not be signed out.");
+    notice = describeError(t, locale, error, t.notices.otherSessionsFailed);
     tone = "danger";
   }
 
@@ -85,6 +88,7 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
 
 /** Sign out everywhere, this device included. */
 export async function revokeAllSessionsAction(): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireSession();
 
   try {
@@ -100,6 +104,7 @@ export async function revokeAllSessionsAction(): Promise<void> {
 
 /** Admin: end every session belonging to another account. */
 export async function revokeUserSessionsAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireSession();
 
   const userId = Number(formData.get("userId"));
@@ -116,7 +121,7 @@ export async function revokeUserSessionsAction(formData: FormData): Promise<void
     const result = await api<RevokeResponse>(`/users/${userId}/sessions`, { method: "DELETE" });
     notice = result.message;
   } catch (error) {
-    notice = describeError(error, "Those sessions could not be signed out.");
+    notice = describeError(t, locale, error, t.notices.otherSessionsFailed);
     tone = "danger";
   }
 

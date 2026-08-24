@@ -3,6 +3,8 @@
 import { useActionState, useState } from "react";
 
 import type { Category, Course, Tag } from "@/lib/api/types";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { interpolate } from "@/lib/i18n/plural";
 import { emptyFormState, type FormState } from "@/lib/forms";
 import { cn } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/button";
@@ -29,12 +31,21 @@ export function CourseForm({
   categories,
   tags,
   submitLabel,
+  labels,
+  uploadLabels,
 }: {
   action: (previous: FormState, formData: FormData) => Promise<FormState>;
   course?: Course;
   categories: Category[];
   tags: Tag[];
   submitLabel: string;
+  /**
+   * Passed down rather than looked up: this is a client component, and the
+   * dictionary is server-side. Handing over one section keeps the other two
+   * languages out of the browser bundle.
+   */
+  labels: Dictionary["courseForm"];
+  uploadLabels: Dictionary["upload"];
 }) {
   const [state, formAction] = useActionState(action, emptyFormState);
 
@@ -54,26 +65,27 @@ export function CourseForm({
       {course ? <input type="hidden" name="id" value={course.id} /> : null}
 
       {state.message ? (
-        <Alert tone={state.ok ? "success" : "danger"} title={state.ok ? undefined : "Could not save"}>
+        <Alert
+          tone={state.ok ? "success" : "danger"}
+          title={state.ok ? undefined : labels.couldNotSave}
+        >
           {state.message}
         </Alert>
       ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle>The basics</CardTitle>
-          <CardDescription>
-            What a learner sees in the catalogue before they open the course.
-          </CardDescription>
+          <CardTitle>{labels.basics}</CardTitle>
+          <CardDescription>{labels.basicsHint}</CardDescription>
         </CardHeader>
 
         <CardBody className="grid gap-5">
           <Field
-            label="Title"
+            label={labels.title}
             htmlFor="title"
             required
             error={state.fields.title}
-            hint="Shown everywhere. Must be unique across the platform."
+            hint={labels.titleHint}
           >
             <Input
               id="title"
@@ -88,10 +100,10 @@ export function CourseForm({
           </Field>
 
           <Field
-            label="Subtitle"
+            label={labels.subtitle}
             htmlFor="subtitle"
             error={state.fields.subtitle}
-            hint="One line explaining who the course is for."
+            hint={labels.subtitleHint}
           >
             <Input
               id="subtitle"
@@ -103,14 +115,14 @@ export function CourseForm({
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Category" htmlFor="category_id" error={state.fields.category}>
+            <Field label={labels.category} htmlFor="category_id" error={state.fields.category}>
               <Select
                 id="category_id"
                 name="category_id"
                 defaultValue={course?.category_id ?? ""}
                 error={Boolean(state.fields.category)}
               >
-                <option value="">No category</option>
+                <option value="">{labels.noCategory}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -119,15 +131,15 @@ export function CourseForm({
               </Select>
             </Field>
 
-            <Field label="Format" htmlFor="content_type" error={state.fields.content_type}>
+            <Field label={labels.format} htmlFor="content_type" error={state.fields.content_type}>
               <Select
                 id="content_type"
                 name="content_type"
                 defaultValue={course?.content_type ?? "text"}
               >
-                <option value="text">Written course</option>
-                <option value="video">Video course</option>
-                <option value="document">Document</option>
+                <option value="text">{labels.formatWritten}</option>
+                <option value="video">{labels.formatVideo}</option>
+                <option value="document">{labels.formatDocument}</option>
               </Select>
             </Field>
           </div>
@@ -136,13 +148,14 @@ export function CourseForm({
             currentUrl={course?.img}
             currentPublicId={course?.cover_public_id}
             error={state.fields.cover_public_id ?? state.fields.img}
+            labels={uploadLabels}
           />
 
           <Field
-            label="Description"
+            label={labels.description}
             htmlFor="description"
             error={state.fields.description}
-            hint="A short paragraph. Shown on the course page above the outline."
+            hint={labels.descriptionHint}
           >
             <Textarea
               id="description"
@@ -158,16 +171,13 @@ export function CourseForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Tags</CardTitle>
-          <CardDescription>
-            Pick at least three. Tags are how learners narrow the catalogue, so the more accurate
-            they are the more the course gets found.
-          </CardDescription>
+          <CardTitle>{labels.tags}</CardTitle>
+          <CardDescription>{labels.tagsHint}</CardDescription>
         </CardHeader>
 
         <CardBody>
           <fieldset>
-            <legend className="sr-only">Tags</legend>
+            <legend className="sr-only">{labels.tags}</legend>
 
             <div className="flex flex-wrap gap-1.5">
               {tags.map((tag) => {
@@ -209,7 +219,9 @@ export function CourseForm({
                   {tagError}
                 </>
               ) : (
-                `${selectedTags.length} selected${selectedTags.length < 3 ? " · at least 3 required" : ""}`
+                `${interpolate(labels.tagsSelected, { count: selectedTags.length })}${
+                  selectedTags.length < 3 ? labels.tagsAtLeast : ""
+                }`
               )}
             </p>
           </fieldset>
@@ -218,15 +230,12 @@ export function CourseForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Outline</CardTitle>
-          <CardDescription>
-            The material itself. Only enrolled learners and you can read this. Line breaks are kept
-            as written.
-          </CardDescription>
+          <CardTitle>{labels.outline}</CardTitle>
+          <CardDescription>{labels.outlineHint}</CardDescription>
         </CardHeader>
 
         <CardBody>
-          <Field label="Course content" htmlFor="content" error={state.fields.content}>
+          <Field label={labels.courseContent} htmlFor="content" error={state.fields.content}>
             <Textarea
               id="content"
               name="content"
@@ -245,15 +254,15 @@ export function CourseForm({
           <Checkbox
             name="is_published"
             defaultChecked={Boolean(course?.is_published)}
-            label="Published"
-            description="Unpublished courses stay visible to you and are hidden from the catalogue."
+            label={labels.published}
+            description={labels.publishedHint}
           />
 
           <div className="flex flex-none gap-2">
             <ButtonLink href="/dashboard/courses" variant="secondary" size="sm">
-              Cancel
+              {labels.cancel}
             </ButtonLink>
-            <SubmitButton size="sm" pendingLabel="Saving…">
+            <SubmitButton size="sm" pendingLabel={labels.saving}>
               {submitLabel}
             </SubmitButton>
           </div>

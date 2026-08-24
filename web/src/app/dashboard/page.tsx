@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { api } from "@/lib/api/client";
 import type { DashboardStats, Envelope } from "@/lib/api/types";
-import { formatNumber } from "@/lib/format";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { ButtonLink } from "@/components/ui/button";
 import {
   Badge,
@@ -20,7 +21,10 @@ import { Sparkline } from "@/components/stats/sparkline";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.nav.dashboard };
+}
 
 /**
  * Overview.
@@ -34,58 +38,57 @@ export default async function DashboardPage() {
   const stats = response.data;
   const platform = stats.scope === "platform";
 
+  const { locale, t, fmt } = await getTranslation();
   const busiest = Math.max(0, ...stats.daily.map((day) => day.count));
 
   return (
     <div className="grid gap-10">
       <StatsWithNumberTicker
-        eyebrow={platform ? "Whole platform" : "Your courses"}
-        title={platform ? "How the platform is doing" : "How your courses are doing"}
+        eyebrow={platform ? t.dashboard.eyebrowPlatform : t.dashboard.eyebrowOwn}
+        title={platform ? t.dashboard.titlePlatform : t.dashboard.titleOwn}
         description={
-          platform
-            ? "Every course and enrolment across YouLearn, counted live on each request."
-            : "Counted across the courses you author. Nobody else's numbers are included."
+          platform ? t.dashboard.descriptionPlatform : t.dashboard.descriptionOwn
         }
         stats={[
           {
-            label: "Courses",
+            label: t.dashboard.statCourses,
             value: stats.summary.courses,
-            hint: `${formatNumber(stats.summary.published_courses)} published, ${formatNumber(
-              stats.summary.courses - stats.summary.published_courses,
-            )} in draft`,
+            hint: interpolate(t.dashboard.statCoursesHint, {
+              published: fmt.number(stats.summary.published_courses),
+              drafts: fmt.number(stats.summary.courses - stats.summary.published_courses),
+            }),
           },
           {
-            label: "Enrolments",
+            label: t.dashboard.statEnrolments,
             value: stats.summary.enrollments,
-            hint: "Total, all time",
+            hint: t.dashboard.statEnrolmentsHint,
           },
           {
-            label: "Learners",
+            label: t.dashboard.statLearners,
             value: stats.summary.learners,
-            hint: "Distinct people, not enrolments",
+            hint: t.dashboard.statLearnersHint,
           },
           {
-            label: "Last 30 days",
+            label: t.dashboard.statLast30,
             value: stats.summary.enrollments_last_30_days,
-            hint: "New enrolments this month",
+            hint: t.dashboard.statLast30Hint,
           },
         ]}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Enrolments over the last 30 days</CardTitle>
+          <CardTitle>{t.dashboard.enrolmentsChart}</CardTitle>
           <CardDescription>
             {busiest === 0
-              ? "No enrolments in this period yet."
-              : `Busiest day had ${formatNumber(busiest)} enrolment${busiest === 1 ? "" : "s"}.`}
+              ? t.dashboard.noEnrolmentsPeriod
+              : interpolate(t.dashboard.busiestDay, {
+                  count: plural(locale, busiest, t.dashboard.busiestDayCount),
+                })}
           </CardDescription>
         </CardHeader>
         <CardBody>
-          <Sparkline
-            points={stats.daily}
-            label="Daily enrolments over the last 30 days"
-          />
+          <Sparkline points={stats.daily} label={t.dashboard.sparklineLabel} />
           <div className="mt-2 flex justify-between text-[11px] text-ink-muted">
             <span>{stats.daily[0]?.date}</span>
             <span>{stats.daily[stats.daily.length - 1]?.date}</span>
@@ -96,17 +99,21 @@ export default async function DashboardPage() {
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Most enrolled courses</CardTitle>
+            <CardTitle>{t.dashboard.topCourses}</CardTitle>
             <CardDescription>
-              {platform ? "Across the platform." : "Across the courses you author."}
+              {platform ? t.dashboard.topCoursesPlatform : t.dashboard.topCoursesOwn}
             </CardDescription>
           </CardHeader>
           <CardBody>
             {stats.top_courses.length === 0 ? (
               <EmptyState
-                title="No courses yet"
-                description="Publish a course and it will start appearing here."
-                action={<ButtonLink href="/dashboard/courses/new" size="sm">Create a course</ButtonLink>}
+                title={t.dashboard.noCoursesTitle}
+                description={t.dashboard.noCoursesBody}
+                action={
+                  <ButtonLink href="/dashboard/courses/new" size="sm">
+                    {t.dashboard.createCourse}
+                  </ButtonLink>
+                }
               />
             ) : (
               <ol className="grid gap-1">
@@ -125,11 +132,11 @@ export default async function DashboardPage() {
                         </span>
                         <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-muted">
                           <StatusDot on={Boolean(course.is_published)} />
-                          {course.is_published ? "Published" : "Draft"}
+                          {course.is_published ? t.course.published : t.course.draft}
                         </span>
                       </span>
                       <span className="tabular flex-none text-[13px] font-medium text-ink">
-                        {formatNumber(course.enrollment_count)}
+                        {fmt.number(course.enrollment_count)}
                       </span>
                     </Link>
                   </li>
@@ -142,24 +149,33 @@ export default async function DashboardPage() {
         {stats.people ? (
           <Card>
             <CardHeader>
-              <CardTitle>People on the platform</CardTitle>
-              <CardDescription>Accounts by role, mirrored from Keycloak.</CardDescription>
+              <CardTitle>{t.dashboard.people}</CardTitle>
+              <CardDescription>{t.dashboard.peopleHint}</CardDescription>
             </CardHeader>
             <CardBody>
               <dl className="grid grid-cols-2 gap-5">
-                <PeopleStat label="Administrators" value={stats.people.admin} />
-                <PeopleStat label="Instructors" value={stats.people.enseignant} />
-                <PeopleStat label="Learners" value={stats.people.etudiant} />
                 <PeopleStat
-                  label="Suspended"
-                  value={stats.people.suspended}
-                  note={stats.people.suspended > 0 ? "Cannot sign in" : undefined}
+                  label={t.dashboard.peopleAdmins}
+                  value={fmt.number(stats.people.admin)}
+                />
+                <PeopleStat
+                  label={t.dashboard.peopleInstructors}
+                  value={fmt.number(stats.people.enseignant)}
+                />
+                <PeopleStat
+                  label={t.dashboard.peopleLearners}
+                  value={fmt.number(stats.people.etudiant)}
+                />
+                <PeopleStat
+                  label={t.dashboard.peopleSuspended}
+                  value={fmt.number(stats.people.suspended)}
+                  note={stats.people.suspended > 0 ? t.dashboard.cannotSignIn : undefined}
                 />
               </dl>
 
               <div className="mt-6 border-t border-line pt-4">
                 <ButtonLink href="/dashboard/people" variant="secondary" size="sm">
-                  Manage accounts
+                  {t.dashboard.manageAccounts}
                 </ButtonLink>
               </div>
             </CardBody>
@@ -167,14 +183,14 @@ export default async function DashboardPage() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>Next steps</CardTitle>
-              <CardDescription>Common things to do from here.</CardDescription>
+              <CardTitle>{t.dashboard.nextSteps}</CardTitle>
+              <CardDescription>{t.dashboard.nextStepsHint}</CardDescription>
             </CardHeader>
             <CardBody className="grid gap-2">
-              <QuickLink href="/dashboard/courses/new" label="Create a course" />
-              <QuickLink href="/dashboard/courses" label="Review your drafts" />
-              <QuickLink href="/dashboard/learners" label="See who is enrolled" />
-              <QuickLink href="/dashboard/exports" label="Export your enrolment data" />
+              <QuickLink href="/dashboard/courses/new" label={t.dashboard.createCourse} />
+              <QuickLink href="/dashboard/courses" label={t.dashboard.reviewDrafts} />
+              <QuickLink href="/dashboard/learners" label={t.dashboard.seeEnrolled} />
+              <QuickLink href="/dashboard/exports" label={t.dashboard.exportData} />
             </CardBody>
           </Card>
         )}
@@ -183,13 +199,11 @@ export default async function DashboardPage() {
   );
 }
 
-function PeopleStat({ label, value, note }: { label: string; value: number; note?: string }) {
+function PeopleStat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div>
       <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-muted">{label}</dt>
-      <dd className="tabular mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">
-        {formatNumber(value)}
-      </dd>
+      <dd className="tabular mt-1 text-2xl font-semibold tracking-[-0.03em] text-ink">{value}</dd>
       {note ? (
         <p className="mt-1">
           <Badge tone="outline">{note}</Badge>
@@ -208,7 +222,7 @@ function QuickLink({ href, label }: { href: string; label: string }) {
       {label}
       <svg
         viewBox="0 0 20 20"
-        className="size-4 text-ink-faint transition-transform group-hover:translate-x-0.5"
+        className="size-4 text-ink-faint transition-transform group-hover:translate-x-0.5 rtl:-scale-x-100"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"

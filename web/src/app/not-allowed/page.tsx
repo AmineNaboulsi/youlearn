@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { getSession, primaryRole, roleLabel } from "@/lib/auth/current-user";
+import { interpolate } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ButtonLink } from "@/components/ui/button";
@@ -8,7 +10,10 @@ import { GridBackground } from "@/components/ui/primitives";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Not allowed" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.notAllowed.title };
+}
 
 /**
  * Shown when a signed-in user reaches a page their role does not cover.
@@ -20,6 +25,7 @@ export const metadata: Metadata = { title: "Not allowed" };
 export default async function NotAllowedPage() {
   const session = await getSession();
   const role = primaryRole(session?.user.roles ?? []);
+  const { t } = await getTranslation();
 
   return (
     <>
@@ -33,23 +39,26 @@ export default async function NotAllowedPage() {
             403
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-ink">
-            That area is not open to your account
+            {t.notAllowed.title}
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">
             {session
-              ? `You are signed in as ${session.user.email} with the ${roleLabel(role)} role, which does not cover this page.`
-              : "You need to sign in to view this page."}
+              ? interpolate(t.notAllowed.signedIn, {
+                  email: session.user.email,
+                  role: roleLabel(t, role),
+                })
+              : t.notAllowed.signedOut}
           </p>
 
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="/courses">Browse courses</ButtonLink>
+            <ButtonLink href="/courses">{t.common.browseCourses}</ButtonLink>
             {session ? (
               <ButtonLink href="/account" variant="secondary">
-                Your account
+                {t.common.yourAccount}
               </ButtonLink>
             ) : (
               <ButtonLink href="/api/auth/login" variant="secondary">
-                Sign in
+                {t.common.signIn}
               </ButtonLink>
             )}
           </div>
@@ -60,7 +69,7 @@ export default async function NotAllowedPage() {
                 type="submit"
                 className="text-[13px] text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
               >
-                Sign out and use a different account
+                {t.notAllowed.switchAccount}
               </button>
             </form>
           ) : null}

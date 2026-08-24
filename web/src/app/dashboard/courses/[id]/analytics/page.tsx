@@ -11,7 +11,8 @@ import type {
   Paginated,
 } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
-import { formatClock, formatNumber, formatRelative, formatWatchTime } from "@/lib/format";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, CardBody, CardHeader, CardTitle, CardDescription, EmptyState, PageHeading } from "@/components/ui/primitives";
 import { TableWrap, Td, Th, Tr } from "@/components/ui/table";
@@ -20,7 +21,10 @@ import { AutoRefresh } from "@/components/dashboard/auto-refresh";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Engagement" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.courseEdit.engagement };
+}
 
 /**
  * How many people watched, and how far they got.
@@ -52,54 +56,64 @@ export default async function CourseAnalyticsPage({
   const { summary, lessons, totals } = analytics;
 
   const hasActivity = summary.active_learners > 0;
+  const { locale, t, fmt } = await getTranslation();
 
   return (
     <div className="grid gap-6">
       <PageHeading
-        eyebrow="Courses"
+        eyebrow={t.courses.title}
         title={course.title}
-        description="Who is watching, how far they get, and where they stop."
+        description={t.analytics.description}
         actions={
           <>
             <ButtonLink href={`/dashboard/courses/${id}/curriculum`} variant="secondary" size="sm">
-              Curriculum
+              {t.courseEdit.curriculum}
             </ButtonLink>
             <ButtonLink href={`/dashboard/courses/${id}`} variant="ghost" size="sm">
-              Course details
+              {t.analytics.courseDetails}
             </ButtonLink>
           </>
         }
       />
 
       <div className="flex justify-end">
-        <AutoRefresh generatedAt={analytics.generated_at} />
+        <AutoRefresh generatedAt={analytics.generated_at} labels={t.autoRefresh} />
       </div>
 
       <StatsWithNumberTicker
-        title="Engagement"
-        description={`${totals.lessons} lesson${totals.lessons === 1 ? "" : "s"}${totals.duration_seconds > 0 ? ` · ${formatClock(totals.duration_seconds)} of material` : ""}. Counted live on every request.`}
+        title={t.analytics.title}
+        description={interpolate(t.analytics.materialSummary, {
+          lessons: plural(locale, totals.lessons, t.course.lessonCount),
+          duration:
+            totals.duration_seconds > 0
+              ? interpolate(t.analytics.materialDuration, {
+                  clock: fmt.clock(totals.duration_seconds),
+                })
+              : "",
+        })}
         stats={[
           {
-            label: "Watching now",
+            label: t.analytics.watchingNow,
             value: summary.watching_now,
-            hint: "Playback moved in the last 5 minutes",
+            hint: t.analytics.watchingNowHint,
           },
           {
-            label: "People who watched",
+            label: t.analytics.peopleWatched,
             value: summary.active_learners,
-            hint: `${course.enrollment_count} enrolled in total`,
+            hint: interpolate(t.analytics.peopleWatchedHint, {
+              count: plural(locale, course.enrollment_count, t.course.enrolledCount),
+            }),
           },
           {
-            label: "Lessons completed",
+            label: t.analytics.lessonsCompleted,
             value: summary.completions,
-            hint: "Across every learner",
+            hint: t.analytics.lessonsCompletedHint,
           },
           {
-            label: "Total watch time",
+            label: t.analytics.totalWatchTime,
             value: Math.round(summary.total_watched_seconds / 60),
-            suffix: " min",
-            display: formatWatchTime(summary.total_watched_seconds),
-            hint: "Real playback, not scrubbing",
+            display: fmt.watchTime(summary.total_watched_seconds),
+            hint: t.analytics.totalWatchTimeHint,
           },
         ]}
       />
@@ -107,21 +121,18 @@ export default async function CourseAnalyticsPage({
       {/* ------------------------------ per lesson --------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>By lesson</CardTitle>
-          <CardDescription>
-            The last column is the one to watch: it is how much of the lesson the average viewer
-            actually got through. A sharp drop marks the point where people give up.
-          </CardDescription>
+          <CardTitle>{t.analytics.byLesson}</CardTitle>
+          <CardDescription>{t.analytics.byLessonHint}</CardDescription>
         </CardHeader>
 
         <CardBody>
           {lessons.length === 0 ? (
             <EmptyState
-              title="No lessons yet"
-              description="Add lessons to this course and their engagement will appear here."
+              title={t.analytics.noLessonsTitle}
+              description={t.analytics.noLessonsBody}
               action={
                 <ButtonLink href={`/dashboard/courses/${id}/curriculum`} size="sm">
-                  Build the curriculum
+                  {t.course.buildCurriculum}
                 </ButtonLink>
               }
             />
@@ -129,13 +140,13 @@ export default async function CourseAnalyticsPage({
             <TableWrap>
               <thead>
                 <tr>
-                  <Th>Lesson</Th>
-                  <Th>Section</Th>
-                  <Th numeric>Length</Th>
-                  <Th numeric>Viewers</Th>
-                  <Th numeric>Completed</Th>
-                  <Th numeric>Avg watched</Th>
-                  <Th>Avg through</Th>
+                  <Th>{t.analytics.colLesson}</Th>
+                  <Th>{t.analytics.colSection}</Th>
+                  <Th numeric>{t.analytics.colLength}</Th>
+                  <Th numeric>{t.analytics.colViewers}</Th>
+                  <Th numeric>{t.analytics.colCompleted}</Th>
+                  <Th numeric>{t.analytics.colAvgWatched}</Th>
+                  <Th>{t.analytics.colAvgThrough}</Th>
                 </tr>
               </thead>
 
@@ -150,23 +161,25 @@ export default async function CourseAnalyticsPage({
                         {lesson.title}
                       </Link>
                       {lesson.is_preview ? (
-                        <Badge tone="muted" className="ml-2">
-                          Preview
+                        <Badge tone="muted" className="ms-2">
+                          {t.course.preview}
                         </Badge>
                       ) : null}
                     </Td>
                     <Td className="max-w-40 truncate">{lesson.section_title}</Td>
                     <Td numeric>
-                      {lesson.duration_seconds > 0 ? formatClock(lesson.duration_seconds) : "—"}
+                      {lesson.duration_seconds > 0
+                        ? fmt.clock(lesson.duration_seconds)
+                        : t.common.none}
                     </Td>
                     <Td numeric className="font-medium text-ink">
-                      {formatNumber(lesson.viewers)}
+                      {fmt.number(lesson.viewers)}
                     </Td>
-                    <Td numeric>{formatNumber(lesson.completions)}</Td>
+                    <Td numeric>{fmt.number(lesson.completions)}</Td>
                     <Td numeric>
                       {lesson.avg_watched_seconds > 0
-                        ? formatClock(lesson.avg_watched_seconds)
-                        : "—"}
+                        ? fmt.clock(lesson.avg_watched_seconds)
+                        : t.common.none}
                     </Td>
                     <Td>
                       <div className="flex items-center gap-2">
@@ -192,32 +205,27 @@ export default async function CourseAnalyticsPage({
       {/* ------------------------------ per learner -------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>By learner</CardTitle>
-          <CardDescription>
-            Everyone enrolled, most recently active first. Someone at 0% who enrolled weeks ago
-            never started.
-          </CardDescription>
+          <CardTitle>{t.analytics.byLearner}</CardTitle>
+          <CardDescription>{t.analytics.byLearnerHint}</CardDescription>
         </CardHeader>
 
         <CardBody>
           {learners.data.length === 0 ? (
             <EmptyState
-              title="Nobody has enrolled yet"
+              title={t.analytics.noLearnersTitle}
               description={
-                hasActivity
-                  ? "Preview lessons are being watched, but nobody has enrolled."
-                  : "When someone enrols, their progress will show here."
+                hasActivity ? t.analytics.noLearnersActivity : t.analytics.noLearnersBody
               }
             />
           ) : (
             <TableWrap>
               <thead>
                 <tr>
-                  <Th>Learner</Th>
-                  <Th numeric>Completed</Th>
-                  <Th>Progress</Th>
-                  <Th numeric>Watch time</Th>
-                  <Th>Last active</Th>
+                  <Th>{t.learners.colLearner}</Th>
+                  <Th numeric>{t.analytics.colCompleted}</Th>
+                  <Th>{t.analytics.colProgress}</Th>
+                  <Th numeric>{t.analytics.colWatchTime}</Th>
+                  <Th>{t.sessions.lastActive}</Th>
                 </tr>
               </thead>
 
@@ -231,7 +239,7 @@ export default async function CourseAnalyticsPage({
                       </span>
                     </Td>
                     <Td numeric>
-                      {learner.completed}/{learner.lessons}
+                      {fmt.number(learner.completed)}/{fmt.number(learner.lessons)}
                     </Td>
                     <Td>
                       <div className="flex items-center gap-2">
@@ -242,13 +250,15 @@ export default async function CourseAnalyticsPage({
                       </div>
                     </Td>
                     <Td numeric>
-                      {learner.watched_seconds > 0 ? formatWatchTime(learner.watched_seconds) : "—"}
+                      {learner.watched_seconds > 0
+                        ? fmt.watchTime(learner.watched_seconds)
+                        : t.common.none}
                     </Td>
                     <Td className="whitespace-nowrap">
                       {learner.last_activity_at ? (
-                        formatRelative(learner.last_activity_at)
+                        fmt.relative(learner.last_activity_at)
                       ) : (
-                        <span className="text-ink-faint">never started</span>
+                        <span className="text-ink-faint">{t.analytics.neverStarted}</span>
                       )}
                     </Td>
                   </Tr>

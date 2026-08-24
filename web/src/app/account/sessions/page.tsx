@@ -4,7 +4,8 @@ import { readNotice } from "@/lib/notice";
 import { api } from "@/lib/api/client";
 import type { Envelope, UserSession } from "@/lib/api/types";
 import { requireSession } from "@/lib/auth/current-user";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -27,7 +28,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Active sessions" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.sessions.title };
+}
 
 /**
  * Where a user sees and ends their own sessions.
@@ -47,6 +51,8 @@ export default async function SessionsPage({
   const flash = readNotice({ notice, notice_tone });
   await requireSession("/account/sessions");
 
+  const { locale, t, fmt } = await getTranslation();
+
   const response = await api<Envelope<UserSession[]>>("/me/sessions");
   const sessions = response.data;
   const others = sessions.filter((session) => !session.is_current);
@@ -57,9 +63,9 @@ export default async function SessionsPage({
 
       <main id="main" className="mx-auto max-w-4xl px-6 py-12">
         <PageHeading
-          eyebrow="Your account"
-          title="Active sessions"
-          description="Every device currently signed in to your account. Ending a session revokes it immediately at the identity provider — not just in this browser."
+          eyebrow={t.account.eyebrow}
+          title={t.sessions.title}
+          description={t.sessions.description}
         />
 
         <AccountTabs current="sessions" className="mt-6" />
@@ -78,11 +84,13 @@ export default async function SessionsPage({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       {session.is_current ? (
-                        <Badge tone="solid">This device</Badge>
+                        <Badge tone="solid">{t.sessions.thisDevice}</Badge>
                       ) : (
-                        <Badge tone="muted">Other device</Badge>
+                        <Badge tone="muted">{t.sessions.otherDevice}</Badge>
                       )}
-                      {session.remember_me ? <Badge tone="muted">Stay signed in</Badge> : null}
+                      {session.remember_me ? (
+                        <Badge tone="muted">{t.sessions.staySignedIn}</Badge>
+                      ) : null}
                       {session.clients.map((client) => (
                         <Badge key={client} tone="muted">
                           {client}
@@ -91,17 +99,17 @@ export default async function SessionsPage({
                     </div>
 
                     <p className="mt-2.5 font-mono text-[13px] text-ink">
-                      {session.ip_address ?? "Unknown address"}
+                      {session.ip_address ?? t.sessions.unknownAddress}
                     </p>
 
                     <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-ink-muted">
                       <div className="flex gap-1.5">
-                        <dt>Started</dt>
-                        <dd className="text-ink-soft">{formatDateTime(session.started_at)}</dd>
+                        <dt>{t.sessions.started}</dt>
+                        <dd className="text-ink-soft">{fmt.dateTime(session.started_at)}</dd>
                       </div>
                       <div className="flex gap-1.5">
-                        <dt>Last active</dt>
-                        <dd className="text-ink-soft">{formatRelative(session.last_seen_at)}</dd>
+                        <dt>{t.sessions.lastActive}</dt>
+                        <dd className="text-ink-soft">{fmt.relative(session.last_seen_at)}</dd>
                       </div>
                     </dl>
                   </div>
@@ -109,8 +117,8 @@ export default async function SessionsPage({
                   <form action={revokeSessionAction} className="flex-none">
                     <input type="hidden" name="sessionId" value={session.id} />
                     <input type="hidden" name="returnTo" value="/account/sessions" />
-                    <SubmitButton variant="danger" size="sm" pendingLabel="Ending…">
-                      {session.is_current ? "Sign out here" : "End session"}
+                    <SubmitButton variant="danger" size="sm" pendingLabel={t.sessions.ending}>
+                      {session.is_current ? t.sessions.signOutHere : t.sessions.endSession}
                     </SubmitButton>
                   </form>
                 </CardBody>
@@ -121,12 +129,8 @@ export default async function SessionsPage({
 
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>Lost a device, or signed in somewhere you should not have?</CardTitle>
-            <CardDescription>
-              Ending every other session leaves you signed in here and forces a fresh sign-in
-              everywhere else. Changing your password at the identity provider does not, on its own,
-              end sessions that are already open.
-            </CardDescription>
+            <CardTitle>{t.sessions.lostDevice}</CardTitle>
+            <CardDescription>{t.sessions.lostDeviceBody}</CardDescription>
           </CardHeader>
 
           <CardBody className="flex flex-wrap gap-2">
@@ -136,17 +140,19 @@ export default async function SessionsPage({
                 variant="secondary"
                 size="sm"
                 disabled={others.length === 0}
-                pendingLabel="Signing out…"
+                pendingLabel={t.sessions.signingOut}
               >
                 {others.length === 0
-                  ? "No other sessions open"
-                  : `Sign out ${others.length} other session${others.length === 1 ? "" : "s"}`}
+                  ? t.sessions.noOtherSessions
+                  : interpolate(t.sessions.signOutOthers, {
+                      count: plural(locale, others.length, t.sessions.otherSessionCount),
+                    })}
               </SubmitButton>
             </form>
 
             <form action={revokeAllSessionsAction}>
-              <SubmitButton variant="danger" size="sm" pendingLabel="Signing out…">
-                Sign out everywhere, including here
+              <SubmitButton variant="danger" size="sm" pendingLabel={t.sessions.signingOut}>
+                {t.sessions.signOutEverywhere}
               </SubmitButton>
             </form>
           </CardBody>

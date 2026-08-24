@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { apiCsv } from "@/lib/api/client";
 import { describeError } from "@/lib/api/describe";
 import { getSession, primaryRole } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
 
 /**
  * Streams a CSV export to the browser.
@@ -30,6 +31,8 @@ export const runtime = "nodejs";
 const DATASETS = new Set(["enrollments", "courses", "learners", "export_audit"]);
 
 export async function GET(request: NextRequest) {
+  const { locale, t } = await getTranslation();
+
   const session = await getSession();
   const role = primaryRole(session?.user.roles ?? []);
 
@@ -71,7 +74,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return backWithNotice(
       request,
-      describeError(error, "The export could not be produced."),
+      describeError(t, locale, error, t.notices.exportFailed),
     );
   }
 }

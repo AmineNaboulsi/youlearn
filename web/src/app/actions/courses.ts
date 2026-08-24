@@ -8,6 +8,9 @@ import { api, ApiError } from "@/lib/api/client";
 import { describeError } from "@/lib/api/describe";
 import type { Envelope, Course } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
+import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { FormState } from "@/lib/forms";
 
 /**
@@ -27,6 +30,7 @@ export async function createCourseAction(
   _previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   let created: number;
@@ -38,7 +42,7 @@ export async function createCourseAction(
     });
     created = response.data.id;
   } catch (error) {
-    return failure(error, "The course could not be created.");
+    return failure(t, locale, error, "The course could not be created.");
   }
 
   revalidatePath("/dashboard/courses");
@@ -51,6 +55,7 @@ export async function updateCourseAction(
   _previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const id = readId(formData.get("id"));
@@ -58,7 +63,7 @@ export async function updateCourseAction(
   try {
     await api(`/courses/${id}`, { method: "PUT", body: toPayload(formData) });
   } catch (error) {
-    return failure(error, "The course could not be saved.");
+    return failure(t, locale, error, t.notices.courseSaveFailed);
   }
 
   revalidatePath(`/dashboard/courses/${id}`);
@@ -70,13 +75,14 @@ export async function updateCourseAction(
 
 /** Publish or unpublish. A plain form post, so it works without JavaScript. */
 export async function setPublicationAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const id = readId(formData.get("id"));
   const publish = formData.get("publish") === "1";
   const returnTo = safePath(formData.get("returnTo"), "/dashboard/courses");
 
-  let notice = publish ? "Course published." : "Course unpublished.";
+  let notice = publish ? t.notices.coursePublished : t.notices.courseUnpublished;
   let tone: NoticeTone = "success";
 
   try {
@@ -85,7 +91,7 @@ export async function setPublicationAction(formData: FormData): Promise<void> {
       body: { is_published: publish },
     });
   } catch (error) {
-    notice = describeError(error, "The course state could not be changed.");
+    notice = describeError(t, locale, error, t.notices.courseStateFailed);
     tone = "danger";
   }
 
@@ -97,6 +103,7 @@ export async function setPublicationAction(formData: FormData): Promise<void> {
 }
 
 export async function deleteCourseAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const id = readId(formData.get("id"));
@@ -108,18 +115,18 @@ export async function deleteCourseAction(formData: FormData): Promise<void> {
     redirect(
       withNotice(
         `/dashboard/courses/${id}`,
-        'Type "delete" in the confirmation box to remove a course.',
+        t.notices.typeDeleteToConfirm,
         "danger",
       ),
     );
   }
 
-  const notice = "Course deleted.";
+  const notice = t.notices.courseDeleted;
 
   try {
     await api(`/courses/${id}`, { method: "DELETE" });
   } catch (error) {
-    const message = describeError(error, "The course could not be deleted.");
+    const message = describeError(t, locale, error, t.notices.courseDeleteFailed);
     redirect(withNotice(`/dashboard/courses/${id}`, message, "danger"));
   }
 
@@ -153,10 +160,15 @@ function toPayload(formData: FormData) {
   };
 }
 
-function failure(error: unknown, fallback: string): FormState {
+function failure(
+  t: Dictionary,
+  locale: Locale,
+  error: unknown,
+  fallback: string,
+): FormState {
   return {
     ok: false,
-    message: describeError(error, fallback),
+    message: describeError(t, locale, error, fallback),
     fields: error instanceof ApiError ? (error.fields ?? {}) : {},
   };
 }

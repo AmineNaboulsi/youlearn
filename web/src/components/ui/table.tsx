@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 export function TableWrap({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div className={cn("overflow-x-auto rounded-card border border-line", className)}>
-      <table className="w-full min-w-[42rem] border-collapse text-left text-[13px]">
+      <table className="w-full min-w-[42rem] border-collapse text-start text-[13px]">
         {children}
       </table>
     </div>
@@ -33,7 +33,7 @@ export function Th({
       scope="col"
       className={cn(
         "border-b border-line bg-surface-sunk px-4 py-3 text-[11px] font-medium uppercase tracking-[0.1em] text-ink-muted",
-        numeric && "text-right",
+        numeric && "text-end",
         className,
       )}
     >
@@ -55,7 +55,7 @@ export function Td({
     <td
       className={cn(
         "border-b border-line px-4 py-3 align-middle text-ink-soft",
-        numeric && "tabular text-right",
+        numeric && "tabular text-end",
         className,
       )}
     >

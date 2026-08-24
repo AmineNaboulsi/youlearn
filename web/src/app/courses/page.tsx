@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { api } from "@/lib/api/client";
 import type { Category, Course, Envelope, Paginated, Tag } from "@/lib/api/types";
+import { plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { PageHeading, EmptyState } from "@/components/ui/primitives";
@@ -12,9 +14,10 @@ import { CatalogueFilters } from "@/components/courses/catalogue-filters";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Courses",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.courses.title };
+}
 
 /**
  * The public catalogue.
@@ -30,6 +33,7 @@ export default async function CoursesPage({
   searchParams: Promise<{ q?: string; category?: string; tags?: string; page?: string }>;
 }) {
   const params = await searchParams;
+  const { locale, t } = await getTranslation();
 
   const query = {
     q: params.q?.trim() || undefined,
@@ -58,9 +62,9 @@ export default async function CoursesPage({
 
       <main id="main" className="mx-auto max-w-6xl px-6 py-12">
         <PageHeading
-          eyebrow="Catalogue"
-          title="Courses"
-          description="Every published course on the platform. Filter by category or tag, or search titles, descriptions and tags at once."
+          eyebrow={t.courses.eyebrow}
+          title={t.courses.title}
+          description={t.courses.description}
         />
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -74,20 +78,19 @@ export default async function CoursesPage({
             }}
           />
 
-          <section aria-label="Results" className="min-w-0">
+          <section aria-label={t.courses.results} className="min-w-0">
             <p className="mb-5 text-[13px] text-ink-muted">
-              <span className="tabular font-medium text-ink">{courses.pagination.total}</span>{" "}
-              {courses.pagination.total === 1 ? "course" : "courses"}
-              {isFiltered ? " match your filters" : ""}
+              {plural(locale, courses.pagination.total, t.courses.countLabel)}
+              {isFiltered ? ` ${t.courses.matchingFilters}` : ""}
             </p>
 
             {courses.data.length === 0 ? (
               <EmptyState
-                title="Nothing matches those filters"
-                description="Try removing a tag, or search for a broader term."
+                title={t.courses.emptyTitle}
+                description={t.courses.emptyBody}
                 action={
                   <ButtonLink href="/courses" variant="secondary" size="sm">
-                    Clear filters
+                    {t.common.clearFilters}
                   </ButtonLink>
                 }
               />
@@ -110,7 +113,7 @@ export default async function CoursesPage({
                       category: params.category,
                       tags: params.tags,
                     }}
-                    label="courses"
+                    label={t.courses.paginationLabel}
                   />
                 </div>
               </>

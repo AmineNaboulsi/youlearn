@@ -1,5 +1,7 @@
 "use client";
 
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { interpolate } from "@/lib/i18n/plural";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -19,9 +21,12 @@ import { cn } from "@/lib/cn";
 export function AutoRefresh({
   intervalMs = 15_000,
   generatedAt,
+  labels,
 }: {
   intervalMs?: number;
   generatedAt: string;
+  /** Server-resolved strings; see the note on CourseForm. */
+  labels: Dictionary["autoRefresh"];
 }) {
   const router = useRouter();
   const [paused, setPaused] = useState(false);
@@ -73,7 +78,7 @@ export function AutoRefresh({
           paused ? "border border-ink-faint" : "animate-pulse bg-ink",
         )}
       />
-      {paused ? "Paused while this tab is hidden" : `Updated ${age}s ago`}
+      {paused ? labels.paused : interpolate(labels.updated, { seconds: age })}
       <button
         type="button"
         onClick={() => router.refresh()}

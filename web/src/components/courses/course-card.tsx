@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import type { Course } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
+import { plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { Badge, StatusDot } from "@/components/ui/primitives";
 import { CourseThumb } from "./course-thumb";
 
@@ -13,7 +15,7 @@ import { CourseThumb } from "./course-thumb";
  * unreachable inside an anchor — so tags render as plain text here and are
  * filterable from the catalogue's own controls instead.
  */
-export function CourseCard({
+export async function CourseCard({
   course,
   href,
   showState = false,
@@ -24,6 +26,8 @@ export function CourseCard({
   showState?: boolean;
   className?: string;
 }) {
+  const { locale, t } = await getTranslation();
+
   return (
     <article
       className={cn(
@@ -51,7 +55,7 @@ export function CourseCard({
             {showState ? (
               <Badge tone={course.is_published ? "success" : "outline"}>
                 <StatusDot on={Boolean(course.is_published)} />
-                {course.is_published ? "Published" : "Draft"}
+                {course.is_published ? t.course.published : t.course.draft}
               </Badge>
             ) : null}
           </div>
@@ -68,8 +72,8 @@ export function CourseCard({
 
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3.5 text-[12px] text-ink-muted">
             <span className="min-w-0 truncate">{course.instructor_name}</span>
-            <span className="flex-none tabular">
-              {course.enrollment_count} enrolled
+            <span className="flex-none">
+              {plural(locale, course.enrollment_count, t.course.enrolledCount)}
             </span>
           </div>
         </div>

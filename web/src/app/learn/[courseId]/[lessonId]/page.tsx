@@ -5,7 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { api, apiOrNull, ApiError } from "@/lib/api/client";
 import type { Curriculum, Envelope, LessonDetail } from "@/lib/api/types";
 import { requireSession } from "@/lib/auth/current-user";
-import { formatClock, formatWatchTime } from "@/lib/format";
+import { interpolate } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { SiteHeader } from "@/components/layout/site-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Alert, Badge, Card, CardBody } from "@/components/ui/primitives";
@@ -22,7 +23,8 @@ export async function generateMetadata({
   const { lessonId } = await params;
   const lesson = await apiOrNull<Envelope<LessonDetail>>(`/lessons/${lessonId}`);
 
-  return { title: lesson ? lesson.data.title : "Lesson" };
+  const { t } = await getTranslation();
+  return { title: lesson ? lesson.data.title : t.analytics.colLesson };
 }
 
 /**
@@ -70,14 +72,19 @@ export default async function LessonPage({
     ? `/api/media/${lesson.video_url.split("/").pop()}`
     : null;
 
+  const { t, fmt } = await getTranslation();
+
   return (
     <>
       <SiteHeader />
 
       <main id="main" className="mx-auto max-w-7xl px-6 py-8">
-        <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-[13px] text-ink-muted">
+        <nav
+          aria-label={t.course.breadcrumb}
+          className="mb-6 flex flex-wrap items-center gap-2 text-[13px] text-ink-muted"
+        >
           <Link href="/learning" className="transition-colors hover:text-ink">
-            My learning
+            {t.nav.myLearning}
           </Link>
           <span aria-hidden className="text-ink-ghost">/</span>
           <Link href={`/courses/${courseId}`} className="transition-colors hover:text-ink">
@@ -97,20 +104,23 @@ export default async function LessonPage({
                 resumeAt={lesson.progress?.last_position_seconds ?? 0}
                 nextLessonId={lesson.next_lesson_id}
                 title={lesson.title}
+                labels={t.player}
               />
             ) : lesson.kind === "video" ? (
-              <Alert tone="warning">
-                This lesson does not have a video yet. The instructor may still be uploading it.
-              </Alert>
+              <Alert tone="warning">{t.lesson.noVideoYet}</Alert>
             ) : null}
 
             <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  {lesson.is_preview ? <Badge tone="outline">Free preview</Badge> : null}
-                  {lesson.progress?.completed ? <Badge tone="solid">Completed</Badge> : null}
+                  {lesson.is_preview ? (
+                    <Badge tone="outline">{t.lesson.freePreview}</Badge>
+                  ) : null}
+                  {lesson.progress?.completed ? (
+                    <Badge tone="solid">{t.lesson.completed}</Badge>
+                  ) : null}
                   {lesson.duration_seconds > 0 ? (
-                    <Badge tone="muted">{formatClock(lesson.duration_seconds)}</Badge>
+                    <Badge tone="muted">{fmt.clock(lesson.duration_seconds)}</Badge>
                   ) : null}
                 </div>
 
@@ -131,7 +141,7 @@ export default async function LessonPage({
                   variant="secondary"
                   size="sm"
                 >
-                  Edit curriculum
+                  {t.lesson.editCurriculum}
                 </ButtonLink>
               ) : null}
             </div>
@@ -144,7 +154,7 @@ export default async function LessonPage({
 
             {/* ---------------------------- pager ---------------------- */}
             <nav
-              aria-label="Lesson navigation"
+              aria-label={t.lesson.navigation}
               className="mt-8 flex items-center justify-between gap-4 border-t border-line pt-5"
             >
               {lesson.previous_lesson_id ? (
@@ -153,7 +163,14 @@ export default async function LessonPage({
                   variant="secondary"
                   size="sm"
                 >
-                  ← Previous lesson
+                  <span aria-hidden className="rtl:hidden">
+                    ←{" "}
+                  </span>
+                  {t.lesson.previousLesson}
+                  <span aria-hidden className="hidden rtl:inline">
+                    {" "}
+                    →
+                  </span>
                 </ButtonLink>
               ) : (
                 <span />
@@ -161,11 +178,18 @@ export default async function LessonPage({
 
               {lesson.next_lesson_id ? (
                 <ButtonLink href={`/learn/${courseId}/${lesson.next_lesson_id}`} size="sm">
-                  Next lesson →
+                  <span aria-hidden className="hidden rtl:inline">
+                    ←{" "}
+                  </span>
+                  {t.lesson.nextLesson}
+                  <span aria-hidden className="rtl:hidden">
+                    {" "}
+                    →
+                  </span>
                 </ButtonLink>
               ) : (
                 <ButtonLink href={`/courses/${courseId}`} variant="secondary" size="sm">
-                  Back to the course
+                  {t.lesson.backToCourse}
                 </ButtonLink>
               )}
             </nav>
@@ -177,7 +201,7 @@ export default async function LessonPage({
               <Card className="mb-4">
                 <CardBody>
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-[13px] font-medium text-ink">Your progress</p>
+                    <p className="text-[13px] font-medium text-ink">{t.course.yourProgress}</p>
                     <p className="tabular text-[13px] font-semibold text-ink">{progress.percent}%</p>
                   </div>
 
@@ -189,14 +213,17 @@ export default async function LessonPage({
                     aria-valuenow={progress.percent}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label="Course progress"
+                    aria-label={t.course.progressLabel}
                   >
                     <div className="h-full bg-ink" style={{ width: `${progress.percent}%` }} />
                   </div>
 
                   <p className="mt-2.5 text-[12px] text-ink-muted">
-                    {progress.completed} of {progress.lessons} lessons ·{" "}
-                    {formatWatchTime(progress.watched_seconds)} watched
+                    {interpolate(t.course.progressDetail, {
+                      completed: fmt.number(progress.completed),
+                      lessons: fmt.number(progress.lessons),
+                      watched: fmt.watchTime(progress.watched_seconds),
+                    })}
                   </p>
                 </CardBody>
               </Card>
@@ -204,7 +231,7 @@ export default async function LessonPage({
 
             <div className="rounded-card border border-line bg-surface p-4">
               <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-                Course content
+                {t.course.content}
               </h2>
               <CurriculumList
                 sections={curriculum.data.sections}

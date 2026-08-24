@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { env } from "@/lib/env";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Noto_Sans_Arabic } from "next/font/google";
+
+import { direction } from "@/lib/i18n/config";
+import { getTranslation } from "@/lib/i18n/server";
 
 import "./globals.css";
 
@@ -19,6 +22,19 @@ const jetbrains = JetBrains_Mono({
   variable: "--font-jetbrains",
   display: "swap",
   weight: ["400", "500"],
+});
+
+/**
+ * Inter has no Arabic coverage, so Arabic text would otherwise fall through to
+ * whatever the OS happens to provide — a different face on every device, and
+ * on Windows one that sits noticeably lower on the line than the Latin around
+ * it. Loading this alongside costs nothing when it is not used: next/font
+ * subsets per family, and only the Arabic face carries the arabic subset.
+ */
+const notoArabic = Noto_Sans_Arabic({
+  subsets: ["arabic"],
+  variable: "--font-arabic",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -43,20 +59,26 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { locale, t } = await getTranslation();
+
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
+    <html
+      lang={locale}
+      dir={direction(locale)}
+      className={`${inter.variable} ${jetbrains.variable} ${notoArabic.variable}`}
+    >
       <body className="min-h-dvh bg-surface text-ink antialiased">
         {/* First stop for a keyboard user on every page. */}
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:border focus:border-ink focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+          className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:border focus:border-ink focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
         >
-          Skip to content
+          {t.common.skipToContent}
         </a>
         {children}
       </body>

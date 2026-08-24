@@ -4,7 +4,7 @@ import Link from "next/link";
 import { api } from "@/lib/api/client";
 import type { Course, Paginated, RosterRow } from "@/lib/api/types";
 import { primaryRole, requireRole } from "@/lib/auth/current-user";
-import { formatDate } from "@/lib/format";
+import { getTranslation } from "@/lib/i18n/server";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
 import { Badge, EmptyState, PageHeading, StatusDot } from "@/components/ui/primitives";
@@ -13,7 +13,10 @@ import { TableWrap, Td, Th, Tr } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Learners" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.dashboardNav.learners };
+}
 
 /**
  * Who is enrolled.
@@ -32,6 +35,7 @@ export default async function LearnersPage({
   const params = await searchParams;
   const session = await requireRole(["admin", "enseignant"], "/dashboard/learners");
   const isAdmin = primaryRole(session.user.roles) === "admin";
+  const { t, fmt } = await getTranslation();
 
   const [roster, courses] = await Promise.all([
     api<Paginated<RosterRow>>("/enrollments", {
@@ -45,15 +49,11 @@ export default async function LearnersPage({
   return (
     <div className="grid gap-6">
       <PageHeading
-        title="Learners"
-        description={
-          isAdmin
-            ? "Every enrolment on the platform, newest first."
-            : "People enrolled on the courses you author. Only your courses are included."
-        }
+        title={t.dashboardNav.learners}
+        description={isAdmin ? t.learners.descriptionAdmin : t.learners.descriptionOwn}
         actions={
           <ButtonLink href="/dashboard/exports" variant="secondary" size="sm">
-            Export as CSV
+            {t.learners.exportCsv}
           </ButtonLink>
         }
       />
@@ -61,10 +61,10 @@ export default async function LearnersPage({
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div className="min-w-64">
           <label htmlFor="course" className="mb-1.5 block text-[13px] font-medium text-ink-soft">
-            Course
+            {t.learners.course}
           </label>
           <Select id="course" name="course" defaultValue={params.course ?? ""}>
-            <option value="">All courses</option>
+            <option value="">{t.learners.allCourses}</option>
             {courses.data.map((course) => (
               <option key={course.id} value={course.id}>
                 {course.title}
@@ -74,18 +74,18 @@ export default async function LearnersPage({
         </div>
 
         <Button type="submit" variant="secondary">
-          Filter
+          {t.dashCourses.filter}
         </Button>
         {params.course ? (
           <ButtonLink href="/dashboard/learners" variant="ghost">
-            Reset
+            {t.dashCourses.reset}
           </ButtonLink>
         ) : null}
       </form>
 
       {selectedCourse ? (
         <p className="text-[13px] text-ink-muted">
-          Showing enrolments on{" "}
+          {t.learners.showingOn}{" "}
           <Link
             href={`/dashboard/courses/${selectedCourse.id}`}
             className="font-medium text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink"
@@ -98,16 +98,14 @@ export default async function LearnersPage({
 
       {roster.data.length === 0 ? (
         <EmptyState
-          title="No enrolments yet"
+          title={t.learners.emptyTitle}
           description={
-            params.course
-              ? "Nobody has enrolled on this course yet."
-              : "When someone enrols on one of your courses they will appear here."
+            params.course ? t.learners.emptyBodyCourse : t.learners.emptyBodyAll
           }
           action={
             params.course ? (
               <ButtonLink href="/dashboard/learners" variant="secondary" size="sm">
-                Show all courses
+                {t.learners.showAllCourses}
               </ButtonLink>
             ) : undefined
           }
@@ -117,11 +115,11 @@ export default async function LearnersPage({
           <TableWrap>
             <thead>
               <tr>
-                <Th>Learner</Th>
-                <Th>Email</Th>
-                <Th>Course</Th>
-                <Th>Enrolled</Th>
-                <Th>Account</Th>
+                <Th>{t.learners.colLearner}</Th>
+                <Th>{t.learners.colEmail}</Th>
+                <Th>{t.learners.course}</Th>
+                <Th>{t.learners.colEnrolled}</Th>
+                <Th>{t.learners.colAccount}</Th>
               </tr>
             </thead>
 
@@ -145,11 +143,11 @@ export default async function LearnersPage({
                       {row.course_title}
                     </Link>
                   </Td>
-                  <Td>{formatDate(row.enrolled_at)}</Td>
+                  <Td>{fmt.date(row.enrolled_at)}</Td>
                   <Td>
                     <Badge tone={row.learner_active ? "success" : "danger"}>
                       <StatusDot on={Boolean(row.learner_active)} />
-                      {row.learner_active ? "Active" : "Suspended"}
+                      {row.learner_active ? t.account.active : t.account.suspended}
                     </Badge>
                   </Td>
                 </Tr>
@@ -163,7 +161,7 @@ export default async function LearnersPage({
             total={roster.pagination.total}
             basePath="/dashboard/learners"
             params={{ course: params.course }}
-            label="enrolments"
+            label={t.learning.paginationLabel}
           />
         </>
       )}
