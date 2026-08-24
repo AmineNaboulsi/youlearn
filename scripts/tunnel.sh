@@ -180,9 +180,22 @@ if [ -n "$migrate" ]; then
 
   echo "applied."
 
+  # Verified rather than assumed. `mysql` exits 0 for a file whose statements
+  # all ran, which is not the same as the schema now being what the deployed
+  # code expects — a migration can be applied against the wrong database, or
+  # have been half-applied by an earlier attempt. Asking information_schema is
+  # the only answer that means anything.
+  echo "==> verifying"
+  remote_verify="
+    cd /opt/youlearn
+    pw=\$(sed -n \"s/^MYSQL_ROOT_PASSWORD=//p\" .env)
+    docker compose -f docker-compose.prod.yml exec -T mysql       mysql -uroot -p\"\$pw\" -N -B youlearn -e       \"SELECT CONCAT(COUNT(*), ' of 3 profile columns present')           FROM information_schema.columns          WHERE table_schema = 'youlearn' AND table_name = 'users'            AND column_name IN ('profile_slug', 'profile_is_public', 'avatar_asset_id');\"
+  "
+  ssh "${ssh_opts[@]}" "$target" "$remote_verify" 2>&1 | grep -v '^mysql: \[Warning\]' | sed 's/^/  /'
+
   # MySQL is happy the moment the DDL lands, but the running web container has
   # a render error boundary and a proxy in front of it; restarting it is the
-  # shortest way to be sure what you are looking at afterwards is current.
+  # shortest way to be sure what you reload afterwards is current.
   echo "==> restarting web"
   ssh "${ssh_opts[@]}" "$target"     "cd /opt/youlearn && docker compose -f docker-compose.prod.yml restart web" >/dev/null
   echo "done — reload the site."
