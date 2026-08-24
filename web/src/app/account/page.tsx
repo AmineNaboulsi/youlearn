@@ -178,9 +178,12 @@ export default async function AccountPage() {
                 />
                 <Metric label={t.account.teachingLearners} value={profile.teaching.learners} />
               </dl>
-              <div className="mt-5 border-t border-line pt-4">
+              <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
                 <ButtonLink href="/dashboard" variant="secondary" size="sm">
                   {t.account.openDashboard}
+                </ButtonLink>
+                <ButtonLink href="/dashboard/profile" variant="ghost" size="sm">
+                  Public profile
                 </ButtonLink>
               </div>
             </CardBody>

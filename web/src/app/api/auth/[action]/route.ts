@@ -5,6 +5,8 @@ import {
   authorizationUrl,
   endSessionUrl,
   exchangeCode,
+  postLogoutRedirectUri,
+  revokeSession,
   sessionIdFromAccessToken,
 } from "@/lib/auth/oidc";
 import {
@@ -142,13 +144,36 @@ async function completeLogin(request: NextRequest) {
   }
 }
 
+/**
+ * Sign out.
+ *
+ * The Keycloak session has to end as well, not just the local cookie: clearing
+ * only the cookie would sign the user straight back in on the next visit, which
+ * is not what "sign out" means to anybody.
+ *
+ * There are two ways to do that, and the order matters.
+ *
+ * The refresh token is posted to Keycloak's logout endpoint first, server to
+ * server. That ends the SSO session with no browser hop at all, so the user
+ * goes from clicking "Sign out" to standing on the home page — no confirmation
+ * screen, no "You are logged out" interstitial to click through.
+ *
+ * Only if that call fails does the browser take the scenic route through the
+ * IdP's own logout page. That path used to be the *only* path, and it broke
+ * whenever the ID token had aged past the five-minute access-token lifespan:
+ * a stale `id_token_hint` is discarded by Keycloak, which then has no client to
+ * resolve, refuses the `post_logout_redirect_uri`, and parks the user on a
+ * terminal page with no way back. `endSessionUrl` now sends `client_id` too, so
+ * even a rejected hint still lands the user back here.
+ */
 async function logout(request: NextRequest) {
   const session = await unsealSession(readSessionCookie(request.cookies));
 
-  // Ending the Keycloak session too, not just the local cookie. Clearing only
-  // the cookie would leave the user silently signed straight back in on the
-  // next visit, which is not what "sign out" means to anybody.
-  const destination = session?.idToken ? endSessionUrl(session.idToken) : `${env.appUrl}/`;
+  const endedAtKeycloak = session ? await revokeSession(session.refreshToken) : true;
+
+  const destination = endedAtKeycloak
+    ? postLogoutRedirectUri()
+    : endSessionUrl(session?.idToken);
 
   const response = NextResponse.redirect(destination);
   clearSessionCookie(response.cookies);

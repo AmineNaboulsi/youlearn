@@ -95,6 +95,11 @@ export function dashboardNav(t: Dictionary, isAdmin: boolean): NavItem[] {
       description: isAdmin ? nav.learnersHintAdmin : nav.learnersHintOwn,
     },
     {
+      href: "/dashboard/profile",
+      label: "Public profile",
+      description: "The page you share with the world",
+    },
+    {
       href: "/dashboard/exports",
       label: nav.exports,
       description: nav.exportsHint,

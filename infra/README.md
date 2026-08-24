@@ -315,7 +315,18 @@ allow-list would need editing every time the ISP hands you a new address, which
 is the failure mode that already cost an evening on port 22. A tunnel follows
 you to whatever network you are on.
 
-One tunnel carries all three:
+One tunnel carries all three, and `scripts/tunnel.sh` is that command with the
+address looked up from Terraform state and the SSH allow-list refreshed first —
+because the two failures arrive together often enough to be worth handling in
+one step: the site is down for its own reasons, and SSH hangs because the ISP
+renewed a lease and port 22 no longer admits you.
+
+```bash
+./scripts/tunnel.sh              # allow this address, then open all three
+./scripts/tunnel.sh --diagnose   # read the stack's state instead, and exit
+```
+
+By hand, if you would rather:
 
 ```bash
 ssh -L 9000:127.0.0.1:9000 -L 9428:127.0.0.1:9428 -L 2019:127.0.0.1:2019 ubuntu@<instance>

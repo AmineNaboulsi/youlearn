@@ -76,10 +76,11 @@ export function UserMenu({
         </div>
 
         <nav className="p-1.5">
-          <MenuLink href="/account">{labels.profile}</MenuLink>
-          <MenuLink href="/account/sessions">{labels.sessions}</MenuLink>
-          {isStaff ? <MenuLink href="/dashboard">{labels.dashboard}</MenuLink> : null}
-          {isStaff ? <MenuLink href="/dashboard/exports">{labels.exports}</MenuLink> : null}
+          <MenuLink href="/account">Profile</MenuLink>
+          <MenuLink href="/account/sessions">Active sessions</MenuLink>
+          {isStaff ? <MenuLink href="/dashboard">Dashboard</MenuLink> : null}
+          {isStaff ? <MenuLink href="/dashboard/profile">Public profile</MenuLink> : null}
+          {isStaff ? <MenuLink href="/dashboard/exports">Data exports</MenuLink> : null}
         </nav>
 
         <form action="/api/auth/logout" method="post" className="border-t border-line p-1.5">

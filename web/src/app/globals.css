@@ -128,6 +128,80 @@ body {
   color: var(--color-surface);
 }
 
+/* =============================================================================
+   Public instructor profile — the one themed surface on the platform.
+
+   Everything else here is light-only by decision, and that decision stands.
+   This is a scoped exception, not the beginning of a site-wide dark mode: an
+   instructor's public page is a thing they hand to people who have never seen
+   this platform, and letting them choose how it reads is worth one palette.
+
+   It works by *re-pointing the same tokens*. Tailwind v4 compiles `bg-surface`
+   to `background-color: var(--color-surface)`, so redefining that variable on a
+   wrapper element re-themes every utility underneath it — which means the
+   profile markup is written once, in ordinary classes, and renders correctly in
+   both palettes with no `dark:` variants and no second copy to keep in step.
+   That property is what lets the phone preview in the editor render the real
+   component rather than an imitation of it.
+
+   Two rules for anything written inside this scope:
+
+     - Never `text-white` on `bg-ink`. Ink and surface swap, so that pairing is
+       white-on-white in dark. Use `text-surface`, which swaps with it.
+     - Never a literal hex. If a value is not a token it will not flip.
+   ============================================================================= */
+
+[data-profile-theme="dark"] {
+  color-scheme: dark;
+
+  /* The ink ramp, inverted end to end: what was darkest is now lightest, so
+     every relative weight in the design survives the flip. */
+  --color-ink: #fafafa;
+  --color-ink-strong: #f5f5f5;
+  --color-ink-soft: #d4d4d4;
+  --color-ink-muted: #a3a3a3;
+  --color-ink-faint: #737373;
+  --color-ink-ghost: #404040;
+
+  --color-surface: #0a0a0a;
+  /* Sunk is *lighter* than the base surface here. On a dark ground a recessed
+     panel reads as raised-toward-the-light, not as a deeper hole. */
+  --color-surface-sunk: #171717;
+  --color-surface-raised: #171717;
+
+  --color-line: #262626;
+  --color-line-strong: #404040;
+
+  /* State colour keeps its meaning but not its lightness: the -soft tones
+     become near-black tints and the -strong text tones lift far enough to
+     clear AA against them. */
+  --color-positive: #22c55e;
+  --color-positive-strong: #4ade80;
+  --color-positive-soft: #0c2917;
+
+  --color-danger: #ef4444;
+  --color-danger-strong: #f87171;
+  --color-danger-soft: #2c1214;
+
+  --color-warning: #f59e0b;
+  --color-warning-strong: #fbbf24;
+  --color-warning-soft: #2a1e08;
+}
+
+/* The grid backdrop is drawn in literal rgba, so it is the one decoration that
+   cannot follow the tokens on its own. */
+[data-profile-theme="dark"] .grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(250, 250, 250, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(250, 250, 250, 0.05) 1px, transparent 1px);
+}
+
+[data-profile-theme="dark"] .grid-bg-sm {
+  background-image:
+    linear-gradient(to right, rgba(250, 250, 250, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(250, 250, 250, 0.045) 1px, transparent 1px);
+}
+
 /* -----------------------------------------------------------------------------
    Utilities
    -------------------------------------------------------------------------- */

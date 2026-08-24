@@ -21,6 +21,7 @@ use App\Controller\CurriculumController;
 use App\Controller\EnrollmentController;
 use App\Controller\ExportController;
 use App\Controller\MeController;
+use App\Controller\ProfileController;
 use App\Controller\ProgressController;
 use App\Controller\SessionController;
 use App\Controller\StatsController;
@@ -85,6 +86,12 @@ $router->get('/tags', [TaxonomyController::class, 'tags'])
 $router->get('/courses/{id}/curriculum', [CurriculumController::class, 'show'])
     ->throttle('catalogue', 120, 60);
 
+// An instructor's public page. Unauthenticated by design — the whole point is a
+// URL that can be handed to somebody who has no account here. The controller,
+// not this line, is what keeps an unpublished profile invisible.
+$router->get('/instructors/{slug}', [ProfileController::class, 'showPublic'])
+    ->throttle('catalogue', 120, 60);
+
 // -----------------------------------------------------------------------------
 // Files
 //
@@ -112,6 +119,15 @@ $router->get('/courses/{id}/progress', [ProgressController::class, 'forCourse'])
 // The signed-in caller
 // -----------------------------------------------------------------------------
 $router->get('/me', [MeController::class, 'show'])->authenticated();
+
+// The caller's own instructor profile. PROFILE_MANAGE rather than
+// COURSE_MANAGE: publishing a page under this domain is its own privilege.
+$router->get('/me/profile', [ProfileController::class, 'showMine'])
+    ->requires(Permission::PROFILE_MANAGE);
+
+$router->put('/me/profile', [ProfileController::class, 'saveMine'])
+    ->requires(Permission::PROFILE_MANAGE)
+    ->throttle('profile-write', 60, 3600);
 
 // -----------------------------------------------------------------------------
 // Sessions
