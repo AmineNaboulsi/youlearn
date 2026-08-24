@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 /**
  * Route-level error boundary.
@@ -42,6 +42,12 @@ const STRINGS = {
 
 type ErrorLocale = keyof typeof STRINGS;
 
+const DEFAULT_ERROR_LOCALE: ErrorLocale = "ar";
+
+function isErrorLocale(value: string): value is ErrorLocale {
+  return value === "ar" || value === "fr" || value === "en";
+}
+
 export default function Error({
   error,
   reset,
@@ -49,14 +55,20 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // Starts on the default and settles after mount, so the first client render
-  // matches whatever the server produced and there is no hydration mismatch.
-  const [locale, setLocale] = useState<ErrorLocale>("ar");
+  // <html lang> is an external mutable source, so it is read through
+  // useSyncExternalStore rather than copied into state from an effect: the
+  // hook has a server snapshot of its own, so the two renders agree without a
+  // hydration mismatch and without a cascading re-render.
+  //
+  // The subscribe function never fires — the attribute cannot change while an
+  // error boundary is on screen — so the snapshot is read once.
+  const lang = useSyncExternalStore(
+    () => () => {},
+    () => document.documentElement.lang,
+    () => DEFAULT_ERROR_LOCALE,
+  );
 
-  useEffect(() => {
-    const lang = document.documentElement.lang;
-    if (lang === "ar" || lang === "fr" || lang === "en") setLocale(lang);
-  }, []);
+  const locale: ErrorLocale = isErrorLocale(lang) ? lang : DEFAULT_ERROR_LOCALE;
 
   useEffect(() => {
     console.error("[youlearn] render error", error.digest ?? error.message);

@@ -100,7 +100,6 @@ export async function deleteSectionAction(formData: FormData): Promise<void> {
 }
 
 export async function moveSectionAction(formData: FormData): Promise<void> {
-  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
@@ -191,7 +190,6 @@ export async function deleteLessonAction(formData: FormData): Promise<void> {
 }
 
 export async function moveLessonAction(formData: FormData): Promise<void> {
-  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));

@@ -782,6 +782,29 @@ const en: Dictionary = {
     tagDeleteFailed: "That tag could not be deleted.",
   },
 
+  profile: {
+    about: "About",
+    elsewhere: "Elsewhere",
+    courses: "Courses",
+    showingOf: "Showing {shown} of {total}",
+    empty: "This profile has nothing on it yet.",
+    administrator: "Administrator",
+    instructor: "Instructor",
+    teachingSince: "Teaching here since {date}",
+    statCourses: "Courses",
+    statLearners: "Learners",
+    statLessons: "Lessons",
+    statMaterial: "Material",
+    enrolledCount: {
+      one: "1 enrolled",
+      other: "{count} enrolled",
+    },
+    formNotRead: "That form could not be read. Please reload and try again.",
+    saveFailed: "Your profile could not be saved.",
+    savedLive: "Saved. Your profile is live.",
+    savedDraft: "Saved as a draft. Only you can see it.",
+  },
+
   notAllowed: {
     title: "That area is not open to your account",
     signedIn:

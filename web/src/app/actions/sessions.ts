@@ -88,7 +88,6 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
 
 /** Sign out everywhere, this device included. */
 export async function revokeAllSessionsAction(): Promise<void> {
-  const { locale, t } = await getTranslation();
   await requireSession();
 
   try {

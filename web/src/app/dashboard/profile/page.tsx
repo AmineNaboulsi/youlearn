@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/current-user";
 import { env } from "@/lib/env";
 import { ButtonLink } from "@/components/ui/button";
 import { Alert, PageHeading } from "@/components/ui/primitives";
+import { getTranslation } from "@/lib/i18n/server";
 import { ProfileEditor } from "@/components/profile/profile-editor";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export const metadata: Metadata = { title: "Public profile" };
  */
 export default async function PublicProfilePage() {
   await requireRole(["admin", "enseignant"], "/dashboard/profile");
+  const { locale, t } = await getTranslation();
 
   const response = await api<Envelope<MyProfile>>("/me/profile");
   const profile = response.data;
@@ -50,7 +52,13 @@ export default async function PublicProfilePage() {
         </Alert>
       ) : null}
 
-      <ProfileEditor profile={profile} appUrl={env.appUrl} />
+      <ProfileEditor
+        profile={profile}
+        appUrl={env.appUrl}
+        locale={locale}
+        labels={t.profile}
+        units={t.units}
+      />
     </>
   );
 }

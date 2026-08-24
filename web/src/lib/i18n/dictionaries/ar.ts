@@ -832,6 +832,33 @@ const ar = {
     tagDeleteFailed: "تعذّر حذف ذلك الوسم.",
   },
 
+  profile: {
+    about: "نبذة",
+    elsewhere: "في أماكن أخرى",
+    courses: "الدورات",
+    showingOf: "عرض {shown} من {total}",
+    empty: "لا يحتوي هذا الملف على شيء بعد.",
+    administrator: "مدير",
+    instructor: "مدرّس",
+    teachingSince: "يُدرّس هنا منذ {date}",
+    statCourses: "الدورات",
+    statLearners: "المتعلّمون",
+    statLessons: "الدروس",
+    statMaterial: "المادة",
+    enrolledCount: p({
+      zero: "لا مسجّلين",
+      one: "مسجَّل واحد",
+      two: "مسجَّلان",
+      few: "{count} مسجَّلين",
+      many: "{count} مسجَّل",
+      other: "{count} مسجَّل",
+    }),
+    formNotRead: "تعذّرت قراءة النموذج. يُرجى إعادة التحميل والمحاولة مرة أخرى.",
+    saveFailed: "تعذّر حفظ ملفك الشخصي.",
+    savedLive: "حُفظ. ملفك الشخصي منشور الآن.",
+    savedDraft: "حُفظ كمسودّة. لا يراه أحد سواك.",
+  },
+
   notAllowed: {
     title: "هذا القسم غير متاح لحسابك",
     signedIn: "أنت مسجَّل الدخول باسم {email} بدور {role}، وهو لا يشمل هذه الصفحة.",

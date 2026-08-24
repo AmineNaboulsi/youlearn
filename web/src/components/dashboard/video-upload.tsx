@@ -166,7 +166,7 @@ export function VideoUpload({
       setPercent(100);
       onUploaded(complete.data);
     },
-    [onUploaded],
+    [onUploaded, labels.couldNotStart, labels.interrupted, labels.rejected],
   );
 
   const busy = status === "reading" || status === "uploading" || status === "finalising";

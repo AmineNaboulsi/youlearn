@@ -2,7 +2,10 @@ import Link from "next/link";
 
 import type { InstructorProfile } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
-import { formatDate, formatNumber, formatWatchTime } from "@/lib/format";
+import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { makeFormatters } from "@/lib/format";
 import { Avatar } from "./avatar";
 
 /**
@@ -22,7 +25,10 @@ import { Avatar } from "./avatar";
  *     prop, because a prop would be a second thing that can be wrong.
  *
  *   - It is a plain synchronous component with no server-only imports, so a
- *     client component can render it from live editor state.
+ *     client component can render it from live editor state. That is why the
+ *     language arrives as a `locale` string plus a dictionary slice rather
+ *     than from getTranslation(): both are serialisable, so a server page and
+ *     the client-side editor can each supply them.
  *
  * Colour rule for everything below: tokens only, and `text-surface` rather than
  * `text-white` on ink fills. Ink and surface swap under the dark profile theme.
@@ -32,12 +38,19 @@ export function ProfileView({
   /** Where a course card points. The preview has nowhere to go. */
   linkCourses = true,
   className,
+  locale,
+  labels,
+  units,
 }: {
   profile: InstructorProfile;
   linkCourses?: boolean;
   className?: string;
+  locale: Locale;
+  labels: Dictionary["profile"];
+  units: Dictionary["units"];
 }) {
   const { sections } = profile;
+  const fmt = makeFormatters(locale, units);
 
   const hasAbout = sections.about && Boolean(profile.bio?.trim());
   const hasLinks = sections.links && profile.links.length > 0;
@@ -46,13 +59,13 @@ export function ProfileView({
 
   return (
     <div className={cn("@container bg-surface text-ink", className)}>
-      <Header profile={profile} />
+      <Header profile={profile} labels={labels} formatDate={fmt.date} />
 
       <div className="grid gap-8 px-5 py-8 @2xl:gap-10 @2xl:px-8 @2xl:py-10">
-        {hasStats ? <Stats stats={profile.stats!} /> : null}
+        {hasStats ? <Stats stats={profile.stats!} labels={labels} fmt={fmt} /> : null}
 
         {hasAbout ? (
-          <Section title="About">
+          <Section title={labels.about}>
             {/* prose-mono preserves the newlines the instructor typed. The bio
                 is stored and rendered as plain text — no markdown, so there is
                 no parser between a public text field and the page. */}
@@ -61,7 +74,7 @@ export function ProfileView({
         ) : null}
 
         {hasLinks ? (
-          <Section title="Elsewhere">
+          <Section title={labels.elsewhere}>
             <ul className="flex flex-wrap gap-2">
               {profile.links.map((link) => (
                 <li key={link.url}>
@@ -89,17 +102,25 @@ export function ProfileView({
 
         {hasCourses ? (
           <Section
-            title="Courses"
+            title={labels.courses}
             aside={
               profile.course_total && profile.course_total > profile.courses.length
-                ? `Showing ${profile.courses.length} of ${formatNumber(profile.course_total)}`
+                ? interpolate(labels.showingOf, {
+                    shown: fmt.number(profile.courses.length),
+                    total: fmt.number(profile.course_total),
+                  })
                 : undefined
             }
           >
             <ul className="grid gap-3 @lg:grid-cols-2 @3xl:grid-cols-3">
               {profile.courses.map((course) => (
                 <li key={course.id}>
-                  <CourseCard course={course} href={linkCourses ? `/courses/${course.id}` : null} />
+                  <CourseCard
+                    course={course}
+                    href={linkCourses ? `/courses/${course.id}` : null}
+                    locale={locale}
+                    labels={labels}
+                  />
                 </li>
               ))}
             </ul>
@@ -108,7 +129,7 @@ export function ProfileView({
 
         {!hasAbout && !hasLinks && !hasStats && !hasCourses ? (
           <p className="rounded-card border border-dashed border-line-strong px-5 py-10 text-center text-[13px] text-ink-muted">
-            This profile has nothing on it yet.
+            {labels.empty}
           </p>
         ) : null}
       </div>
@@ -118,7 +139,15 @@ export function ProfileView({
 
 /* -------------------------------------------------------------------------- */
 
-function Header({ profile }: { profile: InstructorProfile }) {
+function Header({
+  profile,
+  labels,
+  formatDate,
+}: {
+  profile: InstructorProfile;
+  labels: Dictionary["profile"];
+  formatDate: (value: string | null | undefined) => string;
+}) {
   return (
     <header className="relative overflow-hidden border-b border-line px-5 pb-7 pt-8 @2xl:px-8 @2xl:pb-9 @2xl:pt-12">
       <div aria-hidden className="pointer-events-none absolute inset-0 grid-bg mask-b-fade" />
@@ -147,11 +176,15 @@ function Header({ profile }: { profile: InstructorProfile }) {
 
           <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-muted">
             <span className="inline-flex items-center rounded-md border border-line bg-surface-sunk px-2 py-0.5 font-medium">
-              {profile.role === "admin" ? "Administrator" : "Instructor"}
+              {profile.role === "admin" ? labels.administrator : labels.instructor}
             </span>
             {profile.location ? <span>{profile.location}</span> : null}
             {profile.member_since ? (
-              <span>Teaching here since {formatDate(profile.member_since)}</span>
+              <span>
+                {interpolate(labels.teachingSince, {
+                  date: formatDate(profile.member_since),
+                })}
+              </span>
             ) : null}
           </p>
         </div>
@@ -160,14 +193,22 @@ function Header({ profile }: { profile: InstructorProfile }) {
   );
 }
 
-function Stats({ stats }: { stats: NonNullable<InstructorProfile["stats"]> }) {
+function Stats({
+  stats,
+  labels,
+  fmt,
+}: {
+  stats: NonNullable<InstructorProfile["stats"]>;
+  labels: Dictionary["profile"];
+  fmt: ReturnType<typeof makeFormatters>;
+}) {
   const items = [
-    { label: "Courses", value: formatNumber(stats.published_courses) },
-    { label: "Learners", value: formatNumber(stats.learners) },
-    { label: "Lessons", value: formatNumber(stats.lessons) },
+    { label: labels.statCourses, value: fmt.number(stats.published_courses) },
+    { label: labels.statLearners, value: fmt.number(stats.learners) },
+    { label: labels.statLessons, value: fmt.number(stats.lessons) },
     {
-      label: "Material",
-      value: stats.duration_seconds > 0 ? formatWatchTime(stats.duration_seconds) : "—",
+      label: labels.statMaterial,
+      value: stats.duration_seconds > 0 ? fmt.watchTime(stats.duration_seconds) : "—",
     },
   ];
 
@@ -212,9 +253,13 @@ function Section({
 function CourseCard({
   course,
   href,
+  locale,
+  labels,
 }: {
   course: InstructorProfile["courses"][number];
   href: string | null;
+  locale: Locale;
+  labels: Dictionary["profile"];
 }) {
   const cover = course.cover_public_id ? `/api/media/${course.cover_public_id}` : course.img;
 
@@ -245,8 +290,8 @@ function CourseCard({
         ) : null}
         <p className="mt-1 flex items-center gap-2 text-[11px] text-ink-faint">
           {course.category_name ? <span className="truncate">{course.category_name}</span> : null}
-          <span className="tabular ml-auto flex-none">
-            {formatNumber(course.enrollment_count)} enrolled
+          <span className="ms-auto flex-none">
+            {plural(locale, course.enrollment_count, labels.enrolledCount)}
           </span>
         </p>
       </div>

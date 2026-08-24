@@ -126,7 +126,7 @@ export function CoverUpload({
     setPercent(100);
     setPublicId(complete.data.public_id);
     setUrl("");
-  }, []);
+  }, [labels.couldNotStart, labels.interrupted, labels.rejected]);
 
   const clear = useCallback(() => {
     setPublicId(null);

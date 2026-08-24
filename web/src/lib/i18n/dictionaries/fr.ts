@@ -791,6 +791,29 @@ const fr: Dictionary = {
     tagDeleteFailed: "Ce tag n'a pas pu être supprimé.",
   },
 
+  profile: {
+    about: "À propos",
+    elsewhere: "Ailleurs",
+    courses: "Cours",
+    showingOf: "Affichage de {shown} sur {total}",
+    empty: "Ce profil est encore vide.",
+    administrator: "Administrateur",
+    instructor: "Enseignant",
+    teachingSince: "Enseigne ici depuis le {date}",
+    statCourses: "Cours",
+    statLearners: "Apprenants",
+    statLessons: "Leçons",
+    statMaterial: "Contenu",
+    enrolledCount: {
+      one: "1 inscrit",
+      other: "{count} inscrits",
+    },
+    formNotRead: "Ce formulaire n'a pas pu être lu. Rechargez la page et réessayez.",
+    saveFailed: "Votre profil n'a pas pu être enregistré.",
+    savedLive: "Enregistré. Votre profil est en ligne.",
+    savedDraft: "Enregistré comme brouillon. Vous seul pouvez le voir.",
+  },
+
   notAllowed: {
     title: "Cette zone n'est pas ouverte à votre compte",
     signedIn:
