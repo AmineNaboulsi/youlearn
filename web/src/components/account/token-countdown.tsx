@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { interpolate } from "@/lib/i18n/plural";
+
 /**
  * Time until the access token renews.
  *
@@ -12,8 +14,18 @@ import { useEffect, useState } from "react";
  *
  * Renders nothing until mounted, so the server and the first client render
  * agree and there is no hydration mismatch.
+ *
+ * Its three strings arrive as props. The dictionary is server-side only, and
+ * shipping a lookup here would mean sending all three languages to the browser
+ * to render one line.
  */
-export function TokenCountdown({ expiresAt }: { expiresAt: string }) {
+export function TokenCountdown({
+  expiresAt,
+  labels,
+}: {
+  expiresAt: string;
+  labels: { renewingNow: string; seconds: string; minutesSeconds: string };
+}) {
   const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
@@ -31,13 +43,18 @@ export function TokenCountdown({ expiresAt }: { expiresAt: string }) {
     return <span className="text-ink-muted">—</span>;
   }
 
-  return <span className="tabular">{describe(remaining)}</span>;
+  return <span className="tabular">{describe(remaining, labels)}</span>;
 }
 
-function describe(seconds: number): string {
-  if (seconds <= 0) return "renewing now";
-  if (seconds < 60) return `${seconds}s`;
+function describe(
+  seconds: number,
+  labels: { renewingNow: string; seconds: string; minutesSeconds: string },
+): string {
+  if (seconds <= 0) return labels.renewingNow;
+  if (seconds < 60) return interpolate(labels.seconds, { count: seconds });
 
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes} min ${seconds % 60}s`;
+  return interpolate(labels.minutesSeconds, {
+    minutes: Math.floor(seconds / 60),
+    seconds: seconds % 60,
+  });
 }

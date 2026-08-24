@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { api, apiOrNull } from "@/lib/api/client";
 import type { Category, CourseDetail, Envelope, Tag } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
-import { formatDate } from "@/lib/format";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/field";
@@ -32,7 +33,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const course = await apiOrNull<CourseDetail>(`/courses/${id}`);
-  return { title: course ? `Edit ${course.data.title}` : "Edit course" };
+  const { t } = await getTranslation();
+  return {
+    title: course
+      ? interpolate(t.courseEdit.editTitle, { title: course.data.title })
+      : t.courseEdit.editFallback,
+  };
 }
 
 /**
@@ -65,27 +71,36 @@ export default async function EditCoursePage({
   if (!response || !response.viewer?.can_manage) notFound();
 
   const course = response.data;
+  const { locale, t, fmt } = await getTranslation();
 
   return (
     <div className="grid gap-6">
       <PageHeading
-        eyebrow="Courses"
+        eyebrow={t.courses.title}
         title={course.title}
-        description={`Created ${formatDate(course.created_at)} · last updated ${formatDate(course.updated_at)} · ${course.enrollment_count} enrolled`}
+        description={interpolate(t.courseEdit.meta, {
+          created: fmt.date(course.created_at),
+          updated: fmt.date(course.updated_at),
+          enrolled: plural(locale, course.enrollment_count, t.course.enrolledCount),
+        })}
         actions={
           <>
             <Badge tone={course.is_published ? "success" : "outline"}>
               <StatusDot on={Boolean(course.is_published)} />
-              {course.is_published ? "Published" : "Draft"}
+              {course.is_published ? t.course.published : t.course.draft}
             </Badge>
             <ButtonLink href={`/dashboard/courses/${course.id}/curriculum`} size="sm">
-              Curriculum
+              {t.courseEdit.curriculum}
             </ButtonLink>
-            <ButtonLink href={`/dashboard/courses/${course.id}/analytics`} variant="secondary" size="sm">
-              Engagement
+            <ButtonLink
+              href={`/dashboard/courses/${course.id}/analytics`}
+              variant="secondary"
+              size="sm"
+            >
+              {t.courseEdit.engagement}
             </ButtonLink>
             <ButtonLink href={`/courses/${course.id}`} variant="ghost" size="sm">
-              View as learner
+              {t.courseEdit.viewAsLearner}
             </ButtonLink>
           </>
         }
@@ -98,16 +113,16 @@ export default async function EditCoursePage({
         course={course}
         categories={categories.data}
         tags={tags.data}
-        submitLabel="Save changes"
+        submitLabel={t.courseEdit.saveChanges}
+        labels={t.courseForm}
+        uploadLabels={t.upload}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Publication</CardTitle>
+          <CardTitle>{t.courseEdit.publication}</CardTitle>
           <CardDescription>
-            {course.is_published
-              ? "This course is in the public catalogue. Unpublishing hides it from new learners; anybody already enrolled keeps it in their list, marked as withdrawn."
-              : "This course is a draft. Only you can see it until it is published."}
+            {course.is_published ? t.courseEdit.publishedBody : t.courseEdit.draftBody}
           </CardDescription>
         </CardHeader>
         <CardBody>
@@ -115,8 +130,8 @@ export default async function EditCoursePage({
             <input type="hidden" name="id" value={course.id} />
             <input type="hidden" name="publish" value={course.is_published ? "0" : "1"} />
             <input type="hidden" name="returnTo" value={`/dashboard/courses/${course.id}`} />
-            <SubmitButton variant="secondary" size="sm" pendingLabel="Working…">
-              {course.is_published ? "Unpublish this course" : "Publish this course"}
+            <SubmitButton variant="secondary" size="sm" pendingLabel={t.courseEdit.working}>
+              {course.is_published ? t.courseEdit.unpublishThis : t.courseEdit.publishThis}
             </SubmitButton>
           </form>
         </CardBody>
@@ -124,11 +139,13 @@ export default async function EditCoursePage({
 
       <Card className="border-ink-ghost">
         <CardHeader>
-          <CardTitle>Delete this course</CardTitle>
+          <CardTitle>{t.courseEdit.deleteTitle}</CardTitle>
           <CardDescription>
             {course.enrollment_count > 0
-              ? `${course.enrollment_count} ${course.enrollment_count === 1 ? "person is" : "people are"} enrolled. Deleting removes the course and every enrolment record with it, permanently.`
-              : "This removes the course and its tags permanently. There is no undo."}
+              ? interpolate(t.courseEdit.deleteWithEnrolments, {
+                  count: plural(locale, course.enrollment_count, t.course.enrolledCount),
+                })
+              : t.courseEdit.deleteEmpty}
           </CardDescription>
         </CardHeader>
 
@@ -143,13 +160,27 @@ export default async function EditCoursePage({
                 htmlFor="confirm"
                 className="mb-1.5 block text-[13px] font-medium text-ink-soft"
               >
-                Type <span className="font-mono text-ink">delete</span> to confirm
+                {/* The word itself is never translated — the action compares it
+                    against a literal on the server. */}
+                {t.courseEdit.typeToConfirm.split("{word}").map((part, index) => (
+                  <span key={index}>
+                    {index > 0 ? (
+                      <span className="font-mono text-ink">{t.courseEdit.deleteWord}</span>
+                    ) : null}
+                    {part}
+                  </span>
+                ))}
               </label>
-              <Input id="confirm" name="confirm" autoComplete="off" placeholder="delete" />
+              <Input
+                id="confirm"
+                name="confirm"
+                autoComplete="off"
+                placeholder={t.courseEdit.deleteWord}
+              />
             </div>
 
-            <SubmitButton variant="danger" size="md" pendingLabel="Deleting…">
-              Delete course
+            <SubmitButton variant="danger" size="md" pendingLabel={t.courseEdit.deleting}>
+              {t.courseEdit.deleteCourse}
             </SubmitButton>
           </form>
         </CardBody>

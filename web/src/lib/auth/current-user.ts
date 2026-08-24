@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { readSessionCookie, unsealSession, type Session } from "./session";
 
 /**
@@ -57,15 +58,13 @@ export function primaryRole(roles: string[]): Role | null {
   return null;
 }
 
-export function roleLabel(role: Role | null): string {
-  switch (role) {
-    case "admin":
-      return "Administrator";
-    case "enseignant":
-      return "Instructor";
-    case "etudiant":
-      return "Learner";
-    default:
-      return "Guest";
-  }
+/**
+ * The role's display name, in the reader's language.
+ *
+ * Takes the dictionary rather than reaching for it, so this stays a pure
+ * function callable from anywhere — including the places that already hold a
+ * dictionary and would otherwise resolve a second one.
+ */
+export function roleLabel(t: Dictionary, role: Role | null): string {
+  return role ? t.roles[role] : t.roles.guest;
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { Category, Tag } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
+import { getTranslation } from "@/lib/i18n/server";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
 
@@ -14,7 +15,7 @@ import { Field, Input, Select } from "@/components/ui/field";
  * link whose href is the toggled list sidesteps both, stays bookmarkable, and
  * lets the browser prefetch.
  */
-export function CatalogueFilters({
+export async function CatalogueFilters({
   categories,
   tags,
   selected,
@@ -23,6 +24,8 @@ export function CatalogueFilters({
   tags: Tag[];
   selected: { q: string; category: string; tags: string[] };
 }) {
+  const { t, fmt } = await getTranslation();
+
   const toggleHref = (tagId: number) => {
     const id = String(tagId);
     const next = selected.tags.includes(id)
@@ -45,23 +48,23 @@ export function CatalogueFilters({
       <form method="get" action="/courses" className="grid gap-4">
         {/* Changing search or category resets to page one, which is what the
             user means; carrying the old page number would show an empty list. */}
-        <Field label="Search" htmlFor="q" hint="Matches titles, descriptions and tags.">
+        <Field label={t.filters.search} htmlFor="q" hint={t.filters.searchHint}>
           <Input
             id="q"
             name="q"
             type="search"
             defaultValue={selected.q}
-            placeholder="e.g. javascript"
+            placeholder={t.filters.searchPlaceholder}
             autoComplete="off"
           />
         </Field>
 
-        <Field label="Category" htmlFor="category">
+        <Field label={t.filters.category} htmlFor="category">
           <Select id="category" name="category" defaultValue={selected.category}>
-            <option value="">All categories</option>
+            <option value="">{t.filters.allCategories}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
-                {category.name} ({category.course_count ?? 0})
+                {category.name} ({fmt.number(category.course_count ?? 0)})
               </option>
             ))}
           </Select>
@@ -74,14 +77,14 @@ export function CatalogueFilters({
 
         <div className="flex gap-2">
           <Button type="submit" size="sm" className="flex-1">
-            Apply
+            {t.filters.apply}
           </Button>
           {hasFilters ? (
             <Link
               href="/courses"
               className="inline-flex h-8 items-center justify-center rounded-lg border border-line-strong px-3 text-[13px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
             >
-              Reset
+              {t.filters.reset}
             </Link>
           ) : null}
         </div>
@@ -89,11 +92,9 @@ export function CatalogueFilters({
 
       <div className="mt-7 border-t border-line pt-6">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-          Tags
+          {t.filters.tags}
         </h2>
-        <p className="mt-1.5 text-[12px] leading-relaxed text-ink-muted">
-          Selecting more than one narrows the results — a course must carry all of them.
-        </p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-ink-muted">{t.filters.tagsHint}</p>
 
         <ul className="mt-4 flex flex-wrap gap-1.5">
           {tags.map((tag) => {
@@ -117,7 +118,9 @@ export function CatalogueFilters({
                       <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
                     </svg>
                   ) : (
-                    <span className="tabular text-[11px] opacity-60">{tag.course_count ?? 0}</span>
+                    <span className="tabular text-[11px] opacity-60">
+                      {fmt.number(tag.course_count ?? 0)}
+                    </span>
                   )}
                 </Link>
               </li>

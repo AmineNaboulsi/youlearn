@@ -3,9 +3,10 @@ import { readNotice } from "@/lib/notice";
 import Link from "next/link";
 
 import { api } from "@/lib/api/client";
-import type { Paginated, PlatformUser, Role } from "@/lib/api/types";
+import type { Paginated, PlatformUser } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
-import { formatDate, formatRelative } from "@/lib/format";
+import { interpolate } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Select } from "@/components/ui/field";
@@ -17,13 +18,10 @@ import { revokeUserSessionsAction } from "@/app/actions/sessions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "People" };
-
-const ROLE_LABELS: Record<Role, string> = {
-  admin: "Administrator",
-  enseignant: "Instructor",
-  etudiant: "Learner",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.dashboardNav.people };
+}
 
 /**
  * Account administration.
@@ -45,6 +43,7 @@ export default async function PeoplePage({
   const params = await searchParams;
   const flash = readNotice(params);
   const session = await requireRole(["admin"], "/dashboard/people");
+  const { t, fmt } = await getTranslation();
 
   const users = await api<Paginated<PlatformUser>>("/users", {
     query: {
@@ -58,8 +57,8 @@ export default async function PeoplePage({
   return (
     <div className="grid gap-6">
       <PageHeading
-        title="People"
-        description="Every account on the platform. Changes here are applied in Keycloak first, so they take effect on the identity provider and not only in this database."
+        title={t.dashboardNav.people}
+        description={t.people.description}
       />
 
       {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
@@ -67,46 +66,46 @@ export default async function PeoplePage({
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div className="min-w-48 flex-1">
           <label htmlFor="q" className="mb-1.5 block text-[13px] font-medium text-ink-soft">
-            Search
+            {t.dashCourses.search}
           </label>
           <Input
             id="q"
             name="q"
             type="search"
             defaultValue={params.q ?? ""}
-            placeholder="Name or email"
+            placeholder={t.people.searchPlaceholder}
           />
         </div>
 
         <div className="min-w-44">
           <label htmlFor="role" className="mb-1.5 block text-[13px] font-medium text-ink-soft">
-            Role
+            {t.people.role}
           </label>
           <Select id="role" name="role" defaultValue={params.role ?? ""}>
-            <option value="">All roles</option>
-            <option value="admin">Administrators</option>
-            <option value="enseignant">Instructors</option>
-            <option value="etudiant">Learners</option>
+            <option value="">{t.people.allRoles}</option>
+            <option value="admin">{t.people.roleAdmins}</option>
+            <option value="enseignant">{t.people.roleInstructors}</option>
+            <option value="etudiant">{t.people.roleLearners}</option>
           </Select>
         </div>
 
         <Button type="submit" variant="secondary">
-          Filter
+          {t.dashCourses.filter}
         </Button>
         {params.q || params.role ? (
           <ButtonLink href="/dashboard/people" variant="ghost">
-            Reset
+            {t.dashCourses.reset}
           </ButtonLink>
         ) : null}
       </form>
 
       {users.data.length === 0 ? (
         <EmptyState
-          title="No accounts match"
-          description="Try a different search term, or clear the role filter."
+          title={t.people.emptyTitle}
+          description={t.people.emptyBody}
           action={
             <ButtonLink href="/dashboard/people" variant="secondary" size="sm">
-              Clear filters
+              {t.common.clearFilters}
             </ButtonLink>
           }
         />
@@ -115,14 +114,14 @@ export default async function PeoplePage({
           <TableWrap>
             <thead>
               <tr>
-                <Th>Person</Th>
-                <Th>Role</Th>
-                <Th numeric>Courses</Th>
-                <Th numeric>Enrolments</Th>
-                <Th>Last seen</Th>
-                <Th>Status</Th>
+                <Th>{t.people.colPerson}</Th>
+                <Th>{t.people.role}</Th>
+                <Th numeric>{t.people.colCourses}</Th>
+                <Th numeric>{t.people.colEnrolments}</Th>
+                <Th>{t.people.colLastSeen}</Th>
+                <Th>{t.people.colStatus}</Th>
                 <Th>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t.dashCourses.colActions}</span>
                 </Th>
               </tr>
             </thead>
@@ -137,41 +136,43 @@ export default async function PeoplePage({
                       <span className="block font-medium text-ink">{user.name}</span>
                       <span className="mt-0.5 block text-[12px] text-ink-muted">{user.email}</span>
                       <span className="mt-0.5 block text-[11px] text-ink-faint">
-                        Joined {formatDate(user.created_at)}
+                        {interpolate(t.people.joined, { date: fmt.date(user.created_at) })}
                       </span>
                     </Td>
 
                     <Td>
                       {isSelf ? (
-                        <Badge tone="solid">{ROLE_LABELS[user.role]} · you</Badge>
+                        <Badge tone="solid">
+                          {t.roles[user.role]} · {t.people.you}
+                        </Badge>
                       ) : (
                         <form action={setAccountRoleAction} className="flex items-center gap-1.5">
                           <input type="hidden" name="userId" value={user.id} />
                           <Select
                             name="role"
                             defaultValue={user.role}
-                            aria-label={`Role for ${user.name}`}
+                            aria-label={interpolate(t.people.roleFor, { name: user.name })}
                             className="h-8 min-w-32 text-[12px]"
                           >
-                            <option value="etudiant">Learner</option>
-                            <option value="enseignant">Instructor</option>
-                            <option value="admin">Administrator</option>
+                            <option value="etudiant">{t.roles.etudiant}</option>
+                            <option value="enseignant">{t.roles.enseignant}</option>
+                            <option value="admin">{t.roles.admin}</option>
                           </Select>
                           <SubmitButton variant="ghost" size="sm" pendingLabel="…">
-                            Set
+                            {t.people.set}
                           </SubmitButton>
                         </form>
                       )}
                     </Td>
 
-                    <Td numeric>{user.course_count}</Td>
-                    <Td numeric>{user.enrollment_count}</Td>
-                    <Td className="whitespace-nowrap">{formatRelative(user.last_seen_at)}</Td>
+                    <Td numeric>{fmt.number(user.course_count)}</Td>
+                    <Td numeric>{fmt.number(user.enrollment_count)}</Td>
+                    <Td className="whitespace-nowrap">{fmt.relative(user.last_seen_at)}</Td>
 
                     <Td>
                       <Badge tone={user.is_active ? "success" : "danger"}>
                         <StatusDot on={Boolean(user.is_active)} />
-                        {user.is_active ? "Active" : "Suspended"}
+                        {user.is_active ? t.account.active : t.account.suspended}
                       </Badge>
                     </Td>
 
@@ -181,7 +182,7 @@ export default async function PeoplePage({
                           href={`/dashboard/people/${user.id}/sessions`}
                           className="inline-flex h-8 items-center rounded-lg border border-line-strong px-3 text-[12px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
                         >
-                          Sessions
+                          {t.people.sessions}
                         </Link>
 
                         {!isSelf ? (
@@ -190,7 +191,7 @@ export default async function PeoplePage({
                               <input type="hidden" name="userId" value={user.id} />
                               <input type="hidden" name="returnTo" value="/dashboard/people" />
                               <SubmitButton variant="ghost" size="sm" pendingLabel="…">
-                                Sign out
+                                {t.people.signOut}
                               </SubmitButton>
                             </form>
 
@@ -202,7 +203,7 @@ export default async function PeoplePage({
                                 size="sm"
                                 pendingLabel="…"
                               >
-                                {user.is_active ? "Suspend" : "Restore"}
+                                {user.is_active ? t.people.suspend : t.people.restore}
                               </SubmitButton>
                             </form>
                           </>
@@ -221,7 +222,7 @@ export default async function PeoplePage({
             total={users.pagination.total}
             basePath="/dashboard/people"
             params={{ q: params.q, role: params.role }}
-            label="accounts"
+            label={t.people.paginationLabel}
           />
         </>
       )}

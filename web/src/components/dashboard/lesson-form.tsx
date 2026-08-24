@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import type { CurriculumLesson, UploadedAsset } from "@/lib/api/types";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { emptyFormState } from "@/lib/forms";
 import { saveLessonAction } from "@/app/actions/curriculum";
 import { Alert } from "@/components/ui/primitives";
@@ -28,12 +29,17 @@ export function LessonForm({
   lesson,
   currentVideo,
   onCancel,
+  labels,
+  uploadLabels,
 }: {
   courseId: number;
   sectionId: number;
   lesson?: CurriculumLesson;
   currentVideo?: { public_id: string; original_name: string; duration_seconds: number | null } | null;
   onCancel?: () => void;
+  /** Server-resolved strings; see the note on CourseForm. */
+  labels: Dictionary["lessonForm"];
+  uploadLabels: Dictionary["upload"];
 }) {
   const [state, formAction] = useActionState(saveLessonAction, emptyFormState);
 
@@ -58,12 +64,17 @@ export function LessonForm({
       <input type="hidden" name="duration_seconds" value={duration} />
 
       {state.message ? (
-        <Alert tone="danger" title="Could not save">
+        <Alert tone="danger" title={labels.couldNotSave}>
           {state.message}
         </Alert>
       ) : null}
 
-      <Field label="Lesson title" htmlFor={`title-${lesson?.id ?? "new"}`} required error={state.fields.title}>
+      <Field
+        label={labels.title}
+        htmlFor={`title-${lesson?.id ?? "new"}`}
+        required
+        error={state.fields.title}
+      >
         <Input
           id={`title-${lesson?.id ?? "new"}`}
           name="title"
@@ -71,15 +82,15 @@ export function LessonForm({
           required
           minLength={2}
           maxLength={255}
-          placeholder="e.g. Setting up your environment"
+          placeholder={labels.titlePlaceholder}
           error={Boolean(state.fields.title)}
         />
       </Field>
 
       <Field
-        label="Short description"
+        label={labels.summary}
         htmlFor={`summary-${lesson?.id ?? "new"}`}
-        hint="One line, shown under the title in the lesson list."
+        hint={labels.summaryHint}
         error={state.fields.summary}
       >
         <Input
@@ -91,15 +102,15 @@ export function LessonForm({
         />
       </Field>
 
-      <Field label="Lesson type" htmlFor={`kind-${lesson?.id ?? "new"}`}>
+      <Field label={labels.kind} htmlFor={`kind-${lesson?.id ?? "new"}`}>
         <Select
           id={`kind-${lesson?.id ?? "new"}`}
           name="kind"
           value={kind}
           onChange={(event) => setKind(event.target.value as "video" | "text")}
         >
-          <option value="video">Video</option>
-          <option value="text">Written</option>
+          <option value="video">{labels.kindVideo}</option>
+          <option value="text">{labels.kindWritten}</option>
         </Select>
       </Field>
 
@@ -108,6 +119,7 @@ export function LessonForm({
           <VideoUpload
             onUploaded={handleUploaded}
             currentAsset={videoPublicId && currentVideo ? currentVideo : null}
+            labels={uploadLabels}
           />
           {state.fields.video_public_id ? (
             <p className="-mt-2 text-[12px] font-medium text-ink">
@@ -118,9 +130,9 @@ export function LessonForm({
         </>
       ) : (
         <Field
-          label="Lesson content"
+          label={labels.content}
           htmlFor={`text-${lesson?.id ?? "new"}`}
-          hint="Line breaks are preserved. Only enrolled learners can read this."
+          hint={labels.contentHint}
           error={state.fields.text_content}
         >
           <Textarea
@@ -137,17 +149,17 @@ export function LessonForm({
       <Checkbox
         name="is_preview"
         defaultChecked={lesson?.is_preview ?? false}
-        label="Free preview"
-        description="Anyone can watch this lesson without enrolling. One or two previews are what convince people the course is worth joining."
+        label={labels.freePreview}
+        description={labels.freePreviewHint}
       />
 
       <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-        <SubmitButton size="sm" pendingLabel="Saving…">
-          {lesson ? "Save lesson" : "Add lesson"}
+        <SubmitButton size="sm" pendingLabel={labels.saving}>
+          {lesson ? labels.saveLesson : labels.addLesson}
         </SubmitButton>
         {onCancel ? (
           <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
-            Cancel
+            {labels.cancel}
           </Button>
         ) : null}
       </div>

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { api } from "@/lib/api/client";
 import type { EnrolledCourse, Paginated } from "@/lib/api/types";
 import { requireSession } from "@/lib/auth/current-user";
-import { formatDate } from "@/lib/format";
+import { interpolate } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ButtonLink } from "@/components/ui/button";
@@ -17,7 +18,10 @@ import { leaveCourseAction } from "@/app/actions/enrollment";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "My learning" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.learning.title };
+}
 
 /**
  * The learner's own shelf.
@@ -35,6 +39,8 @@ export default async function LearningPage({
   const flash = readNotice(params);
   await requireSession("/learning");
 
+  const { t, fmt } = await getTranslation();
+
   const enrollments = await api<Paginated<EnrolledCourse>>("/me/enrollments", {
     query: { page: params.page, per_page: 12 },
   });
@@ -45,12 +51,12 @@ export default async function LearningPage({
 
       <main id="main" className="mx-auto max-w-6xl px-6 py-12">
         <PageHeading
-          eyebrow="Your account"
-          title="My learning"
-          description="Everything you have enrolled in, newest first."
+          eyebrow={t.learning.eyebrow}
+          title={t.learning.title}
+          description={t.learning.description}
           actions={
             <ButtonLink href="/courses" variant="secondary" size="sm">
-              Find more courses
+              {t.learning.findMore}
             </ButtonLink>
           }
         />
@@ -64,9 +70,9 @@ export default async function LearningPage({
         {enrollments.data.length === 0 ? (
           <div className="mt-10">
             <EmptyState
-              title="You have not enrolled in anything yet"
-              description="Browse the catalogue and enrol in a course to see it here."
-              action={<ButtonLink href="/courses">Browse courses</ButtonLink>}
+              title={t.learning.emptyTitle}
+              description={t.learning.emptyBody}
+              action={<ButtonLink href="/courses">{t.common.browseCourses}</ButtonLink>}
             />
           </div>
         ) : (
@@ -98,7 +104,7 @@ export default async function LearningPage({
                         {!course.is_published ? (
                           <Badge tone="outline">
                             <StatusDot on={false} />
-                            Withdrawn by the instructor
+                            {t.learning.withdrawn}
                           </Badge>
                         ) : null}
                       </div>
@@ -107,21 +113,24 @@ export default async function LearningPage({
                         {course.title}
                       </p>
                       <p className="mt-0.5 truncate text-[12px] text-ink-muted">
-                        {course.instructor_name} · enrolled {formatDate(course.enrolled_at)}
+                        {course.instructor_name} ·{" "}
+                        {interpolate(t.learning.enrolledOn, {
+                          date: fmt.date(course.enrolled_at),
+                        })}
                       </p>
                     </div>
                   </Link>
 
                   <div className="flex flex-none items-center gap-2 sm:justify-end">
                     <ButtonLink href={`/courses/${course.id}`} variant="secondary" size="sm">
-                      Continue
+                      {t.common.continueLabel}
                     </ButtonLink>
 
                     <form action={leaveCourseAction}>
                       <input type="hidden" name="courseId" value={course.id} />
                       <input type="hidden" name="returnTo" value="/learning" />
-                      <SubmitButton variant="ghost" size="sm" pendingLabel="Leaving…">
-                        Leave
+                      <SubmitButton variant="ghost" size="sm" pendingLabel={t.common.leaving}>
+                        {t.common.leave}
                       </SubmitButton>
                     </form>
                   </div>
@@ -135,7 +144,7 @@ export default async function LearningPage({
                 totalPages={enrollments.pagination.total_pages}
                 total={enrollments.pagination.total}
                 basePath="/learning"
-                label="enrolments"
+                label={t.learning.paginationLabel}
               />
             </div>
           </>

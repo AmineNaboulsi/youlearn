@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/cn";
+import { getTranslation } from "@/lib/i18n/server";
 
 import mark from "../../../public/logo-mark.png";
 
@@ -16,12 +17,14 @@ import mark from "../../../public/logo-mark.png";
  * Only the glyph is used here, never the full logo file — that one includes the
  * wordmark, which is unreadable at 28px and would repeat the text beside it.
  */
-export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
+export async function Logo({ className, href = "/" }: { className?: string; href?: string }) {
+  const { t } = await getTranslation();
+
   return (
     <Link
       href={href}
       className={cn("inline-flex items-center gap-2 text-ink", className)}
-      aria-label="YouLearn home"
+      aria-label={t.nav.home}
     >
       <Image
         src={mark}

@@ -11,12 +11,16 @@ import { Button } from "./button";
  * Disabling on pending is the whole point: double-submitting an enrolment or a
  * session revocation is a real bug, and useFormStatus makes preventing it a
  * property of the button rather than something every form has to remember.
+ *
+ * `pendingLabel` is required rather than defaulted: a default would have to be
+ * an untranslated English string, and this is a client component with no
+ * dictionary to reach for.
  */
 export function SubmitButton({
   children,
   pendingLabel,
   ...props
-}: ComponentProps<typeof Button> & { pendingLabel?: string }) {
+}: ComponentProps<typeof Button> & { pendingLabel: string }) {
   const { pending } = useFormStatus();
 
   return (
@@ -24,7 +28,7 @@ export function SubmitButton({
       {pending ? (
         <>
           <Spinner />
-          {pendingLabel ?? "Working…"}
+          {pendingLabel}
         </>
       ) : (
         children

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/cn";
+import { interpolate } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 
 /**
  * Server-rendered pagination.
@@ -9,25 +11,29 @@ import { cn } from "@/lib/cn";
  * control functions with JavaScript disabled. Existing query parameters are
  * preserved, which is what keeps a search or a filter alive across pages.
  */
-export function Pagination({
+export async function Pagination({
   page,
   totalPages,
   total,
   basePath,
   params,
-  label = "results",
+  label,
 }: {
   page: number;
   totalPages: number;
   total: number;
   basePath: string;
   params?: Record<string, string | undefined>;
+  /** What is being counted, already in the reader's language. */
   label?: string;
 }) {
+  const { t, fmt } = await getTranslation();
+  const noun = label ?? t.pagination.results;
+
   if (totalPages <= 1) {
     return (
       <p className="text-[12px] text-ink-muted">
-        {total} {label}
+        {fmt.number(total)} {noun}
       </p>
     );
   }
@@ -46,19 +52,22 @@ export function Pagination({
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={t.pagination.label}
       className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4"
     >
       <p className="text-[12px] text-ink-muted">
-        Page <span className="tabular font-medium text-ink-soft">{page}</span> of{" "}
-        <span className="tabular font-medium text-ink-soft">{totalPages}</span> ·{" "}
-        <span className="tabular">{total}</span> {label}
+        {interpolate(t.pagination.summary, {
+          page: fmt.number(page),
+          totalPages: fmt.number(totalPages),
+          total: fmt.number(total),
+          noun,
+        })}
       </p>
 
       <ul className="flex items-center gap-1">
         <li>
           <PageLink href={href(page - 1)} disabled={page <= 1} rel="prev">
-            Previous
+            {t.pagination.previous}
           </PageLink>
         </li>
 
@@ -78,7 +87,7 @@ export function Pagination({
 
         <li>
           <PageLink href={href(page + 1)} disabled={page >= totalPages} rel="next">
-            Next
+            {t.pagination.next}
           </PageLink>
         </li>
       </ul>

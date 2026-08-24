@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import type { CurriculumSection } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
-import { formatClock } from "@/lib/format";
+import { plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 
 /**
  * The section-by-section contents of a course.
@@ -16,7 +17,7 @@ import { formatClock } from "@/lib/format";
  * would make the course look emptier than it is, which is the opposite of what
  * a locked lesson is for.
  */
-export function CurriculumList({
+export async function CurriculumList({
   sections,
   courseId,
   currentLessonId,
@@ -31,6 +32,8 @@ export function CurriculumList({
     return null;
   }
 
+  const { locale, t, fmt } = await getTranslation();
+
   return (
     <ol className={cn("grid", compact ? "gap-4" : "gap-px overflow-hidden rounded-card border border-line bg-line")}>
       {sections.map((section, sectionIndex) => (
@@ -42,12 +45,12 @@ export function CurriculumList({
             )}
           >
             <h3 className={cn("font-semibold text-ink", compact ? "text-[13px]" : "text-[14px]")}>
-              <span className="mr-2 text-ink-faint">{sectionIndex + 1}.</span>
+              <span className="me-2 text-ink-faint">{sectionIndex + 1}.</span>
               {section.title}
             </h3>
             <span className="flex-none text-[11px] text-ink-muted">
-              {section.lesson_count} lesson{section.lesson_count === 1 ? "" : "s"}
-              {section.duration_seconds > 0 ? ` · ${formatClock(section.duration_seconds)}` : ""}
+              {plural(locale, section.lesson_count, t.course.lessonCount)}
+              {section.duration_seconds > 0 ? ` · ${fmt.clock(section.duration_seconds)}` : ""}
             </span>
           </div>
 
@@ -64,7 +67,12 @@ export function CurriculumList({
 
               const inner = (
                 <>
-                  <LessonMark done={done} locked={lesson.locked} current={isCurrent} />
+                  <LessonMark
+                    done={done}
+                    locked={lesson.locked}
+                    current={isCurrent}
+                    labels={t.curriculum}
+                  />
 
                   <span className="min-w-0 flex-1">
                     <span
@@ -94,11 +102,11 @@ export function CurriculumList({
                   <span className="flex flex-none items-center gap-2 text-[11px] text-ink-muted">
                     {lesson.is_preview && lesson.locked === false && currentLessonId === undefined ? (
                       <span className="rounded border border-line-strong px-1.5 py-0.5 font-medium">
-                        Preview
+                        {t.course.preview}
                       </span>
                     ) : null}
                     {lesson.duration_seconds > 0 ? (
-                      <span className="tabular">{formatClock(lesson.duration_seconds)}</span>
+                      <span className="tabular">{fmt.clock(lesson.duration_seconds)}</span>
                     ) : null}
                   </span>
                 </>
@@ -119,7 +127,7 @@ export function CurriculumList({
                     // A span, not a disabled link: an anchor with no href is
                     // invisible to a keyboard, and a disabled-looking link that
                     // is still focusable is worse than one that is not there.
-                    <span className={className} aria-disabled title="Enrol to unlock this lesson">
+                    <span className={className} aria-disabled title={t.curriculum.lockedTitle}>
                       {inner}
                     </span>
                   ) : (
@@ -151,16 +159,18 @@ function LessonMark({
   done,
   locked,
   current,
+  labels,
 }: {
   done: boolean;
   locked: boolean;
   current: boolean;
+  labels: { completed: string; locked: string; current: string; notStarted: string };
 }) {
   if (done) {
     return (
       <span
         className="grid size-4 flex-none place-items-center rounded-full bg-ink text-white"
-        aria-label="Completed"
+        aria-label={labels.completed}
       >
         <svg viewBox="0 0 12 12" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
           <path d="M2.5 6.5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
@@ -177,7 +187,7 @@ function LessonMark({
         fill="none"
         stroke="currentColor"
         strokeWidth="1.4"
-        aria-label="Locked"
+        aria-label={labels.locked}
       >
         <rect x="3.5" y="7" width="9" height="6.5" rx="1.5" />
         <path d="M5.5 7V5a2.5 2.5 0 015 0v2" strokeLinecap="round" />
@@ -191,7 +201,7 @@ function LessonMark({
         "size-4 flex-none rounded-full border",
         current ? "border-[3px] border-ink" : "border-ink-ghost",
       )}
-      aria-label={current ? "Current lesson" : "Not started"}
+      aria-label={current ? labels.current : labels.notStarted}
     />
   );
 }

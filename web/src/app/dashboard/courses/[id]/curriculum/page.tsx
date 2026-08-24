@@ -5,7 +5,11 @@ import { notFound } from "next/navigation";
 import { api, apiOrNull } from "@/lib/api/client";
 import type { CourseDetail, Curriculum, CurriculumSection, Envelope } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
-import { formatClock } from "@/lib/format";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+import type { Locale } from "@/lib/i18n/config";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
+import type { Formatters } from "@/lib/format";
 import { ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/field";
@@ -32,7 +36,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Curriculum" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.courseEdit.curriculum };
+}
 
 /**
  * Where an instructor builds the course: named sections, and the videos inside
@@ -68,27 +75,41 @@ export default async function CurriculumPage({
   const course = courseResponse.data;
   const curriculum = curriculumResponse.data;
   const courseId = course.id;
+  const { locale, t, fmt } = await getTranslation();
 
   return (
     <div className="grid gap-6">
       <PageHeading
-        eyebrow="Courses"
+        eyebrow={t.courses.title}
         title={course.title}
         description={
           curriculum.lesson_count === 0
-            ? "No lessons yet. Add a section, then upload your first video into it."
-            : `${curriculum.sections.length} section${curriculum.sections.length === 1 ? "" : "s"} · ${curriculum.lesson_count} lesson${curriculum.lesson_count === 1 ? "" : "s"}${curriculum.duration_seconds > 0 ? ` · ${formatClock(curriculum.duration_seconds)} of video` : ""}`
+            ? t.curriculumAdmin.emptyDescription
+            : interpolate(t.curriculumAdmin.summary, {
+                sections: plural(locale, curriculum.sections.length, t.course.sectionCount),
+                lessons: plural(locale, curriculum.lesson_count, t.course.lessonCount),
+                duration:
+                  curriculum.duration_seconds > 0
+                    ? interpolate(t.curriculumAdmin.summaryDuration, {
+                        clock: fmt.clock(curriculum.duration_seconds),
+                      })
+                    : "",
+              })
         }
         actions={
           <>
             <ButtonLink href={`/dashboard/courses/${courseId}`} variant="secondary" size="sm">
-              Course details
+              {t.analytics.courseDetails}
             </ButtonLink>
-            <ButtonLink href={`/dashboard/courses/${courseId}/analytics`} variant="secondary" size="sm">
-              Engagement
+            <ButtonLink
+              href={`/dashboard/courses/${courseId}/analytics`}
+              variant="secondary"
+              size="sm"
+            >
+              {t.courseEdit.engagement}
             </ButtonLink>
             <ButtonLink href={`/courses/${courseId}`} variant="ghost" size="sm">
-              View as learner
+              {t.courseEdit.viewAsLearner}
             </ButtonLink>
           </>
         }
@@ -98,8 +119,8 @@ export default async function CurriculumPage({
 
       {curriculum.sections.length === 0 ? (
         <EmptyState
-          title="This course has no sections yet"
-          description="A section is a named group of videos — 'Getting started', 'Going deeper'. Create one below and add lessons to it."
+          title={t.curriculumAdmin.noSectionsTitle}
+          description={t.curriculumAdmin.noSectionsBody}
         />
       ) : (
         <div className="grid gap-5">
@@ -110,6 +131,9 @@ export default async function CurriculumPage({
               index={index}
               total={curriculum.sections.length}
               courseId={courseId}
+              locale={locale}
+              t={t}
+              fmt={fmt}
             />
           ))}
         </div>
@@ -118,10 +142,8 @@ export default async function CurriculumPage({
       {/* ------------------------------ add section --------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>Add a section</CardTitle>
-          <CardDescription>
-            Sections group lessons and appear as headings in the course contents.
-          </CardDescription>
+          <CardTitle>{t.curriculumAdmin.addSection}</CardTitle>
+          <CardDescription>{t.curriculumAdmin.addSectionHint}</CardDescription>
         </CardHeader>
         <CardBody>
           <form action={createSectionAction} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
@@ -129,7 +151,7 @@ export default async function CurriculumPage({
 
             <div>
               <label htmlFor="new-section-title" className="mb-1.5 block text-[13px] font-medium text-ink-soft">
-                Section name
+                {t.curriculumAdmin.sectionName}
               </label>
               <Input
                 id="new-section-title"
@@ -137,19 +159,20 @@ export default async function CurriculumPage({
                 required
                 minLength={2}
                 maxLength={255}
-                placeholder="e.g. Getting started"
+                placeholder={t.curriculumAdmin.sectionNamePlaceholder}
               />
             </div>
 
             <div>
               <label htmlFor="new-section-summary" className="mb-1.5 block text-[13px] font-medium text-ink-soft">
-                Description <span className="font-normal text-ink-muted">(optional)</span>
+                {t.curriculumAdmin.descriptionLabel}{" "}
+                <span className="font-normal text-ink-muted">{t.curriculumAdmin.optional}</span>
               </label>
               <Input id="new-section-summary" name="summary" maxLength={500} />
             </div>
 
-            <SubmitButton size="md" pendingLabel="Adding…">
-              Add section
+            <SubmitButton size="md" pendingLabel={t.curriculumAdmin.adding}>
+              {t.curriculumAdmin.addSection}
             </SubmitButton>
           </form>
         </CardBody>
@@ -165,11 +188,19 @@ function SectionCard({
   index,
   total,
   courseId,
+  locale,
+  t,
+  fmt,
 }: {
   section: CurriculumSection;
   index: number;
   total: number;
   courseId: number;
+  // Threaded down rather than re-resolved: this renders once per section, and
+  // each getTranslation() would be another headers() read for the same answer.
+  locale: Locale;
+  t: Dictionary;
+  fmt: Formatters;
 }) {
   return (
     <Card>
@@ -177,12 +208,12 @@ function SectionCard({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <CardTitle>
-              <span className="mr-2 text-ink-faint">{index + 1}.</span>
+              <span className="me-2 text-ink-faint">{index + 1}.</span>
               {section.title}
             </CardTitle>
             <CardDescription>
-              {section.lesson_count} lesson{section.lesson_count === 1 ? "" : "s"}
-              {section.duration_seconds > 0 ? ` · ${formatClock(section.duration_seconds)}` : ""}
+              {plural(locale, section.lesson_count, t.course.lessonCount)}
+              {section.duration_seconds > 0 ? ` · ${fmt.clock(section.duration_seconds)}` : ""}
               {section.summary ? ` · ${section.summary}` : ""}
             </CardDescription>
           </div>
@@ -195,6 +226,7 @@ function SectionCard({
               idValue={section.id}
               direction="up"
               disabled={index === 0}
+              t={t}
             />
             <MoveButton
               action={moveSectionAction}
@@ -203,6 +235,7 @@ function SectionCard({
               idValue={section.id}
               direction="down"
               disabled={index === total - 1}
+              t={t}
             />
           </div>
         </div>
@@ -212,7 +245,7 @@ function SectionCard({
         {/* ------------------------------ lessons ----------------------- */}
         {section.lessons.length === 0 ? (
           <p className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-[13px] text-ink-muted">
-            No lessons in this section yet.
+            {t.curriculumAdmin.noLessonsInSection}
           </p>
         ) : (
           <ol className="grid gap-px overflow-hidden rounded-lg border border-line bg-line">
@@ -228,23 +261,29 @@ function SectionCard({
                       {lesson.title}
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
-                      <span>{lesson.kind === "video" ? "Video" : "Written"}</span>
+                      <span>
+                        {lesson.kind === "video"
+                          ? t.curriculumAdmin.kindVideo
+                          : t.curriculumAdmin.kindWritten}
+                      </span>
                       {lesson.duration_seconds > 0 ? (
                         <>
                           <span aria-hidden>·</span>
-                          <span className="tabular">{formatClock(lesson.duration_seconds)}</span>
+                          <span className="tabular">{fmt.clock(lesson.duration_seconds)}</span>
                         </>
                       ) : null}
                       {lesson.kind === "video" && !lesson.has_video ? (
                         <>
                           <span aria-hidden>·</span>
-                          <span className="font-medium text-ink">no video attached</span>
+                          <span className="font-medium text-ink">
+                            {t.curriculumAdmin.noVideoAttached}
+                          </span>
                         </>
                       ) : null}
                     </span>
                   </span>
 
-                  {lesson.is_preview ? <Badge tone="outline">Preview</Badge> : null}
+                  {lesson.is_preview ? <Badge tone="outline">{t.course.preview}</Badge> : null}
 
                   <span className="flex flex-none gap-1">
                     <MoveButton
@@ -254,6 +293,7 @@ function SectionCard({
                       idValue={lesson.id}
                       direction="up"
                       disabled={lessonIndex === 0}
+                      t={t}
                     />
                     <MoveButton
                       action={moveLessonAction}
@@ -262,13 +302,14 @@ function SectionCard({
                       idValue={lesson.id}
                       direction="down"
                       disabled={lessonIndex === section.lessons.length - 1}
+                      t={t}
                     />
 
                     <form action={deleteLessonAction}>
                       <input type="hidden" name="courseId" value={courseId} />
                       <input type="hidden" name="lessonId" value={lesson.id} />
                       <SubmitButton variant="ghost" size="sm" pendingLabel="…">
-                        Delete
+                        {t.curriculumAdmin.delete}
                       </SubmitButton>
                     </form>
                   </span>
@@ -276,18 +317,20 @@ function SectionCard({
 
                 <details className="group border-t border-line">
                   <summary className="cursor-pointer list-none px-4 py-2 text-[12px] font-medium text-ink-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
-                    Edit this lesson
+                    {t.curriculumAdmin.editLesson}
                   </summary>
                   <div className="border-t border-line bg-surface-sunk px-4 py-4">
                     <LessonForm
                       courseId={courseId}
                       sectionId={section.id}
+                      labels={t.lessonForm}
+                      uploadLabels={t.upload}
                       lesson={lesson}
                       currentVideo={
                         lesson.video_url
                           ? {
                               public_id: lesson.video_url.split("/").pop() ?? "",
-                              original_name: "Current video",
+                              original_name: t.curriculumAdmin.currentVideo,
                               duration_seconds: lesson.duration_seconds,
                             }
                           : null
@@ -303,17 +346,22 @@ function SectionCard({
         {/* ---------------------------- add lesson ---------------------- */}
         <details className="group rounded-lg border border-line-strong">
           <summary className="cursor-pointer list-none px-4 py-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-sunk [&::-webkit-details-marker]:hidden">
-            + Add a lesson to “{section.title}”
+            {interpolate(t.curriculumAdmin.addLessonTo, { section: section.title })}
           </summary>
           <div className="border-t border-line px-4 py-4">
-            <LessonForm courseId={courseId} sectionId={section.id} />
+            <LessonForm
+              courseId={courseId}
+              sectionId={section.id}
+              labels={t.lessonForm}
+              uploadLabels={t.upload}
+            />
           </div>
         </details>
 
         {/* ------------------------- section settings ------------------- */}
         <details className="group">
           <summary className="cursor-pointer list-none text-[12px] text-ink-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
-            Rename or delete this section
+            {t.curriculumAdmin.renameOrDelete}
           </summary>
 
           <div className="mt-3 grid gap-4 rounded-lg border border-line bg-surface-sunk p-4">
@@ -323,20 +371,20 @@ function SectionCard({
 
               <div>
                 <label htmlFor={`rename-${section.id}`} className="mb-1.5 block text-[12px] font-medium text-ink-soft">
-                  Name
+                  {t.curriculumAdmin.name}
                 </label>
                 <Input id={`rename-${section.id}`} name="title" defaultValue={section.title} minLength={2} maxLength={255} />
               </div>
 
               <div>
                 <label htmlFor={`resummary-${section.id}`} className="mb-1.5 block text-[12px] font-medium text-ink-soft">
-                  Description
+                  {t.curriculumAdmin.descriptionLabel}
                 </label>
                 <Input id={`resummary-${section.id}`} name="summary" defaultValue={section.summary ?? ""} maxLength={500} />
               </div>
 
-              <SubmitButton variant="secondary" size="md" pendingLabel="Saving…">
-                Save
+              <SubmitButton variant="secondary" size="md" pendingLabel={t.curriculumAdmin.saving}>
+                {t.curriculumAdmin.save}
               </SubmitButton>
             </form>
 
@@ -346,18 +394,31 @@ function SectionCard({
 
               <div className="min-w-52">
                 <label htmlFor={`confirm-${section.id}`} className="mb-1.5 block text-[12px] font-medium text-ink-soft">
-                  Type <span className="font-mono text-ink">delete</span> to remove this section
+                  {t.curriculumAdmin.typeToRemoveSection.split("{word}").map((part, i) => (
+                    <span key={i}>
+                      {i > 0 ? (
+                        <span className="font-mono text-ink">{t.courseEdit.deleteWord}</span>
+                      ) : null}
+                      {part}
+                    </span>
+                  ))}
                 </label>
-                <Input id={`confirm-${section.id}`} name="confirm" autoComplete="off" placeholder="delete" />
+                <Input
+                  id={`confirm-${section.id}`}
+                  name="confirm"
+                  autoComplete="off"
+                  placeholder={t.courseEdit.deleteWord}
+                />
               </div>
 
-              <SubmitButton variant="danger" size="md" pendingLabel="Deleting…">
-                Delete section
+              <SubmitButton variant="danger" size="md" pendingLabel={t.courseEdit.deleting}>
+                {t.curriculumAdmin.deleteSection}
               </SubmitButton>
 
               <p className="w-full text-[11px] leading-relaxed text-ink-muted">
-                This removes its {section.lesson_count} lesson
-                {section.lesson_count === 1 ? "" : "s"} and everyone&rsquo;s watch history for them.
+                {interpolate(t.curriculumAdmin.deleteSectionWarning, {
+                  lessons: plural(locale, section.lesson_count, t.course.lessonCount),
+                })}
               </p>
             </form>
           </div>
@@ -375,6 +436,7 @@ function MoveButton({
   idValue,
   direction,
   disabled,
+  t,
 }: {
   action: (formData: FormData) => Promise<void>;
   courseId: number;
@@ -382,6 +444,7 @@ function MoveButton({
   idValue: number;
   direction: "up" | "down";
   disabled: boolean;
+  t: Dictionary;
 }) {
   return (
     <form action={action}>
@@ -393,7 +456,9 @@ function MoveButton({
         size="sm"
         disabled={disabled}
         pendingLabel="…"
-        aria-label={`Move ${direction}`}
+        aria-label={
+          direction === "up" ? t.curriculumAdmin.moveUp : t.curriculumAdmin.moveDown
+        }
         className="px-2"
       >
         {direction === "up" ? "↑" : "↓"}

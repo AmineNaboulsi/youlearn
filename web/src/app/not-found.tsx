@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getTranslation } from "@/lib/i18n/server";
 import { GridBackground } from "@/components/ui/primitives";
 import { Logo } from "@/components/layout/logo";
 import { ButtonLink } from "@/components/ui/button";
@@ -11,7 +12,9 @@ import { ButtonLink } from "@/components/ui/button";
  * and a not-found page can be rendered in contexts where reading cookies is
  * not allowed. A plain wordmark avoids the whole question.
  */
-export default function NotFound() {
+export default async function NotFound() {
+  const { t } = await getTranslation();
+
   return (
     <div className="relative min-h-dvh">
       <GridBackground />
@@ -23,16 +26,14 @@ export default function NotFound() {
       <main className="relative mx-auto flex max-w-lg flex-col items-center px-6 py-28 text-center">
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-muted">404</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-ink">
-          We could not find that page
+          {t.notFound.title}
         </h1>
-        <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">
-          The link may be out of date, or the course may have been unpublished.
-        </p>
+        <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">{t.notFound.body}</p>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <ButtonLink href="/courses">Browse courses</ButtonLink>
+          <ButtonLink href="/courses">{t.common.browseCourses}</ButtonLink>
           <ButtonLink href="/" variant="secondary">
-            Back to home
+            {t.common.backToHome}
           </ButtonLink>
         </div>
 
@@ -40,7 +41,7 @@ export default function NotFound() {
           href="/account"
           className="mt-8 text-[13px] text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
         >
-          Go to your account
+          {t.notFound.goToAccount}
         </Link>
       </main>
     </div>

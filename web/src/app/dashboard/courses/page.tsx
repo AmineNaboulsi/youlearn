@@ -5,7 +5,8 @@ import Link from "next/link";
 import { api } from "@/lib/api/client";
 import type { Course, Envelope, Category, Paginated } from "@/lib/api/types";
 import { primaryRole, requireRole } from "@/lib/auth/current-user";
-import { formatDate } from "@/lib/format";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Select } from "@/components/ui/field";
@@ -16,7 +17,10 @@ import { setPublicationAction } from "@/app/actions/courses";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Courses" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.courses.title };
+}
 
 /**
  * The authoring list.
@@ -34,6 +38,7 @@ export default async function DashboardCoursesPage({
   const flash = readNotice(params);
   const session = await requireRole(["admin", "enseignant"], "/dashboard/courses");
   const isAdmin = primaryRole(session.user.roles) === "admin";
+  const { locale, t, fmt } = await getTranslation();
 
   const [courses, categories] = await Promise.all([
     api<Paginated<Course>>("/me/courses", {
@@ -52,13 +57,15 @@ export default async function DashboardCoursesPage({
   return (
     <div className="grid gap-6">
       <PageHeading
-        title="Courses"
+        title={t.courses.title}
         description={
-          isAdmin
-            ? "Every course on the platform, drafts included."
-            : "The courses you author. Nobody else can edit them, and you cannot edit theirs."
+          isAdmin ? t.dashCourses.descriptionAdmin : t.dashCourses.descriptionOwn
         }
-        actions={<ButtonLink href="/dashboard/courses/new" size="sm">New course</ButtonLink>}
+        actions={
+          <ButtonLink href="/dashboard/courses/new" size="sm">
+            {t.dashCourses.newCourse}
+          </ButtonLink>
+        }
       />
 
       {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
@@ -66,23 +73,23 @@ export default async function DashboardCoursesPage({
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div className="min-w-48 flex-1">
           <label htmlFor="q" className="mb-1.5 block text-[13px] font-medium text-ink-soft">
-            Search
+            {t.dashCourses.search}
           </label>
           <Input
             id="q"
             name="q"
             type="search"
             defaultValue={params.q ?? ""}
-            placeholder="Title, description or tag"
+            placeholder={t.dashCourses.searchPlaceholder}
           />
         </div>
 
         <div className="min-w-44">
           <label htmlFor="category" className="mb-1.5 block text-[13px] font-medium text-ink-soft">
-            Category
+            {t.dashCourses.category}
           </label>
           <Select id="category" name="category" defaultValue={params.category ?? ""}>
-            <option value="">All categories</option>
+            <option value="">{t.dashCourses.allCategories}</option>
             {categories.data.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -92,31 +99,35 @@ export default async function DashboardCoursesPage({
         </div>
 
         <Button type="submit" variant="secondary">
-          Filter
+          {t.dashCourses.filter}
         </Button>
         {params.q || params.category ? (
           <ButtonLink href="/dashboard/courses" variant="ghost">
-            Reset
+            {t.dashCourses.reset}
           </ButtonLink>
         ) : null}
       </form>
 
       {courses.data.length === 0 ? (
         <EmptyState
-          title={params.q || params.category ? "Nothing matches those filters" : "No courses yet"}
+          title={
+            params.q || params.category
+              ? t.dashCourses.emptyFilteredTitle
+              : t.dashCourses.emptyTitle
+          }
           description={
             params.q || params.category
-              ? "Try a broader search, or clear the category filter."
-              : "Create your first course and it will appear here, in draft, until you publish it."
+              ? t.dashCourses.emptyFilteredBody
+              : t.dashCourses.emptyBody
           }
           action={
             params.q || params.category ? (
               <ButtonLink href="/dashboard/courses" variant="secondary" size="sm">
-                Clear filters
+                {t.common.clearFilters}
               </ButtonLink>
             ) : (
               <ButtonLink href="/dashboard/courses/new" size="sm">
-                Create a course
+                {t.dashboard.createCourse}
               </ButtonLink>
             )
           }
@@ -125,22 +136,23 @@ export default async function DashboardCoursesPage({
         <>
           {drafts > 0 ? (
             <p className="text-[13px] text-ink-muted">
-              <span className="tabular font-medium text-ink">{drafts}</span> of the courses on this
-              page {drafts === 1 ? "is" : "are"} still a draft and hidden from the catalogue.
+              {interpolate(t.dashCourses.draftsNotice, {
+                count: plural(locale, drafts, t.dashCourses.draftCount),
+              })}
             </p>
           ) : null}
 
           <TableWrap>
             <thead>
               <tr>
-                <Th>Course</Th>
-                {isAdmin ? <Th>Instructor</Th> : null}
-                <Th>Category</Th>
-                <Th numeric>Enrolled</Th>
-                <Th>Updated</Th>
-                <Th>State</Th>
+                <Th>{t.dashCourses.colCourse}</Th>
+                {isAdmin ? <Th>{t.dashCourses.colInstructor}</Th> : null}
+                <Th>{t.dashCourses.colCategory}</Th>
+                <Th numeric>{t.dashCourses.colEnrolled}</Th>
+                <Th>{t.dashCourses.colUpdated}</Th>
+                <Th>{t.dashCourses.colState}</Th>
                 <Th>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t.dashCourses.colActions}</span>
                 </Th>
               </tr>
             </thead>
@@ -164,14 +176,18 @@ export default async function DashboardCoursesPage({
 
                   {isAdmin ? <Td>{course.instructor_name}</Td> : null}
 
-                  <Td>{course.category_name ?? <span className="text-ink-faint">—</span>}</Td>
-                  <Td numeric>{course.enrollment_count}</Td>
-                  <Td>{formatDate(course.updated_at)}</Td>
+                  <Td>
+                    {course.category_name ?? (
+                      <span className="text-ink-faint">{t.common.none}</span>
+                    )}
+                  </Td>
+                  <Td numeric>{fmt.number(course.enrollment_count)}</Td>
+                  <Td>{fmt.date(course.updated_at)}</Td>
 
                   <Td>
                     <Badge tone={course.is_published ? "success" : "outline"}>
                       <StatusDot on={Boolean(course.is_published)} />
-                      {course.is_published ? "Published" : "Draft"}
+                      {course.is_published ? t.course.published : t.course.draft}
                     </Badge>
                   </Td>
 
@@ -182,7 +198,7 @@ export default async function DashboardCoursesPage({
                         <input type="hidden" name="publish" value={course.is_published ? "0" : "1"} />
                         <input type="hidden" name="returnTo" value="/dashboard/courses" />
                         <SubmitButton variant="ghost" size="sm" pendingLabel="…">
-                          {course.is_published ? "Unpublish" : "Publish"}
+                          {course.is_published ? t.dashCourses.unpublish : t.dashCourses.publish}
                         </SubmitButton>
                       </form>
 
@@ -191,7 +207,7 @@ export default async function DashboardCoursesPage({
                         variant="ghost"
                         size="sm"
                       >
-                        Lessons
+                        {t.dashCourses.lessons}
                       </ButtonLink>
 
                       <ButtonLink
@@ -199,7 +215,7 @@ export default async function DashboardCoursesPage({
                         variant="secondary"
                         size="sm"
                       >
-                        Edit
+                        {t.dashCourses.edit}
                       </ButtonLink>
                     </div>
                   </Td>
@@ -214,7 +230,7 @@ export default async function DashboardCoursesPage({
             total={courses.pagination.total}
             basePath="/dashboard/courses"
             params={{ q: params.q, category: params.category }}
-            label="courses"
+            label={t.courses.paginationLabel}
           />
         </>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -34,6 +35,7 @@ export function VideoPlayer({
   nextLessonId,
   courseId,
   title,
+  labels,
 }: {
   lessonId: number;
   src: string;
@@ -43,6 +45,8 @@ export function VideoPlayer({
   nextLessonId: number | null;
   courseId: number;
   title: string;
+  /** Server-resolved strings; see the note on CourseForm. */
+  labels: Dictionary["player"];
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
@@ -179,7 +183,7 @@ export function VideoPlayer({
           onEnded={onEnded}
           onError={() =>
             setError(
-              "This video could not be played. It may still be uploading, or the format may not be supported by this browser.",
+              labels.couldNotPlay,
             )
           }
           aria-label={title}

@@ -61,8 +61,11 @@
 
   --radius-card: 0.875rem;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* The Arabic face is listed first: a browser walks the stack per character,
+     so Latin text still renders in Inter and only the Arabic glyphs — which
+     Inter does not carry — fall through to Noto. */
+  --font-sans: var(--font-arabic), var(--font-inter), ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Motion. Short and eased-out; nothing here should feel like an animation. */
@@ -76,6 +79,33 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+}
+
+/*
+ * Arabic sits on a taller body than Latin at the same point size, so the tight
+ * tracking the design uses for headings reads as cramped and the ascenders
+ * clip. Loosen both, and never letter-space: Arabic is cursive, and spacing it
+ * out breaks the joins between letters.
+ */
+[dir="rtl"] {
+  line-height: 1.75;
+}
+
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3 {
+  letter-spacing: normal;
+  line-height: 1.4;
+}
+
+/*
+ * Digits, times and durations stay left-to-right inside otherwise RTL prose.
+ * Without this a run like "1:02:05" is reordered by the bidi algorithm.
+ */
+[dir="rtl"] .tabular,
+[dir="rtl"] .ltr-nums {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 body {

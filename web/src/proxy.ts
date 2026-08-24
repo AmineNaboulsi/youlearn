@@ -2,6 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { refreshSession } from "@/lib/auth/oidc";
 import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
+  isLocale,
+  type Locale,
+} from "@/lib/i18n/config";
+import {
   applySessionToRequest,
   clearSessionCookie,
   clearSessionFromRequest,
@@ -29,7 +36,12 @@ import {
  *     security boundary: the API re-checks every permission on every call, and
  *     each protected page re-reads the session server-side.
  *
- *  3. Set response security headers, including a per-request CSP nonce.
+ *  3. Resolve the display language, for the same reason as the token refresh:
+ *     a server component can read a cookie but cannot write one, so the
+ *     negotiated value is stamped onto the request for this render and written
+ *     back as a cookie for the next one.
+ *
+ *  4. Set response security headers, including a per-request CSP nonce.
  */
 
 export const config = {
@@ -54,6 +66,17 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   const nonce = crypto.randomUUID().replace(/-/g, "");
+
+  // Arabic unless the visitor has chosen otherwise. Accept-Language is
+  // deliberately not consulted: this platform's audience reads Arabic, and
+  // negotiating would hand English to every browser that ships with an en-US
+  // default — which is most of them — so the platform's own language would be
+  // the one almost nobody landed in.
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
+  const locale: Locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+  // Only persist once the visitor has actually chosen; writing the default
+  // back on a first visit would freeze it before they had any say.
+  const persistLocale = isLocale(cookieLocale) && cookieLocale !== locale;
 
   let session = await unsealSession(readSessionCookie(request.cookies));
   let refreshed: string | null = null;
@@ -100,11 +123,15 @@ export async function proxy(request: NextRequest) {
   }
 
   const response = NextResponse.next({
-    request: { headers: withRequestContext(request.headers, nonce, pathname) },
+    request: { headers: withRequestContext(request.headers, nonce, pathname, locale) },
   });
 
   if (signedOut) {
     clearSessionCookie(response.cookies);
+  }
+
+  if (persistLocale) {
+    writeLocaleCookie(response, locale);
   }
 
   return applyHeaders(response, nonce, refreshed, session);
@@ -116,12 +143,36 @@ export async function proxy(request: NextRequest) {
  * `x-pathname` exists because a layout has no access to the current URL, and
  * the alternative — a client component calling usePathname just to highlight a
  * nav item — would drag a JavaScript bundle into an otherwise static shell.
+ *
+ * `x-locale` carries the negotiated language so that a first-time visitor's
+ * very first render is already in it, rather than the default followed by a
+ * switch once the cookie set below comes back.
  */
-function withRequestContext(headers: Headers, nonce: string, pathname: string): Headers {
+function withRequestContext(
+  headers: Headers,
+  nonce: string,
+  pathname: string,
+  locale: Locale,
+): Headers {
   const next = new Headers(headers);
   next.set("x-nonce", nonce);
   next.set("x-pathname", pathname);
+  next.set("x-locale", locale);
   return next;
+}
+
+/**
+ * Readable by document.cookie on purpose — it holds a language choice, nothing
+ * that would matter if a script read it, and leaving it accessible keeps the
+ * option of a no-reload switcher open later.
+ */
+function writeLocaleCookie(response: NextResponse, locale: Locale) {
+  response.cookies.set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
 }
 
 function applyHeaders(

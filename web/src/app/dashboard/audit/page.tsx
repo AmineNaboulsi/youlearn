@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { api } from "@/lib/api/client";
 import type { ExportAuditEntry, ExportOutcome, Paginated } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
-import { formatDateTime, formatNumber } from "@/lib/format";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { getTranslation } from "@/lib/i18n/server";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge, EmptyState, PageHeading } from "@/components/ui/primitives";
 import { Pagination } from "@/components/ui/pagination";
@@ -11,14 +12,18 @@ import { TableWrap, Td, Th, Tr } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Export audit" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.dashboardNav.audit };
+}
 
-const OUTCOMES: Array<{ key: ExportOutcome | ""; label: string }> = [
-  { key: "", label: "Everything" },
-  { key: "allowed", label: "Allowed" },
-  { key: "truncated", label: "Truncated" },
-  { key: "denied", label: "Refused" },
-  { key: "rate_limited", label: "Throttled" },
+/** The filter chips, in display order. Labels come from the dictionary. */
+const OUTCOME_KEYS: Array<ExportOutcome | ""> = [
+  "",
+  "allowed",
+  "truncated",
+  "denied",
+  "rate_limited",
 ];
 
 /**
@@ -36,6 +41,8 @@ export default async function AuditPage({
   const params = await searchParams;
   await requireRole(["admin"], "/dashboard/audit");
 
+  const { t, fmt } = await getTranslation();
+
   const entries = await api<Paginated<ExportAuditEntry>>("/exports-audit", {
     query: { outcome: params.outcome || undefined, page: params.page, per_page: 25 },
   });
@@ -43,32 +50,28 @@ export default async function AuditPage({
   return (
     <div className="grid gap-6">
       <PageHeading
-        title="Export audit"
-        description="Every attempt to export data — who, what, how many rows, and whether it was allowed. Entries cannot be edited or removed from this screen."
+        title={t.dashboardNav.audit}
+        description={t.audit.description}
         actions={
-          <ButtonLink
-            href="/dashboard/exports"
-            variant="secondary"
-            size="sm"
-          >
-            Export centre
+          <ButtonLink href="/dashboard/exports" variant="secondary" size="sm">
+            {t.audit.exportCentre}
           </ButtonLink>
         }
       />
 
-      <nav aria-label="Filter by outcome" className="flex flex-wrap gap-1.5">
-        {OUTCOMES.map((outcome) => {
-          const active = (params.outcome ?? "") === outcome.key;
-          const href = outcome.key ? `/dashboard/audit?outcome=${outcome.key}` : "/dashboard/audit";
+      <nav aria-label={t.audit.filterByOutcome} className="flex flex-wrap gap-1.5">
+        {OUTCOME_KEYS.map((key) => {
+          const active = (params.outcome ?? "") === key;
+          const href = key ? `/dashboard/audit?outcome=${key}` : "/dashboard/audit";
 
           return (
             <ButtonLink
-              key={outcome.key || "all"}
+              key={key || "all"}
               href={href}
               size="sm"
               variant={active ? "primary" : "secondary"}
             >
-              {outcome.label}
+              {key ? outcomeLabel(t, key) : t.audit.everything}
             </ButtonLink>
           );
         })}
@@ -76,32 +79,28 @@ export default async function AuditPage({
 
       {entries.data.length === 0 ? (
         <EmptyState
-          title="Nothing recorded yet"
-          description={
-            params.outcome
-              ? "No export attempts with that outcome."
-              : "The first time somebody exports data, it will be listed here."
-          }
+          title={t.audit.emptyTitle}
+          description={params.outcome ? t.audit.emptyFiltered : t.audit.emptyAll}
         />
       ) : (
         <>
           <TableWrap>
             <thead>
               <tr>
-                <Th>When</Th>
-                <Th>Who</Th>
-                <Th>Dataset</Th>
-                <Th>Outcome</Th>
-                <Th numeric>Rows</Th>
-                <Th>Personal data</Th>
-                <Th>From</Th>
+                <Th>{t.audit.colWhen}</Th>
+                <Th>{t.audit.colWho}</Th>
+                <Th>{t.audit.colDataset}</Th>
+                <Th>{t.audit.colOutcome}</Th>
+                <Th numeric>{t.audit.colRows}</Th>
+                <Th>{t.audit.colPii}</Th>
+                <Th>{t.audit.colFrom}</Th>
               </tr>
             </thead>
 
             <tbody>
               {entries.data.map((entry) => (
                 <Tr key={entry.id}>
-                  <Td className="whitespace-nowrap">{formatDateTime(entry.requested_at)}</Td>
+                  <Td className="whitespace-nowrap">{fmt.dateTime(entry.requested_at)}</Td>
 
                   <Td>
                     <span className="block font-medium text-ink">{entry.actor_email}</span>
@@ -113,7 +112,9 @@ export default async function AuditPage({
                   <Td className="font-mono text-[12px]">{entry.dataset}</Td>
 
                   <Td>
-                    <Badge tone={outcomeTone(entry.outcome)}>{outcomeLabel(entry.outcome)}</Badge>
+                    <Badge tone={outcomeTone(entry.outcome)}>
+                      {outcomeLabel(t, entry.outcome)}
+                    </Badge>
                     {entry.reason ? (
                       <span className="mt-1 block max-w-56 text-[11px] leading-snug text-ink-muted">
                         {entry.reason}
@@ -121,20 +122,22 @@ export default async function AuditPage({
                     ) : null}
                   </Td>
 
-                  <Td numeric>{formatNumber(entry.row_count)}</Td>
+                  <Td numeric>{fmt.number(entry.row_count)}</Td>
 
                   <Td>
                     {/* `masked: false` is the row worth noticing — somebody
                         deliberately took names and emails in the clear. */}
                     {entry.filters && entry.filters.masked === false ? (
-                      <Badge tone="solid">In the clear</Badge>
+                      <Badge tone="solid">{t.audit.inTheClear}</Badge>
                     ) : (
-                      <span className="text-ink-faint">Masked</span>
+                      <span className="text-ink-faint">{t.audit.masked}</span>
                     )}
                   </Td>
 
                   <Td className="font-mono text-[12px]">
-                    {entry.ip_address ?? <span className="text-ink-faint">—</span>}
+                    {entry.ip_address ?? (
+                      <span className="text-ink-faint">{t.common.none}</span>
+                    )}
                   </Td>
                 </Tr>
               ))}
@@ -147,7 +150,7 @@ export default async function AuditPage({
             total={entries.pagination.total}
             basePath="/dashboard/audit"
             params={{ outcome: params.outcome }}
-            label="entries"
+            label={t.audit.paginationLabel}
           />
         </>
       )}
@@ -155,16 +158,16 @@ export default async function AuditPage({
   );
 }
 
-function outcomeLabel(outcome: ExportOutcome): string {
+function outcomeLabel(t: Dictionary, outcome: ExportOutcome): string {
   switch (outcome) {
     case "allowed":
-      return "Allowed";
+      return t.audit.allowed;
     case "truncated":
-      return "Truncated";
+      return t.audit.truncated;
     case "denied":
-      return "Refused";
+      return t.audit.denied;
     case "rate_limited":
-      return "Throttled";
+      return t.audit.rateLimited;
   }
 }
 

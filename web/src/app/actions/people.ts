@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/describe";
 import { requireRole } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
 
 /**
  * Account administration actions.
@@ -19,46 +20,49 @@ import { requireRole } from "@/lib/auth/current-user";
 const ROLES = new Set(["admin", "enseignant", "etudiant"]);
 
 export async function setAccountStatusAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin"]);
 
   const userId = readId(formData.get("userId"));
   const active = formData.get("active") === "1";
 
   let notice = active
-    ? "Account restored."
-    : "Account suspended and signed out everywhere.";
+    ? t.notices.accountRestored
+    : t.notices.accountSuspendedEverywhere;
 
   try {
     await api(`/users/${userId}/status`, { method: "PATCH", body: { is_active: active } });
   } catch (error) {
-    notice = describeError(error, "That account could not be updated.");
+    notice = describeError(t, locale, error, t.notices.accountUpdateFailed);
   }
 
   finish(notice);
 }
 
 export async function setAccountRoleAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin"]);
 
   const userId = readId(formData.get("userId"));
   const role = String(formData.get("role") ?? "");
 
   if (!ROLES.has(role)) {
-    finish("That role does not exist.");
+    finish(t.notices.roleDoesNotExist);
   }
 
-  let notice = "Role updated. It takes effect when they next refresh their session.";
+  let notice = t.notices.roleUpdated;
 
   try {
     await api(`/users/${userId}/role`, { method: "PATCH", body: { role } });
   } catch (error) {
-    notice = describeError(error, "That role could not be changed.");
+    notice = describeError(t, locale, error, t.notices.roleChangeFailed);
   }
 
   finish(notice);
 }
 
 export async function deleteAccountAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin"]);
 
   const userId = readId(formData.get("userId"));
@@ -68,12 +72,12 @@ export async function deleteAccountAction(formData: FormData): Promise<void> {
     finish('Type "delete" to confirm removing an account.');
   }
 
-  let notice = "Account deleted from the platform and from Keycloak.";
+  let notice = t.notices.accountDeleted;
 
   try {
     await api(`/users/${userId}`, { method: "DELETE" });
   } catch (error) {
-    notice = describeError(error, "That account could not be deleted.");
+    notice = describeError(t, locale, error, t.notices.accountDeleteFailed);
   }
 
   finish(notice);

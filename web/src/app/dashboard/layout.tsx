@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 
 import { primaryRole, requireRole, roleLabel } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Badge } from "@/components/ui/primitives";
@@ -20,6 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await requireRole(["admin", "enseignant"], "/dashboard");
   const role = primaryRole(session.user.roles);
   const isAdmin = role === "admin";
+  const { t } = await getTranslation();
 
   const pathname = (await headers()).get("x-pathname") ?? "/dashboard";
 
@@ -29,13 +31,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8 flex flex-wrap items-center gap-3 border-b border-line pb-6">
-          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-ink">Dashboard</h1>
-          <Badge tone="muted">{roleLabel(role)}</Badge>
-          <span className="ml-auto text-[13px] text-ink-muted">{session.user.email}</span>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-ink">{t.nav.dashboard}</h1>
+          <Badge tone="muted">{roleLabel(t, role)}</Badge>
+          <span className="ms-auto text-[13px] text-ink-muted">{session.user.email}</span>
         </div>
 
         <div className="grid gap-10 lg:grid-cols-[15rem_minmax(0,1fr)]">
-          <DashboardSidebar items={dashboardNav(isAdmin)} current={pathname} />
+          <DashboardSidebar
+            items={dashboardNav(t, isAdmin)}
+            current={pathname}
+            label={t.nav.dashboard}
+          />
 
           <main id="main" className="min-w-0">
             {children}

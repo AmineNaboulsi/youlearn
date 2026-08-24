@@ -4,6 +4,8 @@ import { readNotice } from "@/lib/notice";
 import { api } from "@/lib/api/client";
 import type { Category, Envelope, Tag } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/field";
 import {
@@ -24,7 +26,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Categories & tags" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.dashboardNav.taxonomy };
+}
 
 /**
  * The shared vocabulary.
@@ -42,6 +47,7 @@ export default async function TaxonomyPage({
   const { notice, notice_tone } = await searchParams;
   const flash = readNotice({ notice, notice_tone });
   await requireRole(["admin"], "/dashboard/taxonomy");
+  const { locale, t, fmt } = await getTranslation();
 
   const [categories, tags] = await Promise.all([
     api<Envelope<Category[]>>("/categories"),
@@ -51,8 +57,8 @@ export default async function TaxonomyPage({
   return (
     <div className="grid gap-6">
       <PageHeading
-        title="Categories & tags"
-        description="The vocabulary every course is filed under. Renaming an entry updates it everywhere; deleting one is only possible once nothing uses it."
+        title={t.dashboardNav.taxonomy}
+        description={t.taxonomy.description}
       />
 
       {flash ? <Alert tone={flash.tone}>{flash.message}</Alert> : null}
@@ -61,9 +67,11 @@ export default async function TaxonomyPage({
         {/* ------------------------------ categories -------------------- */}
         <Card>
           <CardHeader>
-            <CardTitle>Categories</CardTitle>
+            <CardTitle>{t.taxonomy.categories}</CardTitle>
             <CardDescription>
-              A course belongs to exactly one category. {categories.data.length} defined.
+              {interpolate(t.taxonomy.categoriesHint, {
+                count: fmt.number(categories.data.length),
+              })}
             </CardDescription>
           </CardHeader>
 
@@ -74,7 +82,7 @@ export default async function TaxonomyPage({
                   htmlFor="new-category"
                   className="mb-1.5 block text-[13px] font-medium text-ink-soft"
                 >
-                  Add a category
+                  {t.taxonomy.addCategory}
                 </label>
                 <Input
                   id="new-category"
@@ -82,11 +90,11 @@ export default async function TaxonomyPage({
                   required
                   minLength={2}
                   maxLength={160}
-                  placeholder="e.g. Data & Analytics"
+                  placeholder={t.taxonomy.categoryPlaceholder}
                 />
               </div>
-              <SubmitButton size="md" pendingLabel="Adding…">
-                Add
+              <SubmitButton size="md" pendingLabel={t.taxonomy.adding}>
+                {t.taxonomy.add}
               </SubmitButton>
             </form>
 
@@ -102,13 +110,15 @@ export default async function TaxonomyPage({
                         <Input
                           name="name"
                           defaultValue={category.name}
-                          aria-label={`Rename ${category.name}`}
+                          aria-label={interpolate(t.taxonomy.renameLabel, {
+                            name: category.name,
+                          })}
                           className="h-8 flex-1 text-[13px]"
                           minLength={2}
                           maxLength={160}
                         />
                         <SubmitButton variant="ghost" size="sm" pendingLabel="…">
-                          Rename
+                          {t.taxonomy.rename}
                         </SubmitButton>
                       </form>
 
@@ -120,15 +130,17 @@ export default async function TaxonomyPage({
                           disabled={inUse > 0}
                           pendingLabel="…"
                         >
-                          Delete
+                          {t.taxonomy.delete}
                         </SubmitButton>
                       </form>
                     </div>
 
                     <p className="mt-1.5 text-[11px] text-ink-muted">
                       {inUse === 0
-                        ? "Not used by any course"
-                        : `Used by ${inUse} course${inUse === 1 ? "" : "s"} — move them before deleting`}
+                        ? t.taxonomy.unused
+                        : interpolate(t.taxonomy.usedByMove, {
+                            count: plural(locale, inUse, t.taxonomy.courseCount),
+                          })}
                     </p>
                   </li>
                 );
@@ -140,9 +152,9 @@ export default async function TaxonomyPage({
         {/* --------------------------------- tags ----------------------- */}
         <Card>
           <CardHeader>
-            <CardTitle>Tags</CardTitle>
+            <CardTitle>{t.taxonomy.tags}</CardTitle>
             <CardDescription>
-              A course carries at least three. {tags.data.length} defined.
+              {interpolate(t.taxonomy.tagsHint, { count: fmt.number(tags.data.length) })}
             </CardDescription>
           </CardHeader>
 
@@ -153,7 +165,7 @@ export default async function TaxonomyPage({
                   htmlFor="new-tag"
                   className="mb-1.5 block text-[13px] font-medium text-ink-soft"
                 >
-                  Add a tag
+                  {t.taxonomy.addTag}
                 </label>
                 <Input
                   id="new-tag"
@@ -161,11 +173,11 @@ export default async function TaxonomyPage({
                   required
                   minLength={2}
                   maxLength={120}
-                  placeholder="e.g. TypeScript"
+                  placeholder={t.taxonomy.tagPlaceholder}
                 />
               </div>
-              <SubmitButton size="md" pendingLabel="Adding…">
-                Add
+              <SubmitButton size="md" pendingLabel={t.taxonomy.adding}>
+                {t.taxonomy.add}
               </SubmitButton>
             </form>
 
@@ -181,13 +193,13 @@ export default async function TaxonomyPage({
                         <Input
                           name="title"
                           defaultValue={tag.title}
-                          aria-label={`Rename ${tag.title}`}
+                          aria-label={interpolate(t.taxonomy.renameLabel, { name: tag.title })}
                           className="h-8 flex-1 text-[13px]"
                           minLength={2}
                           maxLength={120}
                         />
                         <SubmitButton variant="ghost" size="sm" pendingLabel="…">
-                          Rename
+                          {t.taxonomy.rename}
                         </SubmitButton>
                       </form>
 
@@ -199,15 +211,17 @@ export default async function TaxonomyPage({
                           disabled={inUse > 0}
                           pendingLabel="…"
                         >
-                          Delete
+                          {t.taxonomy.delete}
                         </SubmitButton>
                       </form>
                     </div>
 
                     <p className="mt-1.5 text-[11px] text-ink-muted">
                       {inUse === 0
-                        ? "Not used by any course"
-                        : `Used by ${inUse} course${inUse === 1 ? "" : "s"}`}
+                        ? t.taxonomy.unused
+                        : interpolate(t.taxonomy.usedBy, {
+                            count: plural(locale, inUse, t.taxonomy.courseCount),
+                          })}
                     </p>
                   </li>
                 );

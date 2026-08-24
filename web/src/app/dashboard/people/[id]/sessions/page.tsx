@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { api, apiOrNull } from "@/lib/api/client";
 import type { Envelope, Paginated, PlatformUser, UserSession } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { interpolate, plural } from "@/lib/i18n/plural";
+import { getTranslation } from "@/lib/i18n/server";
 import { ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
@@ -25,7 +26,10 @@ import { setAccountStatusAction } from "@/app/actions/people";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Account sessions" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslation();
+  return { title: t.personSessions.tabTitle };
+}
 
 /**
  * One account's sessions, for an administrator.
@@ -59,20 +63,29 @@ export default async function UserSessionsPage({
   const user = directory.data.find((candidate) => String(candidate.id) === id);
   if (!user) notFound();
 
+  const { locale, t, fmt } = await getTranslation();
+
   return (
     <div className="grid gap-6">
       <PageHeading
-        eyebrow="People"
+        eyebrow={t.dashboardNav.people}
         title={user.name}
-        description={`${user.email} · ${sessions.data.length} active session${sessions.data.length === 1 ? "" : "s"}`}
+        description={interpolate(t.personSessionsPage.meta, {
+          email: user.email,
+          sessions: plural(
+            locale,
+            sessions.data.length,
+            t.personSessionsPage.sessionCount,
+          ),
+        })}
         actions={
           <>
             <Badge tone={user.is_active ? "success" : "danger"}>
               <StatusDot on={Boolean(user.is_active)} />
-              {user.is_active ? "Active" : "Suspended"}
+              {user.is_active ? t.account.active : t.account.suspended}
             </Badge>
             <ButtonLink href="/dashboard/people" variant="secondary" size="sm">
-              Back to people
+              {t.personSessions.backToPeople}
             </ButtonLink>
           </>
         }
@@ -82,8 +95,8 @@ export default async function UserSessionsPage({
 
       {sessions.data.length === 0 ? (
         <EmptyState
-          title="No active sessions"
-          description="This account is not signed in anywhere right now."
+          title={t.personSessions.emptyTitle}
+          description={t.personSessions.emptyBody}
         />
       ) : (
         <ul className="grid gap-3">
@@ -98,21 +111,23 @@ export default async function UserSessionsPage({
                           {client}
                         </Badge>
                       ))}
-                      {entry.remember_me ? <Badge tone="muted">Stay signed in</Badge> : null}
+                      {entry.remember_me ? (
+                        <Badge tone="muted">{t.sessions.staySignedIn}</Badge>
+                      ) : null}
                     </div>
 
                     <p className="mt-2.5 font-mono text-[13px] text-ink">
-                      {entry.ip_address ?? "Unknown address"}
+                      {entry.ip_address ?? t.sessions.unknownAddress}
                     </p>
 
                     <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-ink-muted">
                       <div className="flex gap-1.5">
-                        <dt>Started</dt>
-                        <dd className="text-ink-soft">{formatDateTime(entry.started_at)}</dd>
+                        <dt>{t.sessions.started}</dt>
+                        <dd className="text-ink-soft">{fmt.dateTime(entry.started_at)}</dd>
                       </div>
                       <div className="flex gap-1.5">
-                        <dt>Last active</dt>
-                        <dd className="text-ink-soft">{formatRelative(entry.last_seen_at)}</dd>
+                        <dt>{t.sessions.lastActive}</dt>
+                        <dd className="text-ink-soft">{fmt.relative(entry.last_seen_at)}</dd>
                       </div>
                     </dl>
                   </div>
@@ -124,8 +139,8 @@ export default async function UserSessionsPage({
                       name="returnTo"
                       value={`/dashboard/people/${id}/sessions`}
                     />
-                    <SubmitButton variant="danger" size="sm" pendingLabel="Ending…">
-                      End session
+                    <SubmitButton variant="danger" size="sm" pendingLabel={t.sessions.ending}>
+                      {t.sessions.endSession}
                     </SubmitButton>
                   </form>
                 </CardBody>
@@ -137,12 +152,8 @@ export default async function UserSessionsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Responding to a compromised account</CardTitle>
-          <CardDescription>
-            Signing out everywhere ends the sessions that exist now but does not stop a new
-            sign-in. Suspending the account does both: Keycloak refuses the login and drops every
-            live session at the same time.
-          </CardDescription>
+          <CardTitle>{t.personSessionsPage.compromisedTitle}</CardTitle>
+          <CardDescription>{t.personSessionsPage.compromisedBody}</CardDescription>
         </CardHeader>
 
         <CardBody className="flex flex-wrap gap-2">
@@ -153,9 +164,9 @@ export default async function UserSessionsPage({
               variant="secondary"
               size="sm"
               disabled={sessions.data.length === 0}
-              pendingLabel="Signing out…"
+              pendingLabel={t.personSessions.signingOut}
             >
-              Sign out of every device
+              {t.personSessionsPage.signOutEveryDevice}
             </SubmitButton>
           </form>
 
@@ -165,9 +176,11 @@ export default async function UserSessionsPage({
             <SubmitButton
               variant={user.is_active ? "danger" : "secondary"}
               size="sm"
-              pendingLabel="Working…"
+              pendingLabel={t.courseEdit.working}
             >
-              {user.is_active ? "Suspend this account" : "Restore this account"}
+              {user.is_active
+                ? t.personSessionsPage.suspendAccount
+                : t.personSessionsPage.restoreAccount}
             </SubmitButton>
           </form>
         </CardBody>

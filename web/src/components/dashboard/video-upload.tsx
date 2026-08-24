@@ -1,5 +1,6 @@
 "use client";
 
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { useCallback, useRef, useState } from "react";
 
 import type { UploadedAsset, UploadTicket } from "@/lib/api/types";
@@ -33,12 +34,16 @@ interface Envelope<T> {
 export function VideoUpload({
   onUploaded,
   currentAsset,
-  label = "Lesson video",
+  labels,
+  label,
 }: {
   onUploaded: (asset: UploadedAsset | null) => void;
   currentAsset?: { public_id: string; original_name: string; duration_seconds: number | null } | null;
+  /** Server-resolved strings; see the note on CourseForm. */
+  labels: Dictionary["upload"];
   label?: string;
 }) {
+  const fieldLabel = label ?? labels.lessonVideo;
   const [status, setStatus] = useState<Status>("idle");
   const [percent, setPercent] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
@@ -99,7 +104,7 @@ export function VideoUpload({
 
       if (!beginResponse.ok || !begin.data) {
         setStatus("error");
-        setMessage(begin.fields?.size_bytes ?? begin.message ?? "The upload could not be started.");
+        setMessage(begin.fields?.size_bytes ?? begin.message ?? labels.couldNotStart);
         return;
       }
 
@@ -122,7 +127,7 @@ export function VideoUpload({
         if (!chunkResponse.ok) {
           const body: Envelope<unknown> = await chunkResponse.json().catch(() => ({}));
           setStatus("error");
-          setMessage(body.message ?? "The upload was interrupted. Try again.");
+          setMessage(body.message ?? labels.interrupted);
           return;
         }
 
@@ -153,7 +158,7 @@ export function VideoUpload({
         // a malware detection surfaces — the server can only tell either once
         // every byte has arrived.
         setErrorCode(complete.error ?? null);
-        setMessage(complete.message ?? "The file was rejected.");
+        setMessage(complete.message ?? labels.rejected);
         return;
       }
 
@@ -168,7 +173,7 @@ export function VideoUpload({
 
   return (
     <div className="grid gap-2.5">
-      <span className="text-[13px] font-medium text-ink-soft">{label}</span>
+      <span className="text-[13px] font-medium text-ink-soft">{fieldLabel}</span>
 
       {currentAsset && status === "idle" ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface-sunk px-3 py-2.5">
@@ -208,7 +213,7 @@ export function VideoUpload({
         }}
         className={cn(
           "block w-full cursor-pointer rounded-lg border border-line-strong bg-surface text-[13px] text-ink-soft",
-          "file:mr-3 file:cursor-pointer file:border-0 file:border-r file:border-line file:bg-surface-sunk",
+          "file:me-3 file:cursor-pointer file:border-0 file:border-e file:border-line file:bg-surface-sunk",
           "file:px-3 file:py-2.5 file:text-[13px] file:font-medium file:text-ink",
           "hover:border-ink-faint disabled:cursor-not-allowed disabled:opacity-60",
           currentAsset && status === "idle" && "hidden",
@@ -241,7 +246,7 @@ export function VideoUpload({
             aria-valuenow={percent}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label="Upload progress"
+            aria-label={labels.uploadProgress}
           >
             <div
               className={cn(
@@ -257,10 +262,10 @@ export function VideoUpload({
           <p className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-muted">
             <span>
               {status === "finalising"
-                ? "Transfer complete. Checking the file for malware before storing it — this can take a moment on a large video."
+                ? labels.scanning
                 : status === "done"
-                ? "Uploaded, scanned and clean. Save the lesson to attach it."
-                : "Sent in pieces — a slow connection will not lose the whole file."}
+                ? labels.scanned
+                : labels.chunked}
             </span>
             {busy ? (
               <button

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/cn";
+import { getTranslation } from "@/lib/i18n/server";
 
 /**
  * Sub-navigation for the account area.
@@ -8,20 +9,25 @@ import { cn } from "@/lib/cn";
  * The active tab is passed in rather than derived from usePathname, which
  * keeps this a server component — a two-link nav is not worth a client bundle.
  */
-export function AccountTabs({
+export async function AccountTabs({
   current,
   className,
 }: {
   current: "profile" | "sessions";
   className?: string;
 }) {
+  const { t } = await getTranslation();
+
   const tabs = [
-    { key: "profile", href: "/account", label: "Profile" },
-    { key: "sessions", href: "/account/sessions", label: "Active sessions" },
+    { key: "profile", href: "/account", label: t.nav.profile },
+    { key: "sessions", href: "/account/sessions", label: t.nav.activeSessions },
   ] as const;
 
   return (
-    <nav aria-label="Account" className={cn("flex gap-1 border-b border-line", className)}>
+    <nav
+      aria-label={t.common.yourAccount}
+      className={cn("flex gap-1 border-b border-line", className)}
+    >
       {tabs.map((tab) => {
         const active = tab.key === current;
 

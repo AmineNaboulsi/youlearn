@@ -38,7 +38,7 @@ export function Field({
       <label htmlFor={htmlFor} className="text-[13px] font-medium text-ink-soft">
         {label}
         {required ? (
-          <span className="ml-1 text-ink-muted" aria-hidden>
+          <span className="ms-1 text-ink-muted" aria-hidden>
             *
           </span>
         ) : null}
@@ -105,7 +105,7 @@ export function Select({
       <select
         className={cn(
           controlBase,
-          "h-10 appearance-none px-3 pr-9",
+          "h-10 appearance-none px-3 pe-9",
           error ? "border-ink bg-surface-sunk" : "border-line-strong",
           className,
         )}
@@ -117,7 +117,7 @@ export function Select({
       <svg
         aria-hidden
         viewBox="0 0 20 20"
-        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
+        className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { api, ApiError } from "@/lib/api/client";
 import { describeError } from "@/lib/api/describe";
 import { requireRole } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
 import type { FormState } from "@/lib/forms";
 
 /**
@@ -24,6 +25,7 @@ import type { FormState } from "@/lib/forms";
 // ------------------------------------------------------------------ sections
 
 export async function createSectionAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
@@ -33,7 +35,7 @@ export async function createSectionAction(formData: FormData): Promise<void> {
     finish(courseId, "A section needs a name.");
   }
 
-  let notice = "Section added.";
+  let notice = t.notices.sectionAdded;
 
   try {
     await api(`/courses/${courseId}/sections`, {
@@ -41,20 +43,21 @@ export async function createSectionAction(formData: FormData): Promise<void> {
       body: { title, summary: String(formData.get("summary") ?? "").trim() },
     });
   } catch (error) {
-    notice = describeError(error, "The section could not be added.");
+    notice = describeError(t, locale, error, t.notices.sectionAddFailed);
   }
 
   finish(courseId, notice);
 }
 
 export async function renameSectionAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
   const sectionId = readId(formData.get("sectionId"));
   const title = String(formData.get("title") ?? "").trim();
 
-  let notice = "Section renamed.";
+  let notice = t.notices.sectionRenamed;
 
   try {
     await api(`/courses/${courseId}/sections/${sectionId}`, {
@@ -62,13 +65,14 @@ export async function renameSectionAction(formData: FormData): Promise<void> {
       body: { title, summary: String(formData.get("summary") ?? "").trim() },
     });
   } catch (error) {
-    notice = describeError(error, "The section could not be renamed.");
+    notice = describeError(t, locale, error, t.notices.sectionRenameFailed);
   }
 
   finish(courseId, notice);
 }
 
 export async function deleteSectionAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
@@ -80,7 +84,7 @@ export async function deleteSectionAction(formData: FormData): Promise<void> {
     finish(courseId, 'Type "delete" to remove a section and its lessons.');
   }
 
-  let notice = "Section deleted.";
+  let notice = t.notices.sectionDeleted;
 
   try {
     const result = await api<{ message: string }>(
@@ -89,13 +93,14 @@ export async function deleteSectionAction(formData: FormData): Promise<void> {
     );
     notice = result.message;
   } catch (error) {
-    notice = describeError(error, "The section could not be deleted.");
+    notice = describeError(t, locale, error, t.notices.sectionDeleteFailed);
   }
 
   finish(courseId, notice);
 }
 
 export async function moveSectionAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
@@ -121,6 +126,7 @@ export async function saveLessonAction(
   _previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
@@ -148,7 +154,7 @@ export async function saveLessonAction(
   } catch (error) {
     return {
       ok: false,
-      message: describeError(error, "The lesson could not be saved."),
+      message: describeError(t, locale, error, t.notices.lessonSaveFailed),
       fields: error instanceof ApiError ? (error.fields ?? {}) : {},
     };
   }
@@ -164,12 +170,13 @@ export async function saveLessonAction(
 }
 
 export async function deleteLessonAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
   const lessonId = readId(formData.get("lessonId"));
 
-  let notice = "Lesson deleted.";
+  let notice = t.notices.lessonDeleted;
 
   try {
     const result = await api<{ message: string }>(`/courses/${courseId}/lessons/${lessonId}`, {
@@ -177,13 +184,14 @@ export async function deleteLessonAction(formData: FormData): Promise<void> {
     });
     notice = result.message;
   } catch (error) {
-    notice = describeError(error, "The lesson could not be deleted.");
+    notice = describeError(t, locale, error, t.notices.lessonDeleteFailed);
   }
 
   finish(courseId, notice);
 }
 
 export async function moveLessonAction(formData: FormData): Promise<void> {
+  const { locale, t } = await getTranslation();
   await requireRole(["admin", "enseignant"]);
 
   const courseId = readId(formData.get("courseId"));
