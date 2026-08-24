@@ -72,6 +72,12 @@ export default async function LessonPage({
     ? `/api/media/${lesson.video_url.split("/").pop()}`
     : null;
 
+  // The same authorised proxy the video uses. The API re-checks enrolment on
+  // every range request, so a PDF is no more reachable than a video is.
+  const documentUrl = lesson.document_url
+    ? `/api/media/${lesson.document_url.split("/").pop()}`
+    : null;
+
   const { t, fmt } = await getTranslation();
 
   return (
@@ -108,6 +114,15 @@ export default async function LessonPage({
               />
             ) : lesson.kind === "video" ? (
               <Alert tone="warning">{t.lesson.noVideoYet}</Alert>
+            ) : lesson.kind === "document" && documentUrl ? (
+              <DocumentViewer
+                src={documentUrl}
+                name={lesson.document_name ?? t.lesson.document}
+                title={lesson.title}
+                labels={t.lesson}
+              />
+            ) : lesson.kind === "document" ? (
+              <Alert tone="warning">{t.lesson.noDocumentYet}</Alert>
             ) : null}
 
             <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
@@ -244,5 +259,73 @@ export default async function LessonPage({
         </div>
       </main>
     </>
+  );
+}
+
+/**
+ * A PDF lesson.
+ *
+ * An <iframe> rather than <embed> or <object>: the CSP sets `object-src 'none'`
+ * — deliberately, since those elements are a plugin surface — while frames fall
+ * back to `default-src 'self'`, and this URL is same-origin. Every browser that
+ * matters renders a PDF in its own viewer from an iframe.
+ *
+ * The download link is there because the built-in viewer is not always the one
+ * somebody wants, and on a phone it is often no viewer at all. `download` on a
+ * same-origin URL is honoured, so it saves rather than navigates.
+ */
+function DocumentViewer({
+  src,
+  name,
+  title,
+  labels,
+}: {
+  src: string;
+  name: string;
+  title: string;
+  labels: { document: string; openInNewTab: string; downloadFile: string };
+}) {
+  return (
+    <div className="overflow-hidden rounded-card border border-line bg-surface-sunk">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-2.5">
+        <svg
+          viewBox="0 0 20 20"
+          className="size-4 flex-none text-ink-muted"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden
+        >
+          <path d="M11.5 2H5.5A1.5 1.5 0 004 3.5v13A1.5 1.5 0 005.5 18h9a1.5 1.5 0 001.5-1.5V6.5L11.5 2z" />
+          <path d="M11.5 2v4.5H16" strokeLinejoin="round" />
+        </svg>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{name}</span>
+
+        <a
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-md border border-line-strong px-2.5 py-1 text-[12px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
+        >
+          {labels.openInNewTab}
+        </a>
+        <a
+          href={src}
+          download={name}
+          className="rounded-md border border-line-strong px-2.5 py-1 text-[12px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
+        >
+          {labels.downloadFile}
+        </a>
+      </div>
+
+      <iframe
+        src={src}
+        title={title}
+        className="h-[70vh] w-full border-0 bg-white"
+        // Nothing in a PDF needs script, forms or navigation. An empty sandbox
+        // is the tightest setting the built-in viewer still works under.
+        sandbox=""
+      />
+    </div>
   );
 }

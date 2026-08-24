@@ -573,6 +573,8 @@ const fr: Dictionary = {
   },
 
   curriculumAdmin: {
+    kindDocument: "Fichier",
+    noDocumentAttached: "aucun fichier attaché",
     emptyDescription:
       "Aucune leçon pour l'instant. Ajoutez une section, puis téléversez-y votre première vidéo.",
     summary: "{sections} · {lessons}{duration}",
@@ -609,6 +611,11 @@ const fr: Dictionary = {
   },
 
   lesson: {
+    document: "Fichier",
+    noDocumentYet:
+      "Cette leçon n'a pas encore de fichier. L'enseignant est peut-être en train de le téléverser.",
+    openInNewTab: "Ouvrir dans un nouvel onglet",
+    downloadFile: "Télécharger",
     noVideoYet:
       "Cette leçon n'a pas encore de vidéo. L'enseignant est peut-être en train de la téléverser.",
     freePreview: "Aperçu gratuit",
@@ -695,6 +702,7 @@ const fr: Dictionary = {
   },
 
   upload: {
+    lessonDocument: "Fichier de la leçon (PDF)",
     coverProgress: "Progression du téléversement de la couverture",
     coverUploaded: "Téléversé. Enregistrez le cours pour l'attacher.",
     uploadProgress: "Progression du téléversement",
@@ -719,6 +727,7 @@ const fr: Dictionary = {
   },
 
   lessonForm: {
+    kindDocument: "Fichier (PDF)",
     couldNotSave: "Impossible d'enregistrer",
     title: "Titre de la leçon",
     titlePlaceholder: "ex. Préparer votre environnement",

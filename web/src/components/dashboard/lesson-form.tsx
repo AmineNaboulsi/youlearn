@@ -28,6 +28,7 @@ export function LessonForm({
   sectionId,
   lesson,
   currentVideo,
+  currentDocument,
   onCancel,
   labels,
   uploadLabels,
@@ -36,6 +37,7 @@ export function LessonForm({
   sectionId: number;
   lesson?: CurriculumLesson;
   currentVideo?: { public_id: string; original_name: string; duration_seconds: number | null } | null;
+  currentDocument?: { public_id: string; original_name: string; duration_seconds: number | null } | null;
   onCancel?: () => void;
   /** Server-resolved strings; see the note on CourseForm. */
   labels: Dictionary["lessonForm"];
@@ -43,16 +45,26 @@ export function LessonForm({
 }) {
   const [state, formAction] = useActionState(saveLessonAction, emptyFormState);
 
-  const [kind, setKind] = useState<"video" | "text">(lesson?.kind ?? "video");
+  const [kind, setKind] = useState<"video" | "text" | "document">(lesson?.kind ?? "video");
 
   // Starts as whatever the lesson already has; replaced when a new upload
   // completes; cleared when the instructor chooses to replace it.
   const [videoPublicId, setVideoPublicId] = useState<string>(currentVideo?.public_id ?? "");
   const [duration, setDuration] = useState<number>(lesson?.duration_seconds ?? 0);
 
+  // Kept separately from the video: switching kind back and forth must not
+  // lose an upload that already completed.
+  const [documentPublicId, setDocumentPublicId] = useState<string>(
+    currentDocument?.public_id ?? "",
+  );
+
   const handleUploaded = (asset: UploadedAsset | null) => {
     setVideoPublicId(asset?.public_id ?? "");
     if (asset?.duration_seconds) setDuration(asset.duration_seconds);
+  };
+
+  const handleDocumentUploaded = (asset: UploadedAsset | null) => {
+    setDocumentPublicId(asset?.public_id ?? "");
   };
 
   return (
@@ -61,6 +73,7 @@ export function LessonForm({
       <input type="hidden" name="sectionId" value={sectionId} />
       {lesson ? <input type="hidden" name="lessonId" value={lesson.id} /> : null}
       <input type="hidden" name="video_public_id" value={videoPublicId} />
+      <input type="hidden" name="document_public_id" value={documentPublicId} />
       <input type="hidden" name="duration_seconds" value={duration} />
 
       {state.message ? (
@@ -107,10 +120,11 @@ export function LessonForm({
           id={`kind-${lesson?.id ?? "new"}`}
           name="kind"
           value={kind}
-          onChange={(event) => setKind(event.target.value as "video" | "text")}
+          onChange={(event) => setKind(event.target.value as "video" | "text" | "document")}
         >
           <option value="video">{labels.kindVideo}</option>
           <option value="text">{labels.kindWritten}</option>
+          <option value="document">{labels.kindDocument}</option>
         </Select>
       </Field>
 
@@ -125,6 +139,21 @@ export function LessonForm({
             <p className="-mt-2 text-[12px] font-medium text-ink">
               <span className="text-ink-muted">— </span>
               {state.fields.video_public_id}
+            </p>
+          ) : null}
+        </>
+      ) : kind === "document" ? (
+        <>
+          <VideoUpload
+            kind="document"
+            onUploaded={handleDocumentUploaded}
+            currentAsset={documentPublicId && currentDocument ? currentDocument : null}
+            labels={uploadLabels}
+          />
+          {state.fields.document_public_id ? (
+            <p className="-mt-2 text-[12px] font-medium text-ink">
+              <span className="text-ink-muted">— </span>
+              {state.fields.document_public_id}
             </p>
           ) : null}
         </>

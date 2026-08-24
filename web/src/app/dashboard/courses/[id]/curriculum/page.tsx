@@ -264,7 +264,9 @@ function SectionCard({
                       <span>
                         {lesson.kind === "video"
                           ? t.curriculumAdmin.kindVideo
-                          : t.curriculumAdmin.kindWritten}
+                          : lesson.kind === "document"
+                            ? t.curriculumAdmin.kindDocument
+                            : t.curriculumAdmin.kindWritten}
                       </span>
                       {lesson.duration_seconds > 0 ? (
                         <>
@@ -277,6 +279,14 @@ function SectionCard({
                           <span aria-hidden>·</span>
                           <span className="font-medium text-ink">
                             {t.curriculumAdmin.noVideoAttached}
+                          </span>
+                        </>
+                      ) : null}
+                      {lesson.kind === "document" && !lesson.has_document ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className="font-medium text-ink">
+                            {t.curriculumAdmin.noDocumentAttached}
                           </span>
                         </>
                       ) : null}
@@ -332,6 +342,16 @@ function SectionCard({
                               public_id: lesson.video_url.split("/").pop() ?? "",
                               original_name: t.curriculumAdmin.currentVideo,
                               duration_seconds: lesson.duration_seconds,
+                            }
+                          : null
+                      }
+                      currentDocument={
+                        lesson.document_url
+                          ? {
+                              public_id: lesson.document_url.split("/").pop() ?? "",
+                              original_name:
+                                lesson.document_name ?? t.curriculumAdmin.kindDocument,
+                              duration_seconds: null,
                             }
                           : null
                       }

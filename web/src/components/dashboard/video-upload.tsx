@@ -36,14 +36,24 @@ export function VideoUpload({
   currentAsset,
   labels,
   label,
+  kind = "video",
 }: {
   onUploaded: (asset: UploadedAsset | null) => void;
   currentAsset?: { public_id: string; original_name: string; duration_seconds: number | null } | null;
   /** Server-resolved strings; see the note on CourseForm. */
   labels: Dictionary["upload"];
   label?: string;
+  /**
+   * What is being uploaded. The whole chunked pipeline — begin, PUT chunks,
+   * complete, virus scan — is identical whatever the bytes are; only the
+   * declared kind, the accepted types and the wording differ. Forking this
+   * component per kind would mean maintaining the resumable upload twice.
+   */
+  kind?: "video" | "document";
 }) {
-  const fieldLabel = label ?? labels.lessonVideo;
+  const isDocument = kind === "document";
+  const fieldLabel = label ?? (isDocument ? labels.lessonDocument : labels.lessonVideo);
+  const accept = isDocument ? "application/pdf,.pdf" : "video/mp4,video/webm,video/quicktime";
   const [status, setStatus] = useState<Status>("idle");
   const [percent, setPercent] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
@@ -97,7 +107,7 @@ export function VideoUpload({
       const beginResponse = await fetch("/api/uploads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "video", filename: file.name, size_bytes: file.size }),
+        body: JSON.stringify({ kind, filename: file.name, size_bytes: file.size }),
       });
 
       const begin: Envelope<UploadTicket> = await beginResponse.json().catch(() => ({}));
@@ -166,7 +176,7 @@ export function VideoUpload({
       setPercent(100);
       onUploaded(complete.data);
     },
-    [onUploaded, labels.couldNotStart, labels.interrupted, labels.rejected],
+    [onUploaded, kind, labels.couldNotStart, labels.interrupted, labels.rejected],
   );
 
   const busy = status === "reading" || status === "uploading" || status === "finalising";
@@ -205,7 +215,7 @@ export function VideoUpload({
       <input
         ref={inputRef}
         type="file"
-        accept="video/mp4,video/webm,video/quicktime"
+        accept={accept}
         disabled={busy}
         onChange={(event) => {
           const file = event.target.files?.[0];

@@ -616,6 +616,8 @@ const ar = {
   },
 
   curriculumAdmin: {
+    kindDocument: "ملف",
+    noDocumentAttached: "لا ملف مرفق",
     emptyDescription: "لا دروس بعد. أضف قسماً ثم ارفع أول فيديو إليه.",
     summary: "{sections} · {lessons}{duration}",
     summaryDuration: " · {clock} من الفيديو",
@@ -649,6 +651,10 @@ const ar = {
   },
 
   lesson: {
+    document: "ملف",
+    noDocumentYet: "لا يحتوي هذا الدرس على ملف بعد. قد يكون المدرّس ما زال يرفعه.",
+    openInNewTab: "فتح في تبويب جديد",
+    downloadFile: "تنزيل الملف",
     noVideoYet: "لا يحتوي هذا الدرس على فيديو بعد. قد يكون المدرّس ما زال يرفعه.",
     freePreview: "معاينة مجانية",
     completed: "مكتمل",
@@ -735,6 +741,7 @@ const ar = {
   },
 
   upload: {
+    lessonDocument: "ملف الدرس (PDF)",
     coverProgress: "تقدّم رفع الغلاف",
     coverUploaded: "تم الرفع. احفظ الدورة لإرفاقه.",
     uploadProgress: "تقدّم الرفع",
@@ -758,6 +765,7 @@ const ar = {
   },
 
   lessonForm: {
+    kindDocument: "ملف (PDF)",
     couldNotSave: "تعذّر الحفظ",
     title: "عنوان الدرس",
     titlePlaceholder: "مثال: تهيئة بيئة العمل",

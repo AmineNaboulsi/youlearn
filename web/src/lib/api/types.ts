@@ -285,7 +285,7 @@ export interface ExportAuditEntry {
  * Curriculum, media and watch tracking
  * -------------------------------------------------------------------------- */
 
-export type LessonKind = "video" | "text";
+export type LessonKind = "video" | "text" | "document";
 
 export interface LessonProgress {
   last_position_seconds: number;
@@ -311,8 +311,12 @@ export interface CurriculumLesson {
   position: number;
   locked: boolean;
   has_video: boolean;
+  has_document: boolean;
   video_url?: string | null;
   video_mime?: string | null;
+  document_url?: string | null;
+  document_name?: string | null;
+  document_size?: number | null;
   text_content?: string | null;
   progress?: LessonProgress;
 }
@@ -357,6 +361,9 @@ export interface LessonDetail {
   text_content: string | null;
   video_url: string | null;
   video_mime: string | null;
+  document_url: string | null;
+  document_name: string | null;
+  document_size: number | null;
   previous_lesson_id: number | null;
   next_lesson_id: number | null;
   can_manage: boolean;
@@ -366,7 +373,7 @@ export interface LessonDetail {
 export interface UploadedAsset {
   id: number;
   public_id: string;
-  kind: "image" | "video";
+  kind: "image" | "video" | "document";
   original_name: string;
   mime_type: string;
   size_bytes: number;
