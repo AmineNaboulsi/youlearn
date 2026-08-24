@@ -6,6 +6,7 @@ import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/describe";
 import type { Envelope, MyProfile, ProfileLink } from "@/lib/api/types";
 import { requireRole } from "@/lib/auth/current-user";
+import { getTranslation } from "@/lib/i18n/server";
 import type { FormState } from "@/lib/forms";
 
 /**
@@ -28,13 +29,14 @@ export async function saveProfileAction(
   formData: FormData,
 ): Promise<FormState> {
   await requireRole(["admin", "enseignant"]);
+  const { locale, t } = await getTranslation();
 
   let payload: ReturnType<typeof normalise>;
 
   try {
     payload = normalise(JSON.parse(String(formData.get("profile") ?? "{}")));
   } catch {
-    return { ok: false, message: "That form could not be read. Please reload and try again.", fields: {} };
+    return { ok: false, message: t.profile.formNotRead, fields: {} };
   }
 
   let saved: MyProfile | null = null;
@@ -48,7 +50,7 @@ export async function saveProfileAction(
   } catch (error) {
     return {
       ok: false,
-      message: describeError(error, "Your profile could not be saved."),
+      message: describeError(t, locale, error, t.profile.saveFailed),
       fields: fieldErrors(error),
     };
   }
@@ -62,9 +64,7 @@ export async function saveProfileAction(
 
   return {
     ok: true,
-    message: saved?.is_public
-      ? "Saved. Your profile is live."
-      : "Saved as a draft. Only you can see it.",
+    message: saved?.is_public ? t.profile.savedLive : t.profile.savedDraft,
     fields: {},
   };
 }

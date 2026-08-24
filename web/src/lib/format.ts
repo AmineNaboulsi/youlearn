@@ -1,5 +1,5 @@
 import { INTL_LOCALE, type Locale } from "@/lib/i18n/config";
-import { getDictionary } from "@/lib/i18n/dictionaries";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { interpolate } from "@/lib/i18n/plural";
 
 /**
@@ -13,6 +13,11 @@ import { interpolate } from "@/lib/i18n/plural";
  *
  * The API returns MySQL datetimes ("2026-08-21 20:10:56") in UTC and ISO-8601
  * strings from Keycloak. Both are handled.
+ *
+ * Nothing here imports the dictionaries — only their *type*, which erases at
+ * build time. That is deliberate: ProfileView renders from a server page and
+ * from the client-side profile editor, and a value import would drag all three
+ * languages into the browser bundle to format a date.
  */
 
 const TIME_ZONE = "UTC";
@@ -39,10 +44,13 @@ export type Formatters = ReturnType<typeof makeFormatters>;
  * once from getTranslation() and every call site below stays as short as it
  * was, which is what keeps the locale from being quietly forgotten on one of
  * the fifty-odd call sites.
+ *
+ * `units` is passed in rather than looked up so this module stays free of a
+ * dictionary value import; getTranslation() supplies it, and a client
+ * component can hand over the slice it was given as a prop.
  */
-export function makeFormatters(locale: Locale) {
+export function makeFormatters(locale: Locale, units: Dictionary["units"]) {
   const intl = INTL_LOCALE[locale];
-  const units = getDictionary(locale).units;
 
   function date(value: string | null | undefined, fallback = "—"): string {
     const parsed = parse(value);

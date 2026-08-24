@@ -50,11 +50,12 @@ export type Translation = {
  */
 export async function getTranslation(): Promise<Translation> {
   const locale = await getLocale();
+  const dictionary = getDictionary(locale);
 
   return {
     locale,
     dir: direction(locale),
-    t: getDictionary(locale),
-    fmt: makeFormatters(locale),
+    t: dictionary,
+    fmt: makeFormatters(locale, dictionary.units),
   };
 }

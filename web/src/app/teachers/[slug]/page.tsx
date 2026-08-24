@@ -6,6 +6,7 @@ import { cache } from "react";
 import { apiOrNull } from "@/lib/api/client";
 import type { Envelope, InstructorProfile } from "@/lib/api/types";
 import { env } from "@/lib/env";
+import { getTranslation } from "@/lib/i18n/server";
 import { Logo } from "@/components/layout/logo";
 import { ProfileView } from "@/components/profile/profile-view";
 
@@ -52,7 +53,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await load(slug);
 
   if (!profile) {
-    return { title: "Profile not found", robots: { index: false, follow: false } };
+    const { t } = await getTranslation();
+    return { title: t.notFound.title, robots: { index: false, follow: false } };
   }
 
   const description =
@@ -81,6 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TeacherProfilePage({ params }: Props) {
   const { slug } = await params;
   const profile = await load(slug);
+  const { locale, t } = await getTranslation();
 
   if (!profile) {
     // Unpublished, suspended, no longer teaching, or never existed — all four
@@ -95,15 +98,20 @@ export default async function TeacherProfilePage({ params }: Props) {
           <Logo />
           <Link
             href="/courses"
-            className="ml-auto rounded-md px-2.5 py-1.5 text-[13px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
+            className="ms-auto rounded-md px-2.5 py-1.5 text-[13px] font-medium text-ink-soft transition-colors hover:bg-surface-sunk hover:text-ink"
           >
-            Browse courses
+            {t.common.browseCourses}
           </Link>
         </div>
       </header>
 
       <main id="main" className="mx-auto max-w-4xl">
-        <ProfileView profile={profile} />
+        <ProfileView
+          profile={profile}
+          locale={locale}
+          labels={t.profile}
+          units={t.units}
+        />
       </main>
 
       <footer className="mx-auto max-w-4xl border-t border-line px-5 py-8">

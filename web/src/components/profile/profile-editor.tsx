@@ -1,5 +1,7 @@
 "use client";
 
+import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { useActionState, useMemo, useState } from "react";
 
 import { saveProfileAction } from "@/app/actions/profile";
@@ -38,9 +40,20 @@ export function ProfileEditor({
   profile,
   /** Origin of this deployment, for building the shareable URL. */
   appUrl,
+  locale,
+  labels,
+  units,
 }: {
   profile: MyProfile;
   appUrl: string;
+  /**
+   * Forwarded straight to ProfileView. All three are serialisable, which is
+   * what lets the live preview render the very same component the public page
+   * does without this client bundle importing the dictionaries.
+   */
+  locale: Locale;
+  labels: Dictionary["profile"];
+  units: Dictionary["units"];
 }) {
   const [state, formAction] = useActionState(saveProfileAction, emptyFormState);
 
@@ -288,7 +301,13 @@ export function ProfileEditor({
           >
             {/* linkCourses={false} — the preview must not navigate away from
                 an editor holding unsaved changes. */}
-            <ProfileView profile={preview} linkCourses={false} />
+            <ProfileView
+              profile={preview}
+              linkCourses={false}
+              locale={locale}
+              labels={labels}
+              units={units}
+            />
           </PhoneFrame>
 
           <p className="max-w-[24rem] text-[11px] leading-relaxed text-ink-muted">
