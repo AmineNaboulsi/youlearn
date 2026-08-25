@@ -118,6 +118,7 @@ export async function proxy(request: NextRequest) {
         nonce,
         refreshed,
         session,
+        pathname,
       );
     }
   }
@@ -134,7 +135,7 @@ export async function proxy(request: NextRequest) {
     writeLocaleCookie(response, locale);
   }
 
-  return applyHeaders(response, nonce, refreshed, session);
+  return applyHeaders(response, nonce, refreshed, session, pathname);
 }
 
 /**
@@ -180,6 +181,7 @@ function applyHeaders(
   nonce: string,
   refreshed: string | null,
   session: Awaited<ReturnType<typeof unsealSession>>,
+  pathname: string,
 ) {
   if (refreshed && session) {
     writeSessionCookie(
@@ -193,6 +195,20 @@ function applyHeaders(
   // never used in a production build, so the relaxation is scoped to dev
   // rather than left in the policy where it would defeat the point of it.
   const devEval = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
+
+  // The one response in this app that is meant to be framed. A PDF lesson is
+  // shown in an <iframe> pointed at /api/media/<id>, and a framed document
+  // decides for itself who may frame it: `frame-ancestors 'none'` and
+  // `X-Frame-Options: DENY` refuse EVERY parent, the same origin included, so
+  // the blanket policy below blocked the viewer in every browser — Firefox's
+  // "can't open this page" and Edge's "blocked" interstitial are both this.
+  //
+  // 'self' rather than dropping the header: the stream stays unframeable by
+  // anyone else, which is the part that was ever worth having. Nothing else
+  // relaxes — the media response carries no script and no markup, it is served
+  // `Content-Type: application/pdf` with `nosniff`, and the CSP below still
+  // denies it everything.
+  const framable = pathname.startsWith("/api/media/");
 
   const csp = [
     "default-src 'self'",
@@ -210,7 +226,7 @@ function applyHeaders(
     // — so no external connect origins are needed.
     "connect-src 'self'",
     "form-action 'self' " + safeIssuerOrigin(),
-    "frame-ancestors 'none'",
+    framable ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
     "base-uri 'self'",
     "object-src 'none'",
     "upgrade-insecure-requests",
@@ -219,7 +235,7 @@ function applyHeaders(
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Frame-Options", framable ? "SAMEORIGIN" : "DENY");
   response.headers.set(
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(), interest-cohort=()",
