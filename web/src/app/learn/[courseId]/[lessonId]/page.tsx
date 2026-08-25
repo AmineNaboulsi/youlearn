@@ -270,6 +270,12 @@ export default async function LessonPage({
  * back to `default-src 'self'`, and this URL is same-origin. Every browser that
  * matters renders a PDF in its own viewer from an iframe.
  *
+ * Framing takes two permissions, not one, and only the parent's half was ever
+ * here. `frame-src` lets this page embed that URL; `frame-ancestors` and
+ * `X-Frame-Options` on the RESPONSE let that URL be embedded — and the app set
+ * both to refuse everyone, on every route, this one included. See the
+ * /api/media branch in proxy.ts and next.config.ts.
+ *
  * The download link is there because the built-in viewer is not always the one
  * somebody wants, and on a phone it is often no viewer at all. `download` on a
  * same-origin URL is honoured, so it saves rather than navigates.
@@ -322,9 +328,23 @@ function DocumentViewer({
         src={src}
         title={title}
         className="h-[70vh] w-full border-0 bg-white"
-        // Nothing in a PDF needs script, forms or navigation. An empty sandbox
-        // is the tightest setting the built-in viewer still works under.
-        sandbox=""
+        // A PDF needs no script — but the viewer rendering it is script. Chrome
+        // and Edge run their viewer as a privileged extension page and Firefox
+        // runs pdf.js outright, and all three inherit the sandbox of the frame
+        // they load in, so `sandbox=""` does not display a document tightly: it
+        // displays nothing at all. An empty sandbox also forces an opaque
+        // origin, which throws away the same-origin premise the whole approach
+        // rests on.
+        //
+        // What is still withheld is what a document viewer has no business
+        // with: no forms, no top-level navigation, no pointer lock. Scripts get
+        // in only because the browser's own code needs them, and the response
+        // is `Content-Type: application/pdf` under `nosniff` — the bytes are
+        // never parsed as a document that could carry script of its own, and
+        // the upload accepts a file only when its *content* sniffs as a PDF.
+        // allow-downloads is what makes the viewer's own save button work;
+        // without it Chrome drops the download and says nothing.
+        sandbox="allow-same-origin allow-scripts allow-downloads"
       />
     </div>
   );

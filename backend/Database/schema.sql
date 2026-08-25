@@ -251,7 +251,7 @@ CREATE TABLE assets (
 CREATE TABLE upload_sessions (
   id             CHAR(32)        NOT NULL,
   owner_id       INT UNSIGNED    NOT NULL,
-  kind           ENUM('image', 'video') NOT NULL,
+  kind           ENUM('image', 'video', 'document') NOT NULL,
   original_name  VARCHAR(255)    NOT NULL,
   declared_size  BIGINT UNSIGNED NOT NULL,
   received_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
