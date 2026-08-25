@@ -139,6 +139,7 @@ export async function saveLessonAction(
     summary: String(formData.get("summary") ?? "").trim(),
     kind,
     video_public_id: String(formData.get("video_public_id") ?? "").trim(),
+    document_public_id: String(formData.get("document_public_id") ?? "").trim(),
     text_content: String(formData.get("text_content") ?? ""),
     duration_seconds: Number(formData.get("duration_seconds")) || 0,
     is_preview: formData.get("is_preview") === "on",

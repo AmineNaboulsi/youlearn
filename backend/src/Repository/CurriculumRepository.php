@@ -52,9 +52,12 @@ final class CurriculumRepository
             'SELECT l.id, l.section_id, l.title, l.summary, l.kind, l.duration_seconds,
                     l.is_preview, l.position, l.text_content,
                     a.public_id AS video_public_id, a.mime_type AS video_mime,
+                    d.public_id AS document_public_id, d.original_name AS document_name,
+                    d.size_bytes AS document_size,
                     p.last_position_seconds, p.furthest_seconds, p.watched_seconds, p.completed_at
                FROM lessons l
           LEFT JOIN assets a          ON a.id = l.video_asset_id
+          LEFT JOIN assets d          ON d.id = l.document_asset_id
           LEFT JOIN lesson_progress p ON p.lesson_id = l.id AND p.user_id = :viewer
               WHERE l.course_id = :course
               ORDER BY l.position, l.id'
@@ -77,6 +80,7 @@ final class CurriculumRepository
                 'position'         => (int) $row['position'],
                 'locked'           => !$playable,
                 'has_video'        => $row['video_public_id'] !== null,
+                'has_document'     => $row['document_public_id'] !== null,
             ];
 
             // The URL and the text are only present when the viewer may have
@@ -85,6 +89,13 @@ final class CurriculumRepository
                 $lesson['video_url']  = $row['video_public_id'] === null ? null : '/assets/' . $row['video_public_id'];
                 $lesson['video_mime'] = $row['video_mime'];
                 $lesson['text_content'] = $row['text_content'];
+                $lesson['document_url'] = $row['document_public_id'] === null
+                    ? null
+                    : '/assets/' . $row['document_public_id'];
+                $lesson['document_name'] = $row['document_name'];
+                $lesson['document_size'] = $row['document_size'] === null
+                    ? null
+                    : (int) $row['document_size'];
             }
 
             if ($viewerId !== null && $row['last_position_seconds'] !== null) {
@@ -123,10 +134,13 @@ final class CurriculumRepository
     {
         $stmt = Database::connection()->prepare(
             'SELECT l.*, a.public_id AS video_public_id, a.mime_type AS video_mime,
+                    d.public_id AS document_public_id, d.original_name AS document_name,
+                    d.size_bytes AS document_size,
                     c.instructor_id, c.title AS course_title, c.is_published
                FROM lessons l
                JOIN courses c ON c.id = l.course_id
           LEFT JOIN assets a  ON a.id = l.video_asset_id
+          LEFT JOIN assets d  ON d.id = l.document_asset_id
               WHERE l.id = :id LIMIT 1'
         );
         $stmt->bindValue(':id', $lessonId, PDO::PARAM_INT);
@@ -261,10 +275,12 @@ final class CurriculumRepository
 
         $stmt = $pdo->prepare(
             'INSERT INTO lessons
-                (course_id, section_id, title, summary, kind, video_asset_id, text_content,
+                (course_id, section_id, title, summary, kind, video_asset_id,
+                 document_asset_id, text_content,
                  duration_seconds, is_preview, position)
              VALUES
-                (:course, :section, :title, :summary, :kind, :asset, :text,
+                (:course, :section, :title, :summary, :kind, :asset,
+                 :document, :text,
                  :duration, :preview,
                  COALESCE((SELECT MAX(position) + 1 FROM (SELECT * FROM lessons) l
                             WHERE l.section_id = :section_pos), 0))'
@@ -285,7 +301,8 @@ final class CurriculumRepository
         $stmt = Database::connection()->prepare(
             'UPDATE lessons SET
                 title = :title, summary = :summary, kind = :kind,
-                video_asset_id = :asset, text_content = :text,
+                video_asset_id = :asset, document_asset_id = :document,
+                text_content = :text,
                 duration_seconds = :duration, is_preview = :preview
               WHERE id = :id AND course_id = :course'
         );
@@ -343,12 +360,14 @@ final class CurriculumRepository
     /** @param array<string, mixed> $data */
     private function bindLesson(\PDOStatement $stmt, array $data): void
     {
-        $assetId = $data['video_asset_id'] ?? null;
+        $assetId    = $data['video_asset_id'] ?? null;
+        $documentId = $data['document_asset_id'] ?? null;
 
         $stmt->bindValue(':title', $data['title']);
         $stmt->bindValue(':summary', ($data['summary'] ?? '') ?: null);
         $stmt->bindValue(':kind', $data['kind']);
         $stmt->bindValue(':asset', $assetId, $assetId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindValue(':document', $documentId, $documentId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $stmt->bindValue(':text', ($data['text_content'] ?? '') ?: null);
         $stmt->bindValue(':duration', (int) ($data['duration_seconds'] ?? 0), PDO::PARAM_INT);
         $stmt->bindValue(':preview', !empty($data['is_preview']) ? 1 : 0, PDO::PARAM_INT);

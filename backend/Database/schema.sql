@@ -225,7 +225,7 @@ CREATE TABLE assets (
   id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   public_id        CHAR(32)        NOT NULL,
   owner_id         INT UNSIGNED    NOT NULL,
-  kind             ENUM('image', 'video') NOT NULL,
+  kind             ENUM('image', 'video', 'document') NOT NULL,
   original_name    VARCHAR(255)    NOT NULL,
   stored_path      VARCHAR(255)    NOT NULL,
   mime_type        VARCHAR(120)    NOT NULL,
@@ -299,8 +299,11 @@ CREATE TABLE lessons (
   section_id       INT UNSIGNED NOT NULL,
   title            VARCHAR(255) NOT NULL,
   summary          VARCHAR(1000) NULL,
-  kind             ENUM('video', 'text') NOT NULL DEFAULT 'video',
+  kind             ENUM('video', 'text', 'document') NOT NULL DEFAULT 'video',
   video_asset_id   BIGINT UNSIGNED NULL,
+  -- A lesson only ever has one asset, so one column would have done; two
+  -- honest ones mean `video_asset_id` never quietly holds a PDF.
+  document_asset_id BIGINT UNSIGNED NULL,
   text_content     MEDIUMTEXT   NULL,
   duration_seconds INT UNSIGNED NOT NULL DEFAULT 0,
   is_preview       TINYINT(1)   NOT NULL DEFAULT 0,
@@ -316,6 +319,8 @@ CREATE TABLE lessons (
   CONSTRAINT fk_lessons_section FOREIGN KEY (section_id)
     REFERENCES course_sections (id) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_lessons_video FOREIGN KEY (video_asset_id)
+    REFERENCES assets (id) ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT fk_lessons_document FOREIGN KEY (document_asset_id)
     REFERENCES assets (id) ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 

@@ -49,7 +49,11 @@ final class UploadController
         $principal = $this->require($principal);
 
         $validator = Validator::for($request->json());
-        $kind      = $validator->enum('kind', [FileStore::KIND_IMAGE, FileStore::KIND_VIDEO]);
+        $kind      = $validator->enum('kind', [
+            FileStore::KIND_IMAGE,
+            FileStore::KIND_VIDEO,
+            FileStore::KIND_DOCUMENT,
+        ]);
         $name      = $validator->requiredString('filename', 1, 255);
         $size      = $validator->requiredInt('size_bytes', 1, PHP_INT_MAX);
         $validator->validate();

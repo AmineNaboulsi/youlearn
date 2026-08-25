@@ -569,6 +569,8 @@ const en: Dictionary = {
   },
 
   curriculumAdmin: {
+    kindDocument: "File",
+    noDocumentAttached: "no file attached",
     emptyDescription: "No lessons yet. Add a section, then upload your first video into it.",
     summary: "{sections} · {lessons}{duration}",
     summaryDuration: " · {clock} of video",
@@ -602,6 +604,11 @@ const en: Dictionary = {
   },
 
   lesson: {
+    document: "File",
+    noDocumentYet:
+      "This lesson does not have a file yet. The instructor may still be uploading it.",
+    openInNewTab: "Open in new tab",
+    downloadFile: "Download",
     noVideoYet:
       "This lesson does not have a video yet. The instructor may still be uploading it.",
     freePreview: "Free preview",
@@ -687,6 +694,7 @@ const en: Dictionary = {
   },
 
   upload: {
+    lessonDocument: "Lesson file (PDF)",
     coverProgress: "Cover upload progress",
     coverUploaded: "Uploaded. Save the course to attach it.",
     uploadProgress: "Upload progress",
@@ -711,6 +719,7 @@ const en: Dictionary = {
   },
 
   lessonForm: {
+    kindDocument: "File (PDF)",
     couldNotSave: "Could not save",
     title: "Lesson title",
     titlePlaceholder: "e.g. Setting up your environment",

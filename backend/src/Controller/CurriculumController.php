@@ -119,6 +119,7 @@ final class CurriculumController
             'is_preview'       => $isPreview,
             'text_content'     => $lesson['text_content'],
             'video_url'        => $lesson['video_public_id'] === null ? null : '/assets/' . $lesson['video_public_id'],
+            'document_url'     => $lesson['document_public_id'] === null ? null : '/assets/' . $lesson['document_public_id'],
             'video_mime'       => $lesson['video_mime'],
             'previous_lesson_id' => $neighbours['previous'],
             'next_lesson_id'     => $neighbours['next'],
@@ -284,7 +285,7 @@ final class CurriculumController
         $body      = $request->json();
         $validator = Validator::for($body);
 
-        $kind = $validator->enum('kind', ['video', 'text'], 'video');
+        $kind = $validator->enum('kind', ['video', 'text', 'document'], 'video');
 
         $data = [
             'title'            => $validator->requiredString('title', 2, 255),
@@ -292,8 +293,9 @@ final class CurriculumController
             'kind'             => $kind,
             'text_content'     => $validator->optionalString('text_content', 200_000),
             'duration_seconds' => $validator->optionalInt('duration_seconds', 0, 0, 86_400) ?? 0,
-            'is_preview'       => $validator->bool('is_preview'),
-            'video_asset_id'   => null,
+            'is_preview'         => $validator->bool('is_preview'),
+            'video_asset_id'     => null,
+            'document_asset_id'  => null,
         ];
 
         $assetPublicId = $validator->optionalString('video_public_id', 32);
@@ -319,8 +321,29 @@ final class CurriculumController
             }
         }
 
+        // The document attachment, checked exactly as the video is: it must
+        // exist, be the right kind, and belong to the caller.
+        $documentPublicId = $validator->optionalString('document_public_id', 32);
+
+        if ($documentPublicId !== '') {
+            $document = $this->assets->findByPublicId($documentPublicId);
+
+            if ($document === null || $document['kind'] !== FileStore::KIND_DOCUMENT) {
+                $validator->addError('document_public_id', 'That file could not be found.');
+            } elseif ((int) $document['owner_id'] !== $principal->userId
+                && !$principal->can(\App\Security\Permission::COURSE_MANAGE_ANY)) {
+                $validator->addError('document_public_id', 'That file belongs to another account.');
+            } else {
+                $data['document_asset_id'] = (int) $document['id'];
+            }
+        }
+
         if ($kind === 'video' && $data['video_asset_id'] === null && $assetPublicId === '') {
             $validator->addError('video_public_id', 'A video lesson needs a video. Upload one first.');
+        }
+
+        if ($kind === 'document' && $data['document_asset_id'] === null && $documentPublicId === '') {
+            $validator->addError('document_public_id', 'A document lesson needs a file. Upload a PDF first.');
         }
 
         $validator->validate();

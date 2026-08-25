@@ -24,16 +24,20 @@ use App\Support\Env;
  */
 final class FileStore
 {
-    public const KIND_IMAGE = 'image';
-    public const KIND_VIDEO = 'video';
+    public const KIND_IMAGE    = 'image';
+    public const KIND_VIDEO    = 'video';
+    public const KIND_DOCUMENT = 'document';
 
     /** One chunk of a resumable upload. Small enough to sit under any PHP limit. */
     public const CHUNK_SIZE = 5_242_880; // 5 MiB
 
     /** Hard ceilings per kind. */
     private const MAX_BYTES = [
-        self::KIND_IMAGE => 8_388_608,      // 8 MiB
-        self::KIND_VIDEO => 4_294_967_296,  // 4 GiB
+        self::KIND_IMAGE    => 8_388_608,      // 8 MiB
+        self::KIND_VIDEO    => 4_294_967_296,  // 4 GiB
+        // Generous for a worksheet or a past paper, mean enough that nobody
+        // uses the lesson attachment as a file host.
+        self::KIND_DOCUMENT => 104_857_600,    // 100 MiB
     ];
 
     /**
@@ -57,6 +61,13 @@ final class FileStore
             'video/mp4'       => 'mp4',
             'video/webm'      => 'webm',
             'video/quicktime' => 'mov',
+        ],
+        // PDF only, deliberately. Every browser renders it inline without a
+        // plugin, and it is the one document format that does not invite an
+        // Office macro. A .docx here would be a download nobody can preview
+        // and a payload the scanner has to work much harder about.
+        self::KIND_DOCUMENT => [
+            'application/pdf' => 'pdf',
         ],
     ];
 
