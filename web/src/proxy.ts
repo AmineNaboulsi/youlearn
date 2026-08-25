@@ -196,18 +196,19 @@ function applyHeaders(
   // rather than left in the policy where it would defeat the point of it.
   const devEval = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
 
-  // The one response in this app that is meant to be framed. A PDF lesson is
-  // shown in an <iframe> pointed at /api/media/<id>, and a framed document
-  // decides for itself who may frame it: `frame-ancestors 'none'` and
-  // `X-Frame-Options: DENY` refuse EVERY parent, the same origin included, so
-  // the blanket policy below blocked the viewer in every browser — Firefox's
-  // "can't open this page" and Edge's "blocked" interstitial are both this.
+  // The one response in this app that is meant to be framed, and the one that
+  // must not be handed the policy every other response gets.
   //
-  // 'self' rather than dropping the header: the stream stays unframeable by
-  // anyone else, which is the part that was ever worth having. Nothing else
-  // relaxes — the media response carries no script and no markup, it is served
-  // `Content-Type: application/pdf` with `nosniff`, and the CSP below still
-  // denies it everything.
+  // A PDF lesson is shown in an <iframe> pointed at /api/media/<id>. Framing
+  // takes a permission from the framed response, not only from the page doing
+  // the framing, and this app said no on every route: `frame-ancestors 'none'`
+  // and `X-Frame-Options: DENY` refuse EVERY parent, the same origin included.
+  // Firefox's "can't open this page" is exactly that refusal.
+  //
+  // 'self' rather than dropping the headers: the stream stays unframeable by
+  // any other origin, which is the part that was ever worth having. See the
+  // CSP below for the second half — the policy itself also has to change, for
+  // a different reason.
   const framable = pathname.startsWith("/api/media/");
 
   const csp = [
@@ -226,13 +227,32 @@ function applyHeaders(
     // — so no external connect origins are needed.
     "connect-src 'self'",
     "form-action 'self' " + safeIssuerOrigin(),
-    framable ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
+    "frame-ancestors 'none'",
     "base-uri 'self'",
     "object-src 'none'",
     "upgrade-insecure-requests",
   ].join("; ");
 
-  response.headers.set("Content-Security-Policy", csp);
+  // The media response gets a policy of its own, not the one above.
+  //
+  // Chrome and Edge do not hand a PDF to a viewer directly: they generate a
+  // boilerplate HTML document that <embed>s the PDF plugin and inlines its own
+  // stylesheet, and the CSP delivered WITH the PDF governs that document. So
+  // `object-src 'none'` — the directive this app sets precisely because embed
+  // and object are a plugin surface — blocks the browser's own viewer, and
+  // `style-src` without 'unsafe-inline' breaks its layout. The page renders
+  // empty and the console blames a policy the page's author never meant to
+  // apply to it.
+  //
+  // Rather than carve exceptions into a policy written for HTML this app
+  // serves, the stream gets the one directive that has a job to do on a byte
+  // stream: who may frame it. The rest protected nothing here — there is no
+  // document to run script in, no markup to inject into, and `nosniff` plus a
+  // content-sniffed upload is what keeps it that way.
+  response.headers.set(
+    "Content-Security-Policy",
+    framable ? "frame-ancestors 'self'" : csp,
+  );
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Frame-Options", framable ? "SAMEORIGIN" : "DENY");
