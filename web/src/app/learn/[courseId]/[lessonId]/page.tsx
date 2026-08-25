@@ -328,23 +328,21 @@ function DocumentViewer({
         src={src}
         title={title}
         className="h-[70vh] w-full border-0 bg-white"
-        // A PDF needs no script — but the viewer rendering it is script. Chrome
-        // and Edge run their viewer as a privileged extension page and Firefox
-        // runs pdf.js outright, and all three inherit the sandbox of the frame
-        // they load in, so `sandbox=""` does not display a document tightly: it
-        // displays nothing at all. An empty sandbox also forces an opaque
-        // origin, which throws away the same-origin premise the whole approach
-        // rests on.
+        // No sandbox attribute, and no set of tokens would have done instead.
+        // Sandboxing sets the sandboxed plugins browsing context flag, and no
+        // allow-* token clears it — there is no `allow-plugins`. Chrome and
+        // Edge render a PDF by generating a boilerplate HTML document that
+        // <embed>s the viewer, which is a plugin by that definition, so a
+        // sandboxed frame renders nothing whatever the tokens say. That is
+        // whatwg/html#3958, still an interop gap, and Chromium's own block
+        // page — "This page has been blocked by Chrome" — is what it looks
+        // like from the outside.
         //
-        // What is still withheld is what a document viewer has no business
-        // with: no forms, no top-level navigation, no pointer lock. Scripts get
-        // in only because the browser's own code needs them, and the response
-        // is `Content-Type: application/pdf` under `nosniff` — the bytes are
-        // never parsed as a document that could carry script of its own, and
-        // the upload accepts a file only when its *content* sniffs as a PDF.
-        // allow-downloads is what makes the viewer's own save button work;
-        // without it Chrome drops the download and says nothing.
-        sandbox="allow-same-origin allow-scripts allow-downloads"
+        // What is left is not nothing. The frame holds one same-origin URL
+        // that answers `Content-Type: application/pdf` under `nosniff`, and
+        // the upload accepts a file only when its *content* sniffs as a PDF —
+        // so the bytes are never parsed as a document that could carry script,
+        // with or without a sandbox to stop it.
       />
     </div>
   );
